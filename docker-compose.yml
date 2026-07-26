@@ -1,0 +1,61 @@
+services:
+  rtmp:
+    build: ./rtmp
+    restart: unless-stopped
+    ports:
+      - "1935:1935" # RTMP ingest - point Restream's Custom RTMP destination here
+    environment:
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+    volumes:
+      - hls_data:/tmp/hls
+    networks:
+      - internal
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000" # direct access for local testing; put Caddy in front for production
+    environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      PUBLIC_HOST: ${PUBLIC_HOST}
+      RTMP_PORT: "1935"
+      HLS_INTERNAL_URL: "http://rtmp:8080"
+      PORT: "4000"
+    volumes:
+      - backend_data:/app/data
+      - backend_uploads:/app/uploads
+    depends_on:
+      - rtmp
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  hls_data:
+  backend_data:
+  backend_uploads:
+  caddy_data:
+  caddy_config:

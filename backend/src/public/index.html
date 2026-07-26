@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stream Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div id="login-view" class="view hidden">
+  <form id="login-form" class="login-box">
+    <h1>Stream Dashboard</h1>
+    <label>Username
+      <input type="text" id="login-username" autocomplete="username" required>
+    </label>
+    <label>Password
+      <input type="password" id="login-password" autocomplete="current-password" required>
+    </label>
+    <div id="login-error" class="error hidden"></div>
+    <button type="submit">Log in</button>
+  </form>
+</div>
+
+<div id="dashboard-view" class="view hidden">
+  <header>
+    <h1>Stream Dashboard</h1>
+    <button id="logout-btn" class="secondary">Log out</button>
+  </header>
+
+  <section class="panel">
+    <h2>Create a channel</h2>
+    <form id="create-form" class="inline-form">
+      <input type="text" id="new-channel-name" placeholder="Channel name (e.g. Main Camera)" required maxlength="100">
+      <button type="submit">Create channel</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Channels</h2>
+    <div id="channels-list"></div>
+    <p id="empty-state" class="hint hidden">No channels yet - create one above to get a stream key.</p>
+  </section>
+</div>
+
+<template id="channel-card-template">
+  <div class="channel-card">
+    <div class="channel-header">
+      <span class="channel-name"></span>
+      <span class="live-badge hidden">LIVE</span>
+      <button class="delete-btn secondary danger">Delete</button>
+    </div>
+
+    <div class="field-row">
+      <label>RTMP URL</label>
+      <div class="copy-row">
+        <input type="text" class="rtmp-url" readonly>
+        <button class="copy-btn" data-target="rtmp-url">Copy</button>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label>Stream key</label>
+      <div class="copy-row">
+        <input type="password" class="stream-key" readonly>
+        <button class="reveal-btn secondary">Show</button>
+        <button class="copy-btn" data-target="stream-key">Copy</button>
+        <button class="regen-btn secondary">Regenerate</button>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label>Offline cover image</label>
+      <div class="cover-row">
+        <img class="cover-preview hidden" alt="cover preview">
+        <span class="cover-none hint">Using default placeholder</span>
+        <input type="file" class="cover-input" accept=".png,.jpg,.jpeg,.webp">
+        <button class="remove-cover-btn secondary hidden">Remove</button>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label>Embed code (paste into your website)</label>
+      <div class="copy-row">
+        <textarea class="embed-code" readonly rows="3"></textarea>
+        <button class="copy-btn" data-target="embed-code">Copy</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="/app.js"></script>
+</body>
+</html>
