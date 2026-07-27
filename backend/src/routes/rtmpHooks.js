@@ -17,6 +17,28 @@ function findChannelByKey(db, streamKey) {
   return Object.values(db.channels).find((c) => c.streamKey === streamKey);
 }
 
+// A brand-new RTMP connection is accepted (and the encoder needs the ack)
+// well before nginx has actually written a usable HLS segment - especially
+// with a CDN in front, where the very first requests can take a few extra
+// seconds to settle. Waiting this long before flipping isLive means nobody
+// (dashboard included) ever sees "live" during that window, so there's
+// never a moment where the play button is visible but silently can't do
+// anything yet. Doesn't affect YouTube - relay-start.sh already polls
+// separately for when that becomes ready.
+const LIVE_DELAY_MS = Number(process.env.LIVE_DELAY_MS) || 15000;
+
+// Keyed by channel id - lets a quick reconnect (or a disconnect before the
+// delay elapses) cancel a still-pending "go live" from an earlier publish
+// rather than stacking up or firing late for a stream that already ended.
+const pendingLiveTimers = {};
+
+function cancelPendingLive(channelId) {
+  if (pendingLiveTimers[channelId]) {
+    clearTimeout(pendingLiveTimers[channelId]);
+    delete pendingLiveTimers[channelId];
+  }
+}
+
 // Called by nginx-rtmp when a publisher starts pushing to /live/<streamKey>.
 // Returning non-2xx here rejects the publish, so this doubles as stream-key auth.
 router.post('/on_publish', (req, res) => {
@@ -27,8 +49,6 @@ router.post('/on_publish', (req, res) => {
   const channel = findChannelByKey(db, streamKey);
   if (!channel) return res.status(403).send('Invalid stream key');
 
-  channel.isLive = true;
-  channel.lastLiveAt = new Date().toISOString();
   (channel.outputs || []).forEach((output) => {
     if (output.type === 'youtube') {
       output.broadcastId = null;
@@ -38,10 +58,20 @@ router.post('/on_publish', (req, res) => {
   });
   writeDb(db);
 
-  // Respond immediately so the publish isn't delayed waiting on YouTube's
-  // API - the relay script (see rtmp/relay-start.sh) polls the endpoint
-  // below separately until each output's ingest details are ready.
+  // Respond immediately so the publish isn't delayed - nginx is waiting on
+  // this HTTP response to decide whether to accept the connection at all.
   res.status(200).send('OK');
+
+  cancelPendingLive(channel.id);
+  pendingLiveTimers[channel.id] = setTimeout(() => {
+    delete pendingLiveTimers[channel.id];
+    const freshDb = readDb();
+    const freshChannel = freshDb.channels[channel.id];
+    if (!freshChannel) return;
+    freshChannel.isLive = true;
+    freshChannel.lastLiveAt = new Date().toISOString();
+    writeDb(freshDb);
+  }, LIVE_DELAY_MS);
 
   (channel.outputs || [])
     .filter((output) => output.type === 'youtube' && output.enabled && output.refreshToken)
@@ -79,6 +109,7 @@ router.post('/on_publish_done', (req, res) => {
   const db = readDb();
   const channel = findChannelByKey(db, streamKey);
   if (channel) {
+    cancelPendingLive(channel.id);
     channel.isLive = false;
     (channel.outputs || []).forEach((output) => {
       if (output.type === 'youtube') {

@@ -168,6 +168,12 @@ bill flat regardless of audience size. Steps:
    as the RTMP URL instead of the (now-proxied) domain. `PUBLIC_HOST` stays
    as your domain for everything else (embed links, HTTPS).
 
+With a CDN in front, the first few seconds after an encoder connects can be
+unreliable (nginx hasn't written a real HLS segment yet, and the very first
+requests through a CDN can take a little longer to settle) - see
+`LIVE_DELAY_MS` below for how the app avoids showing "live" during that
+window.
+
 ## Cost estimate
 
 | Item | Notes | Cost |
