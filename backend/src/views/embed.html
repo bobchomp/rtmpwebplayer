@@ -87,12 +87,13 @@
   }
 
   // Loads/attaches the stream in the background but does not start playback -
-  // playback only ever starts from a real click, never automatically.
+  // playback only ever starts from a real click, never automatically. The
+  // cover image stays as the video's poster (thumbnail) throughout this
+  // state; browsers automatically stop showing it once real playback begins.
   function prepareLive() {
     currentlyLive = true;
     liveBadge.style.display = 'block';
     offlineLabel.style.display = 'none';
-    video.removeAttribute('poster');
     playButton.style.display = 'flex';
 
     if (window.Hls && Hls.isSupported()) {
