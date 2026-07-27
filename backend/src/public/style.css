@@ -146,6 +146,10 @@ button.danger:hover { background: #fbe9e7; }
   display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px;
 }
 .outputs-panel-header h3 { margin: 0; }
+.outputs-panel-header-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.add-output-type-row { display: flex; gap: 8px; }
+.add-output-type-row button { flex: 1; }
 
 .outputs-panel .output-row {
   display: flex; align-items: center; gap: 12px; margin-bottom: 10px;

@@ -1,4 +1,7 @@
+const crypto = require('crypto');
 const { readDb, writeDb } = require('./db');
+
+const MAX_OUTPUTS = 10; // keep in sync with channels.js
 
 const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3';
 const OAUTH_SCOPE = 'https://www.googleapis.com/auth/youtube';
@@ -60,10 +63,11 @@ async function apiCall(accessToken, method, path, body) {
   return res.status === 204 ? null : res.json();
 }
 
-// Each channel connects its own YouTube account independently (a church
-// running multiple venues/channels may want each relaying to a different
-// YouTube channel), so the connection lives on channel.youtube rather than
-// as a single account shared by the whole app.
+// Each channel can connect multiple YouTube accounts independently (e.g.
+// relaying to two different YouTube channels at once), so each connection
+// becomes its own entry in channel.outputs (type: 'youtube') rather than a
+// single slot - the same array custom RTMP outputs live in, and the same
+// generic add/enable/delete routes in channels.js manage both.
 async function handleOAuthCallback(code, channelId) {
   const tokens = await exchangeCodeForTokens(code);
   if (!tokens.refresh_token) {
@@ -79,45 +83,33 @@ async function handleOAuthCallback(code, channelId) {
   const db = readDb();
   const channel = db.channels[channelId];
   if (!channel) throw new Error('Channel not found');
-  channel.youtube = {
-    refreshToken: tokens.refresh_token,
+  channel.outputs = channel.outputs || [];
+  if (channel.outputs.length >= MAX_OUTPUTS) {
+    throw new Error(`Maximum of ${MAX_OUTPUTS} outputs per channel`);
+  }
+
+  const id = crypto.randomUUID();
+  channel.outputs.push({
+    id,
+    type: 'youtube',
     channelTitle,
+    refreshToken: tokens.refresh_token,
     connectedAt: new Date().toISOString(),
-  };
+    enabled: true,
+    broadcastId: null,
+    ingestAddress: null,
+    streamName: null,
+  });
   writeDb(db);
-  return channelTitle;
-}
-
-function getStatus(channelId) {
-  const db = readDb();
-  const channel = db.channels[channelId];
-  if (!channel || !channel.youtube || !channel.youtube.refreshToken) return { connected: false };
-  return { connected: true, channelTitle: channel.youtube.channelTitle };
-}
-
-function isConnected(channelId) {
-  return getStatus(channelId).connected;
-}
-
-function disconnect(channelId) {
-  const db = readDb();
-  const channel = db.channels[channelId];
-  if (channel) delete channel.youtube;
-  writeDb(db);
+  return { id, channelTitle };
 }
 
 // Creates a broadcast + stream, binds them, and returns the RTMP ingest
 // details to relay to. enableAutoStart/enableAutoStop let YouTube manage
 // the live/complete transitions itself based on whether it's receiving
 // data, so we never need to poll stream health or call transition APIs.
-async function createBroadcastAndStream(channelId, title, description) {
-  const db = readDb();
-  const channel = db.channels[channelId];
-  if (!channel || !channel.youtube || !channel.youtube.refreshToken) {
-    throw new Error('YouTube is not connected for this channel');
-  }
-
-  const { access_token: accessToken } = await refreshAccessToken(channel.youtube.refreshToken);
+async function createBroadcastAndStream(refreshToken, title, description) {
+  const { access_token: accessToken } = await refreshAccessToken(refreshToken);
   const streamTitle = (title || '').trim() || 'Live Stream';
   const streamDescription = (description || '').trim();
 
@@ -159,8 +151,5 @@ async function createBroadcastAndStream(channelId, title, description) {
 module.exports = {
   getAuthUrl,
   handleOAuthCallback,
-  getStatus,
-  isConnected,
-  disconnect,
   createBroadcastAndStream,
 };

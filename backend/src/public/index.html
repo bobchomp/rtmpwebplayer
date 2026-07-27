@@ -97,7 +97,10 @@
         <div class="panel outputs-panel">
           <div class="outputs-panel-header">
             <h3>Outputs</h3>
-            <button class="secondary" id="edit-metadata-btn">Edit title &amp; description</button>
+            <div class="outputs-panel-header-buttons">
+              <button class="secondary" id="edit-metadata-btn">Edit title &amp; description</button>
+              <button class="secondary" id="add-output-btn">+ Add output</button>
+            </div>
           </div>
 
           <div class="output-row">
@@ -120,35 +123,8 @@
 
           <hr class="output-divider">
 
-          <div class="output-row">
-            <div class="output-info">
-              <span class="output-name">YouTube</span>
-              <span class="hint" id="detail-youtube-hint"></span>
-            </div>
-            <label class="switch">
-              <input type="checkbox" id="detail-youtube-toggle">
-              <span class="switch-track"></span>
-            </label>
-          </div>
-          <div class="field-row">
-            <button class="secondary hidden" id="detail-youtube-connect-btn">Connect YouTube account</button>
-            <button class="secondary hidden" id="detail-youtube-disconnect-btn">Disconnect YouTube account</button>
-          </div>
-
-          <hr class="output-divider">
-
-          <div id="detail-custom-outputs-list"></div>
-
-          <button class="secondary" id="detail-add-output-btn">+ Add custom RTMP output</button>
-          <form id="detail-add-output-form" class="hidden add-output-form">
-            <input type="text" id="new-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>
-            <input type="text" id="new-output-rtmp-url" placeholder="RTMP URL (e.g. rtmp://live.twitch.tv/app)" required>
-            <input type="text" id="new-output-stream-key" placeholder="Stream key" required>
-            <div class="inline-form">
-              <button type="submit">Add output</button>
-              <button type="button" class="secondary" id="cancel-add-output-btn">Cancel</button>
-            </div>
-          </form>
+          <div id="detail-outputs-list"></div>
+          <p class="hint hidden" id="detail-outputs-empty">No other outputs yet - click "+ Add output" above to relay to YouTube or a custom RTMP destination.</p>
         </div>
 
         <div class="panel detail-extras">
@@ -175,7 +151,7 @@
   </a>
 </template>
 
-<template id="custom-output-template">
+<template id="output-row-template">
   <div class="output-row custom-output-row">
     <div class="output-info">
       <span class="output-name"></span>
@@ -202,6 +178,26 @@
     <div class="modal-actions">
       <button class="secondary" id="metadata-cancel-btn">Cancel</button>
       <button id="metadata-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="add-output-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Add output</h3>
+    <p class="hint">Choose what to send this stream to.</p>
+    <div class="add-output-type-row" id="add-output-type-row">
+      <button class="secondary" id="add-output-type-youtube">YouTube</button>
+      <button class="secondary" id="add-output-type-rtmp">Custom RTMP</button>
+    </div>
+    <form id="add-output-rtmp-form" class="hidden add-output-form">
+      <input type="text" id="new-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>
+      <input type="text" id="new-output-rtmp-url" placeholder="RTMP URL (e.g. rtmp://live.twitch.tv/app)" required>
+      <input type="text" id="new-output-stream-key" placeholder="Stream key" required>
+      <button type="submit">Add output</button>
+    </form>
+    <div class="modal-actions">
+      <button class="secondary" id="add-output-cancel-btn">Cancel</button>
     </div>
   </div>
 </div>

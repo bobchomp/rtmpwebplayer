@@ -12,14 +12,13 @@
   var channelsList = document.getElementById('channels-list');
   var emptyState = document.getElementById('empty-state');
   var channelRowTemplate = document.getElementById('channel-row-template');
-  var customOutputTemplate = document.getElementById('custom-output-template');
+  var outputRowTemplate = document.getElementById('output-row-template');
 
   var config = { publicHost: window.location.hostname, rtmpHost: window.location.hostname, rtmpPort: 1935 };
   var listRefreshTimer = null;
   var detailPollTimer = null;
   var currentChannelId = null;
   var currentChannelMetadata = { title: '', description: '' };
-  var youtubeStatus = { connected: false, channelTitle: null };
   var detailListenersWired = false;
 
   function api(url, opts) {
@@ -144,11 +143,6 @@
   var detailWebsiteHint = document.getElementById('detail-website-hint');
   var detailWebsiteToggle = document.getElementById('detail-website-toggle');
 
-  var detailYoutubeHint = document.getElementById('detail-youtube-hint');
-  var detailYoutubeToggle = document.getElementById('detail-youtube-toggle');
-  var detailYoutubeConnectBtn = document.getElementById('detail-youtube-connect-btn');
-  var detailYoutubeDisconnectBtn = document.getElementById('detail-youtube-disconnect-btn');
-
   var editMetadataBtn = document.getElementById('edit-metadata-btn');
   var metadataModalBackdrop = document.getElementById('metadata-modal-backdrop');
   var metadataTitleInput = document.getElementById('metadata-title-input');
@@ -156,10 +150,16 @@
   var metadataSaveBtn = document.getElementById('metadata-save-btn');
   var metadataCancelBtn = document.getElementById('metadata-cancel-btn');
 
-  var detailCustomOutputsList = document.getElementById('detail-custom-outputs-list');
-  var detailAddOutputBtn = document.getElementById('detail-add-output-btn');
-  var detailAddOutputForm = document.getElementById('detail-add-output-form');
-  var cancelAddOutputBtn = document.getElementById('cancel-add-output-btn');
+  var detailOutputsList = document.getElementById('detail-outputs-list');
+  var detailOutputsEmpty = document.getElementById('detail-outputs-empty');
+
+  var addOutputBtn = document.getElementById('add-output-btn');
+  var addOutputModalBackdrop = document.getElementById('add-output-modal-backdrop');
+  var addOutputTypeRow = document.getElementById('add-output-type-row');
+  var addOutputTypeYoutubeBtn = document.getElementById('add-output-type-youtube');
+  var addOutputTypeRtmpBtn = document.getElementById('add-output-type-rtmp');
+  var addOutputRtmpForm = document.getElementById('add-output-rtmp-form');
+  var addOutputCancelBtn = document.getElementById('add-output-cancel-btn');
   var newOutputName = document.getElementById('new-output-name');
   var newOutputRtmpUrl = document.getElementById('new-output-rtmp-url');
   var newOutputStreamKey = document.getElementById('new-output-stream-key');
@@ -176,14 +176,8 @@
   }
 
   function refreshChannelDetail() {
-    return Promise.all([
-      api('/api/channels/' + currentChannelId),
-      api('/api/youtube/status?channelId=' + encodeURIComponent(currentChannelId)),
-    ])
-      .then(function (results) {
-        youtubeStatus = results[1];
-        renderChannelDetail(results[0]);
-      })
+    return api('/api/channels/' + currentChannelId)
+      .then(renderChannelDetail)
       .catch(function (err) {
         alert(err.message);
         window.location.hash = '#/';
@@ -308,23 +302,16 @@
       ? 'This is the embed player itself'
       : 'Off - the embed and your website are not showing this stream';
 
-    detailYoutubeToggle.checked = !!channel.youtubeEnabled;
-    detailYoutubeToggle.disabled = !youtubeStatus.connected;
-    detailYoutubeConnectBtn.classList.toggle('hidden', youtubeStatus.connected);
-    detailYoutubeDisconnectBtn.classList.toggle('hidden', !youtubeStatus.connected);
-    if (!youtubeStatus.connected) {
-      detailYoutubeHint.textContent = 'Connect a YouTube account for this channel first';
-    } else if (channel.youtubeEnabled) {
-      detailYoutubeHint.textContent = 'Relaying to ' + youtubeStatus.channelTitle + ' automatically while live';
-    } else {
-      detailYoutubeHint.textContent = 'Connected as ' + youtubeStatus.channelTitle + ' - off';
-    }
-
-    detailCustomOutputsList.innerHTML = '';
-    (channel.customOutputs || []).forEach(function (output) {
-      var node = customOutputTemplate.content.firstElementChild.cloneNode(true);
-      node.querySelector('.output-name').textContent = output.name;
-      node.querySelector('.output-url').textContent = output.rtmpUrl;
+    var outputs = channel.outputs || [];
+    detailOutputsList.innerHTML = '';
+    detailOutputsEmpty.classList.toggle('hidden', outputs.length > 0);
+    outputs.forEach(function (output) {
+      var isYoutube = output.type === 'youtube';
+      var node = outputRowTemplate.content.firstElementChild.cloneNode(true);
+      node.querySelector('.output-name').textContent = isYoutube ? 'YouTube' : output.name;
+      node.querySelector('.output-url').textContent = isYoutube
+        ? 'Connected as ' + output.channelTitle
+        : output.rtmpUrl;
 
       var toggle = node.querySelector('.output-toggle');
       toggle.checked = !!output.enabled;
@@ -341,13 +328,16 @@
       });
 
       node.querySelector('.output-delete-btn').addEventListener('click', function () {
-        if (!confirm('Remove output "' + output.name + '"?')) return;
+        var message = isYoutube
+          ? 'Disconnect YouTube account "' + output.channelTitle + '"?'
+          : 'Remove output "' + output.name + '"?';
+        if (!confirm(message)) return;
         api('/api/channels/' + channel.id + '/outputs/' + output.id, { method: 'DELETE' })
           .then(refreshChannelDetail)
           .catch(function (err) { alert(err.message); });
       });
 
-      detailCustomOutputsList.appendChild(node);
+      detailOutputsList.appendChild(node);
     });
 
     renderGallery(detailCoverGallery, channel, 'coverImages', 'activeCoverImage', 'covers');
@@ -430,31 +420,6 @@
         });
     });
 
-    detailYoutubeToggle.addEventListener('change', function () {
-      api('/api/channels/' + currentChannelId + '/youtube-settings', {
-        method: 'PATCH',
-        body: JSON.stringify({ youtubeEnabled: detailYoutubeToggle.checked }),
-      })
-        .then(refreshChannelDetail)
-        .catch(function (err) {
-          alert(err.message);
-          detailYoutubeToggle.checked = !detailYoutubeToggle.checked;
-        });
-    });
-
-    detailYoutubeConnectBtn.addEventListener('click', function () {
-      window.location.href = '/api/youtube/connect?channelId=' + encodeURIComponent(currentChannelId);
-    });
-    detailYoutubeDisconnectBtn.addEventListener('click', function () {
-      if (!confirm('Disconnect this channel\'s YouTube account? It will stop relaying until you reconnect.')) return;
-      api('/api/youtube/disconnect', {
-        method: 'POST',
-        body: JSON.stringify({ channelId: currentChannelId }),
-      })
-        .then(refreshChannelDetail)
-        .catch(function (err) { alert(err.message); });
-    });
-
     editMetadataBtn.addEventListener('click', function () {
       metadataTitleInput.value = currentChannelMetadata.title;
       metadataDescriptionInput.value = currentChannelMetadata.description;
@@ -481,16 +446,28 @@
         .catch(function (err) { alert(err.message); });
     });
 
-    detailAddOutputBtn.addEventListener('click', function () {
-      detailAddOutputForm.classList.remove('hidden');
-      detailAddOutputBtn.classList.add('hidden');
+    function closeAddOutputModal() {
+      addOutputModalBackdrop.classList.add('hidden');
+      addOutputRtmpForm.reset();
+      addOutputRtmpForm.classList.add('hidden');
+      addOutputTypeRow.classList.remove('hidden');
+    }
+
+    addOutputBtn.addEventListener('click', function () {
+      addOutputModalBackdrop.classList.remove('hidden');
     });
-    cancelAddOutputBtn.addEventListener('click', function () {
-      detailAddOutputForm.reset();
-      detailAddOutputForm.classList.add('hidden');
-      detailAddOutputBtn.classList.remove('hidden');
+    addOutputCancelBtn.addEventListener('click', closeAddOutputModal);
+    addOutputModalBackdrop.addEventListener('click', function (e) {
+      if (e.target === addOutputModalBackdrop) closeAddOutputModal();
     });
-    detailAddOutputForm.addEventListener('submit', function (e) {
+    addOutputTypeYoutubeBtn.addEventListener('click', function () {
+      window.location.href = '/api/youtube/connect?channelId=' + encodeURIComponent(currentChannelId);
+    });
+    addOutputTypeRtmpBtn.addEventListener('click', function () {
+      addOutputTypeRow.classList.add('hidden');
+      addOutputRtmpForm.classList.remove('hidden');
+    });
+    addOutputRtmpForm.addEventListener('submit', function (e) {
       e.preventDefault();
       api('/api/channels/' + currentChannelId + '/outputs', {
         method: 'POST',
@@ -501,9 +478,7 @@
         }),
       })
         .then(function () {
-          detailAddOutputForm.reset();
-          detailAddOutputForm.classList.add('hidden');
-          detailAddOutputBtn.classList.remove('hidden');
+          closeAddOutputModal();
           return refreshChannelDetail();
         })
         .catch(function (err) { alert(err.message); });

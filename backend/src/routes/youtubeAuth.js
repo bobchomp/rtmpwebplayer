@@ -7,12 +7,6 @@ const youtube = require('../youtube');
 
 const router = express.Router();
 
-router.get('/status', requireAuth, (req, res) => {
-  const channelId = req.query.channelId;
-  if (!channelId) return res.status(400).json({ error: 'channelId is required' });
-  res.json(youtube.getStatus(channelId));
-});
-
 router.get('/connect', requireAuth, (req, res) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.status(500).send('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not configured on the server.');
@@ -52,11 +46,9 @@ router.get('/callback', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/disconnect', requireAuth, (req, res) => {
-  const channelId = req.body && req.body.channelId;
-  if (!channelId) return res.status(400).json({ error: 'channelId is required' });
-  youtube.disconnect(channelId);
-  res.json({ ok: true });
-});
+// Disconnecting/removing a YouTube output goes through the generic
+// DELETE /api/channels/:id/outputs/:outputId route in channels.js instead
+// of a dedicated route here - it's just an entry in the same outputs array
+// as custom RTMP outputs.
 
 module.exports = router;

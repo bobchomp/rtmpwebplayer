@@ -35,18 +35,17 @@ function generateStreamKey() {
   return crypto.randomBytes(20).toString('hex');
 }
 
-// The dashboard needs to know whether a channel's YouTube account is
-// connected (and its channel title), but the OAuth refresh token itself is
-// a server-to-Google credential that should never reach the browser -
-// every route that serializes a channel goes through this first.
+// A YouTube-type output carries an OAuth refresh token (a server-to-Google
+// credential with no legitimate reason to reach the browser) - every route
+// that serializes a channel goes through this first to strip it out.
 function redactChannel(channel) {
-  if (!channel.youtube) return channel;
+  if (!channel.outputs || !channel.outputs.some((o) => o.refreshToken)) return channel;
   return Object.assign({}, channel, {
-    youtube: {
-      connected: true,
-      channelTitle: channel.youtube.channelTitle,
-      connectedAt: channel.youtube.connectedAt,
-    },
+    outputs: channel.outputs.map((o) => {
+      if (!o.refreshToken) return o;
+      const { refreshToken, ...safe } = o;
+      return safe;
+    }),
   });
 }
 
@@ -82,12 +81,12 @@ router.post('/', requireAuth, (req, res) => {
     activeCoverImage: null,
     liveThumbnails: [],
     activeLiveThumbnail: null,
-    youtubeEnabled: false,
-    youtube: null, // { refreshToken, channelTitle, connectedAt } once connected - see youtube.js
-    youtubeBroadcastId: null,
-    youtubeIngestAddress: null,
-    youtubeStreamName: null,
-    customOutputs: [],
+    // Every relay destination (YouTube, custom RTMP, and future types) lives
+    // in this one array, distinguished by `type` - see validateOutputInput
+    // below for 'rtmp' outputs and youtube.js's handleOAuthCallback for how
+    // 'youtube' outputs get added (through the OAuth flow, not this array
+    // being posted to directly).
+    outputs: [],
     createdAt: new Date().toISOString(),
   };
   db.channels[id] = channel;
@@ -133,20 +132,6 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
   res.json(redactChannel(channel));
 });
 
-// Admin: update per-channel YouTube relay settings (currently just the toggle
-// - title/description live on the shared /:id/metadata route below)
-router.patch('/:id/youtube-settings', requireAuth, (req, res) => {
-  const db = readDb();
-  const channel = db.channels[req.params.id];
-  if (!channel) return res.status(404).json({ error: 'Not found' });
-
-  if (typeof req.body.youtubeEnabled === 'boolean') {
-    channel.youtubeEnabled = req.body.youtubeEnabled;
-  }
-  writeDb(db);
-  res.json(redactChannel(channel));
-});
-
 // Admin: update the shared title/description used both for the embed page's
 // metadata (title tag, meta/OG description, on-screen overlay) and as the
 // YouTube broadcast's title/description.
@@ -171,7 +156,7 @@ router.patch('/:id/metadata', requireAuth, (req, res) => {
   res.json(redactChannel(channel));
 });
 
-const MAX_CUSTOM_OUTPUTS = 10;
+const MAX_OUTPUTS = 10;
 
 // The relay-targets endpoint emits tab/newline-delimited lines for the shell
 // script to parse - reject those characters here so a pasted value can never
@@ -208,14 +193,17 @@ function validateOutputInput(body, { partial } = {}) {
 
 // Admin: add a custom RTMP output (e.g. Twitch, Facebook, another server) -
 // relayed to automatically while live, same mechanism as the YouTube relay.
+// (YouTube outputs are added via the OAuth flow in youtubeAuth.js/youtube.js,
+// not through this route, since they need a Google sign-in redirect rather
+// than a plain form submission.)
 router.post('/:id/outputs', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
-  channel.customOutputs = channel.customOutputs || [];
-  if (channel.customOutputs.length >= MAX_CUSTOM_OUTPUTS) {
-    return res.status(400).json({ error: `Maximum of ${MAX_CUSTOM_OUTPUTS} custom outputs per channel` });
+  channel.outputs = channel.outputs || [];
+  if (channel.outputs.length >= MAX_OUTPUTS) {
+    return res.status(400).json({ error: `Maximum of ${MAX_OUTPUTS} outputs per channel` });
   }
 
   const { errors, update } = validateOutputInput(req.body || {});
@@ -223,24 +211,33 @@ router.post('/:id/outputs', requireAuth, (req, res) => {
 
   const output = {
     id: crypto.randomUUID(),
+    type: 'rtmp',
     name: update.name,
     rtmpUrl: update.rtmpUrl,
     streamKey: update.streamKey,
     enabled: update.enabled !== undefined ? update.enabled : true,
   };
-  channel.customOutputs.push(output);
+  channel.outputs.push(output);
   writeDb(db);
-  res.status(201).json(channel);
+  res.status(201).json(redactChannel(channel));
 });
 
-// Admin: update a custom RTMP output (name, URL, key, and/or on/off)
+// Admin: update an output. RTMP outputs can have their name/URL/key edited;
+// a YouTube output can only be switched on/off here (everything else about
+// it comes from the OAuth connection or the shared title/description).
 router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
-  const output = (channel.customOutputs || []).find((o) => o.id === req.params.outputId);
+  const output = (channel.outputs || []).find((o) => o.id === req.params.outputId);
   if (!output) return res.status(404).json({ error: 'Output not found' });
+
+  if (output.type === 'youtube') {
+    if (typeof req.body.enabled === 'boolean') output.enabled = req.body.enabled;
+    writeDb(db);
+    return res.json(redactChannel(channel));
+  }
 
   const { errors, update } = validateOutputInput(req.body || {}, { partial: true });
   if (errors.length) return res.status(400).json({ error: errors.join(', ') });
@@ -250,15 +247,16 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   res.json(redactChannel(channel));
 });
 
-// Admin: remove a custom RTMP output
+// Admin: remove an output (for a YouTube output, this also disconnects it -
+// see youtubeAuth.js's disconnect route, which does the same thing).
 router.delete('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
-  const before = (channel.customOutputs || []).length;
-  channel.customOutputs = (channel.customOutputs || []).filter((o) => o.id !== req.params.outputId);
-  if (channel.customOutputs.length === before) return res.status(404).json({ error: 'Output not found' });
+  const before = (channel.outputs || []).length;
+  channel.outputs = (channel.outputs || []).filter((o) => o.id !== req.params.outputId);
+  if (channel.outputs.length === before) return res.status(404).json({ error: 'Output not found' });
 
   writeDb(db);
   res.json(redactChannel(channel));

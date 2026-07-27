@@ -215,23 +215,27 @@ stream goes:
   keeps working, since it's a genuinely useful way to confirm a stream is
   live even if you're not publishing it to your site) - handy if a channel
   is only ever meant to go to YouTube or a custom output.
-- **YouTube** - see the dedicated section below.
-- **Custom RTMP outputs** - click "+ Add custom RTMP output" and fill in a
-  name, RTMP URL, and stream key (the same fields Restream or any platform
-  gives you for a "custom RTMP" destination - Twitch, Facebook, another
-  server, etc). Toggle each on/off independently; they relay automatically
-  (via `ffmpeg -c copy`, no re-encoding) whenever the channel is live.
+- Everything else - YouTube and custom RTMP destinations - is added via the
+  **+ Add output** button and shows up in the same list below "Your
+  Website", each with its own on/off toggle and a Delete button. There's no
+  limit on how many of each type a channel can have (up to 10 outputs
+  total), so you can relay to several YouTube channels and/or several
+  custom RTMP destinations at once.
+  - **Custom RTMP**: picking this in the popup asks for a name, RTMP URL,
+    and stream key (the same fields Restream or any platform gives you for
+    a "custom RTMP" destination - Twitch, Facebook, another server, etc).
+  - **YouTube**: see the dedicated section below - picking this in the
+    popup takes you straight to Google's sign-in.
 
 ## Relaying to YouTube
 
-YouTube gets its own dedicated toggle (rather than living under custom
-outputs) because, unlike a plain RTMP destination, it needs a YouTube
-account connected via OAuth - after that it creates a live broadcast with
-your chosen title automatically every time you go live, no need to touch
-YouTube Studio or paste stream keys manually. Each channel connects its
-own YouTube account independently, so different channels can relay to
-different YouTube channels (or share the same one, by connecting the same
-Google account on each).
+Unlike a plain RTMP destination, YouTube needs an account connected via
+OAuth - after that it creates a live broadcast with your channel's title
+automatically every time you go live, no need to touch YouTube Studio or
+paste stream keys manually. Each YouTube connection is independent, so a
+channel can relay to several different YouTube channels at once (or a
+custom RTMP destination and a YouTube one simultaneously) - just click
+"+ Add output" again for each one.
 
 ### One-time Google Cloud setup
 
@@ -258,22 +262,23 @@ Google account on each).
 
 ### Using it
 
-- On a channel's detail page, under the **YouTube** output, click
-  **Connect YouTube account** and approve access - this connects a YouTube
-  account to that one channel specifically.
-- Flip the **YouTube** switch on (takes effect immediately; disabled until
-  an account is connected). Title and description come from that channel's
-  shared **Edit title & description** popup, not a separate YouTube-only
-  field.
-- When that channel goes live, the app automatically creates a YouTube live
-  broadcast with that title/description and relays the incoming stream to
-  it (`ffmpeg -c copy` - repackaged, not re-encoded, so it's cheap on CPU).
-  The broadcast goes live on YouTube automatically once it detects healthy
+- On a channel's detail page, click **+ Add output**, then **YouTube** in
+  the popup - this takes you to Google's sign-in, and connects that
+  account to this channel specifically.
+- The new output shows up in the outputs list as "YouTube - Connected as
+  <your channel name>", with its own on/off toggle (takes effect
+  immediately). Title and description for the broadcast come from that
+  channel's shared **Edit title & description** popup, not a separate
+  YouTube-only field.
+- When the channel goes live, the app automatically creates a YouTube live
+  broadcast (one per enabled YouTube output, if you've connected more than
+  one) with that title/description and relays the incoming stream to it
+  (`ffmpeg -c copy` - repackaged, not re-encoded, so it's cheap on CPU). The
+  broadcast goes live on YouTube automatically once it detects healthy
   incoming data, and completes automatically when the stream ends - no
   manual steps in YouTube Studio either way.
-- Disconnecting a channel's YouTube account (or turning its toggle off)
-  stops that channel from relaying on future streams - other channels'
-  connections are unaffected.
+- Deleting a YouTube output (same Delete button as any other output) also
+  disconnects that account - other outputs are unaffected.
 
 ### How it works, if you're curious
 
