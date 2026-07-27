@@ -63,6 +63,7 @@ button.danger:hover { background: #fbe9e7; }
   display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
 }
 .channel-name { font-weight: 600; font-size: 16px; flex: 1; }
+.channel-name-input { flex: 1; font-weight: 600; font-size: 16px; padding: 6px 8px; }
 
 .live-badge {
   background: #e11d2e; color: #fff; font: 600 11px/1 sans-serif;

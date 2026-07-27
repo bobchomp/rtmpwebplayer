@@ -66,6 +66,21 @@ router.post('/', requireAuth, (req, res) => {
   res.status(201).json(channel);
 });
 
+// Admin: rename a channel
+router.patch('/:id', requireAuth, (req, res) => {
+  const name = ((req.body && req.body.name) || '').trim();
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+  if (name.length > 100) return res.status(400).json({ error: 'Name too long' });
+
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  channel.name = name;
+  writeDb(db);
+  res.json(channel);
+});
+
 // Admin: delete a channel
 router.delete('/:id', requireAuth, (req, res) => {
   const db = readDb();

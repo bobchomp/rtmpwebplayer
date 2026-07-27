@@ -37,8 +37,52 @@
   function renderChannel(channel) {
     var node = cardTemplate.content.firstElementChild.cloneNode(true);
 
-    node.querySelector('.channel-name').textContent = channel.name;
+    var nameSpan = node.querySelector('.channel-name');
+    var nameInput = node.querySelector('.channel-name-input');
+    var renameBtn = node.querySelector('.rename-btn');
+    var saveNameBtn = node.querySelector('.save-name-btn');
+    var cancelNameBtn = node.querySelector('.cancel-name-btn');
+    var deleteBtn = node.querySelector('.delete-btn');
+
+    nameSpan.textContent = channel.name;
     node.querySelector('.live-badge').classList.toggle('hidden', !channel.isLive);
+
+    function enterEditMode() {
+      nameInput.value = channel.name;
+      nameSpan.classList.add('hidden');
+      renameBtn.classList.add('hidden');
+      deleteBtn.classList.add('hidden');
+      nameInput.classList.remove('hidden');
+      saveNameBtn.classList.remove('hidden');
+      cancelNameBtn.classList.remove('hidden');
+      nameInput.focus();
+      nameInput.select();
+    }
+
+    function exitEditMode() {
+      nameSpan.classList.remove('hidden');
+      renameBtn.classList.remove('hidden');
+      deleteBtn.classList.remove('hidden');
+      nameInput.classList.add('hidden');
+      saveNameBtn.classList.add('hidden');
+      cancelNameBtn.classList.add('hidden');
+    }
+
+    function saveName() {
+      var newName = nameInput.value.trim();
+      if (!newName) return;
+      api('/api/channels/' + channel.id, { method: 'PATCH', body: JSON.stringify({ name: newName }) })
+        .then(loadChannels)
+        .catch(function (err) { alert(err.message); });
+    }
+
+    renameBtn.addEventListener('click', enterEditMode);
+    cancelNameBtn.addEventListener('click', exitEditMode);
+    saveNameBtn.addEventListener('click', saveName);
+    nameInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') saveName();
+      if (e.key === 'Escape') exitEditMode();
+    });
 
     var rtmpUrl = 'rtmp://' + config.publicHost + ':' + config.rtmpPort + '/live';
     node.querySelector('.rtmp-url').value = rtmpUrl;
