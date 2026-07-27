@@ -85,6 +85,7 @@
     border-color: transparent transparent transparent #fff;
   }
   #playpause-btn.paused::after { display: none; }
+  #playpause-btn:disabled { cursor: default; opacity: .4; }
 
   #elapsed-label {
     flex: 1; color: #fff;
@@ -227,7 +228,14 @@
     playRequested = false;
     stopUiTimer();
     broadcastStartedAt = null;
-    controlsBar.style.display = 'none';
+    // Volume/fullscreen still work with nothing live to play, so the bar
+    // stays up (unlike the pre-play "live" state, where it would otherwise
+    // overlap the title/description card shown then) - just disable the
+    // play control itself, since there's genuinely nothing to play yet.
+    controlsBar.style.display = 'flex';
+    playPauseBtn.disabled = true;
+    playPauseBtn.classList.add('paused');
+    elapsedLabel.textContent = '0:00';
     if (retryTimer) {
       clearTimeout(retryTimer);
       retryTimer = null;
@@ -381,6 +389,7 @@
     thumbOverlay.style.display = 'none';
     titleOverlay.style.display = 'none';
     controlsBar.style.display = 'flex';
+    playPauseBtn.disabled = false;
     playPauseBtn.classList.remove('paused');
   });
   // If play was requested before media was actually ready (e.g. clicked
