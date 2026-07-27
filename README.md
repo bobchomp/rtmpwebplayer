@@ -145,10 +145,12 @@ Leave it unset to keep the original open-embed-anywhere behavior.
 
 Separately from which sites are allowed to embed it, the embed page also
 refuses to open as a direct, top-level page at all - someone pasting the
-`/embed/<id>` URL straight into their browser's address bar gets redirected
-to the Public Link output instead (see above), or a plain "not available
-here" message if that channel doesn't have one. This is on unconditionally,
-regardless of `ALLOWED_EMBED_DOMAINS` - it's a separate check based on the
+`/embed/<id>` URL straight into their browser's address bar just gets
+"Access denied" (deliberately not redirected to the Public Link output,
+even if this channel has one enabled - that link is something you hand out
+yourself, not something a blocked embed visit should expose on your
+behalf). This is on unconditionally, regardless of `ALLOWED_EMBED_DOMAINS` -
+it's a separate check based on the
 `Sec-Fetch-Dest` header browsers send (which a page's own JavaScript can't
 forge, unlike `Referer`), so it can't be worked around by just spoofing a
 referrer. It's still a best-effort browser signal rather than a guarantee -

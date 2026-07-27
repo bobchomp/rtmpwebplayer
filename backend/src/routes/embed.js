@@ -19,13 +19,13 @@ router.get('/:channelId', (req, res) => {
   }
 
   // This page is meant to live inside an iframe on an approved site, not to
-  // be opened directly - send a direct visit somewhere that's actually built
-  // for that instead of rendering the bare player. Admin exempted so you can
-  // still open it directly yourself to check on things.
+  // be opened directly - just refuse, rather than redirecting to the Public
+  // Link output (if this channel has one) - that link is something you hand
+  // out deliberately, not something a blocked embed visit should ever expose
+  // on your behalf. Admin exempted so you can still open it directly
+  // yourself to check on things.
   if (isDirectNavigation(req) && !isAdmin) {
-    const publicLink = (channel.outputs || []).find((o) => o.type === 'public-link' && o.enabled);
-    if (publicLink) return res.redirect('/watch/' + channel.id);
-    return res.status(403).send('This stream can only be viewed on an approved website.');
+    return res.status(403).send('Access denied.');
   }
 
   // Controls which sites may frame this page at all - see ALLOWED_EMBED_DOMAINS.
