@@ -55,11 +55,11 @@ router.get('/export.csv', requireAuth, (req, res) => {
     to: req.query.to || undefined,
   });
 
-  const header = ['Latest Play', 'Channel', 'Title', 'Type', 'IP Address', 'Country', 'Region', 'City', 'First Play'];
+  const header = ['Latest Play', 'Channel', 'Title', 'Description', 'Type', 'IP Address', 'Country', 'Region', 'City', 'First Play'];
   const lines = [header.map(csvField).join(',')];
   rows.forEach((p) => {
     lines.push(
-      [p.latestPlayAt, p.channelName, p.title, p.type, p.ip, p.country, p.region, p.city, p.firstPlayAt]
+      [p.latestPlayAt, p.channelName, p.title, p.description, p.type, p.ip, p.country, p.region, p.city, p.firstPlayAt]
         .map(csvField)
         .join(',')
     );

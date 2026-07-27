@@ -182,6 +182,7 @@
         row.querySelector('.stats-col-latest').textContent = formatPlayDate(p.latestPlayAt);
         row.querySelector('.stats-col-channel').textContent = p.channelName;
         row.querySelector('.stats-col-title').textContent = p.title;
+        row.querySelector('.stats-col-description').textContent = p.description || '';
         row.querySelector('.stats-col-type').textContent = p.type;
         row.querySelector('.stats-col-ip').textContent = p.ip;
         row.querySelector('.stats-col-country').textContent = p.country || '';

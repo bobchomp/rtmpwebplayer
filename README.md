@@ -250,10 +250,11 @@ stream goes:
 Click **Stats** next to Log out to see who's watched each channel - one row
 per viewer's watch session (starting playback again after a 30+ minute gap
 counts as a new row; anything within that just updates "Latest Play"), with
-Latest Play, Channel, Title (whatever the stream's title was set to at the
-time), Type (Mobile/Desktop), IP Address, Country, Region, City, and First
-Play. Filter by channel and/or date range, and export the currently-filtered
-rows as a CSV via the **Export CSV** button.
+Latest Play, Channel, Title and Description (whatever the stream's title and
+description were set to at the time), Type (Mobile/Desktop), IP Address,
+Country, Region, City, and First Play. Filter by channel and/or date range,
+and export the currently-filtered rows as a CSV via the **Export CSV**
+button.
 
 Country/Region/City need an IP-to-location lookup, which is optional:
 

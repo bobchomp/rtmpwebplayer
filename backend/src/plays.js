@@ -39,6 +39,7 @@ function recordPlay({ channelId, ip, userAgent }) {
     channelId,
     channelName: channel.name,
     title: channel.title || channel.name,
+    description: channel.description || '',
     type: detectDeviceType(userAgent),
     ip,
     country: geo.country,
