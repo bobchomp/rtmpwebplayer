@@ -11,6 +11,8 @@ const rtmpHooks = require('./routes/rtmpHooks');
 const hlsProxy = require('./routes/hlsProxy');
 const embed = require('./routes/embed');
 const youtubeAuth = require('./routes/youtubeAuth');
+const statsRoutes = require('./routes/stats');
+const geoip = require('./geoip');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -57,10 +59,13 @@ app.use('/api', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/rtmp', rtmpHooks);
 app.use('/api/youtube', youtubeAuth);
+app.use('/api/stats', statsRoutes);
 app.use('/live', hlsProxy);
 app.use('/embed', embed);
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+geoip.ensureDatabase();
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Backend listening on :${PORT}`));

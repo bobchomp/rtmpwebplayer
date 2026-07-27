@@ -379,6 +379,25 @@
     video.play().catch(function () {});
   }
 
+  // "playing" can refire repeatedly during one sitting (resuming after a
+  // pause, or after hls.js recovers from a buffering stall), so this only
+  // pings the backend once per minute rather than on every single refire -
+  // the backend itself also collapses repeats from the same viewer into one
+  // row, but there's no reason to spam it with requests that would just be
+  // deduped anyway.
+  var lastTrackedAt = 0;
+  function trackPlay() {
+    var now = Date.now();
+    if (now - lastTrackedAt < 60000) return;
+    lastTrackedAt = now;
+    fetch('/api/stats/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelId: channelId }),
+      keepalive: true,
+    }).catch(function () {});
+  }
+
   playButton.addEventListener('click', startPlayback);
   // Hide the button/thumbnail on "playing" (fires once real frames are
   // actually about to render), not "play" (fires as soon as play() is
@@ -391,6 +410,7 @@
     controlsBar.style.display = 'flex';
     playPauseBtn.disabled = false;
     playPauseBtn.classList.remove('paused');
+    trackPlay();
   });
   // If play was requested before media was actually ready (e.g. clicked
   // during the startup race, or during a quiet retry), start it the moment

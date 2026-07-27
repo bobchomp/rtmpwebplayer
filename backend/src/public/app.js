@@ -7,6 +7,7 @@
 
   var listView = document.getElementById('channel-list-view');
   var detailView = document.getElementById('channel-detail-view');
+  var statsView = document.getElementById('stats-view');
 
   var createForm = document.getElementById('create-form');
   var channelsList = document.getElementById('channels-list');
@@ -70,6 +71,7 @@
     var hash = window.location.hash || '#/';
     var match = hash.match(/^#\/channel\/([^/]+)/);
     if (match) return { view: 'detail', channelId: decodeURIComponent(match[1]) };
+    if (hash === '#/stats') return { view: 'stats' };
     return { view: 'list' };
   }
 
@@ -78,13 +80,18 @@
     if (detailPollTimer) { clearInterval(detailPollTimer); detailPollTimer = null; }
 
     var r = parseRoute();
+    listView.classList.add('hidden');
+    detailView.classList.add('hidden');
+    statsView.classList.add('hidden');
+
     if (r.view === 'detail') {
-      listView.classList.add('hidden');
       detailView.classList.remove('hidden');
       loadChannelDetail(r.channelId);
       detailPollTimer = setInterval(pollLiveStatus, 5000);
+    } else if (r.view === 'stats') {
+      statsView.classList.remove('hidden');
+      loadStats();
     } else {
-      detailView.classList.add('hidden');
       listView.classList.remove('hidden');
       loadChannelList();
       listRefreshTimer = setInterval(loadChannelList, 10000);
@@ -121,6 +128,79 @@
       })
       .catch(function (err) { alert(err.message); });
   });
+
+  // ===================== Stats view =====================
+
+  var statsChannelFilter = document.getElementById('stats-channel-filter');
+  var statsFromFilter = document.getElementById('stats-from-filter');
+  var statsToFilter = document.getElementById('stats-to-filter');
+  var statsExportBtn = document.getElementById('stats-export-btn');
+  var statsTableBody = document.getElementById('stats-table-body');
+  var statsEmpty = document.getElementById('stats-empty');
+  var statsRowTemplate = document.getElementById('stats-row-template');
+  var statsListenersWired = false;
+
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function formatPlayDate(iso) {
+    var d = new Date(iso);
+    return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() +
+      ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
+  function statsQuery() {
+    var params = new URLSearchParams();
+    if (statsChannelFilter.value) params.set('channelId', statsChannelFilter.value);
+    if (statsFromFilter.value) params.set('from', statsFromFilter.value);
+    if (statsToFilter.value) params.set('to', statsToFilter.value + 'T23:59:59.999');
+    return params.toString();
+  }
+
+  function loadStats() {
+    var query = statsQuery();
+    statsExportBtn.href = '/api/stats/export.csv' + (query ? '?' + query : '');
+
+    return api('/api/stats' + (query ? '?' + query : '')).then(function (data) {
+      var selected = statsChannelFilter.value;
+      statsChannelFilter.innerHTML = '';
+      var allOption = document.createElement('option');
+      allOption.value = '';
+      allOption.textContent = 'All channels';
+      statsChannelFilter.appendChild(allOption);
+      data.channels.forEach(function (c) {
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        statsChannelFilter.appendChild(opt);
+      });
+      statsChannelFilter.value = selected;
+
+      statsTableBody.innerHTML = '';
+      statsEmpty.classList.toggle('hidden', data.plays.length > 0);
+      data.plays.forEach(function (p) {
+        var row = statsRowTemplate.content.firstElementChild.cloneNode(true);
+        row.querySelector('.stats-col-latest').textContent = formatPlayDate(p.latestPlayAt);
+        row.querySelector('.stats-col-channel').textContent = p.channelName;
+        row.querySelector('.stats-col-title').textContent = p.title;
+        row.querySelector('.stats-col-type').textContent = p.type;
+        row.querySelector('.stats-col-ip').textContent = p.ip;
+        row.querySelector('.stats-col-country').textContent = p.country || '';
+        row.querySelector('.stats-col-region').textContent = p.region || '';
+        row.querySelector('.stats-col-city').textContent = p.city || '';
+        row.querySelector('.stats-col-first').textContent = formatPlayDate(p.firstPlayAt);
+        statsTableBody.appendChild(row);
+      });
+    });
+  }
+
+  function wireStatsEventListeners() {
+    if (statsListenersWired) return;
+    statsListenersWired = true;
+    statsChannelFilter.addEventListener('change', loadStats);
+    statsFromFilter.addEventListener('change', loadStats);
+    statsToFilter.addEventListener('change', loadStats);
+  }
+  wireStatsEventListeners();
 
   // ===================== Channel detail view =====================
 

@@ -25,8 +25,56 @@
 <div id="dashboard-view" class="view hidden">
   <header>
     <h1>Stream Dashboard</h1>
-    <button id="logout-btn" class="secondary">Log out</button>
+    <div class="header-actions">
+      <a href="#/stats" id="stats-btn" class="secondary">Stats</a>
+      <button id="logout-btn" class="secondary">Log out</button>
+    </div>
   </header>
+
+  <div id="stats-view" class="hidden">
+    <div class="detail-header">
+      <a href="#/" class="back-link">&larr; All channels</a>
+    </div>
+
+    <section class="panel">
+      <div class="stats-filters">
+        <label>Channel
+          <select id="stats-channel-filter">
+            <option value="">All channels</option>
+          </select>
+        </label>
+        <label>From
+          <input type="date" id="stats-from-filter">
+        </label>
+        <label>To
+          <input type="date" id="stats-to-filter">
+        </label>
+        <a id="stats-export-btn" class="secondary" href="/api/stats/export.csv" download>Export CSV</a>
+      </div>
+    </section>
+
+    <section class="panel stats-table-panel">
+      <div class="stats-table-scroll">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>Latest Play</th>
+              <th>Channel</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>IP Address</th>
+              <th>Country</th>
+              <th>Region</th>
+              <th>City</th>
+              <th>First Play</th>
+            </tr>
+          </thead>
+          <tbody id="stats-table-body"></tbody>
+        </table>
+      </div>
+      <p id="stats-empty" class="hint hidden">No plays recorded yet for this filter.</p>
+    </section>
+  </div>
 
   <div id="channel-list-view">
     <section class="panel">
@@ -149,6 +197,20 @@
     <span class="live-badge hidden">LIVE</span>
     <span class="channel-row-arrow">&rarr;</span>
   </a>
+</template>
+
+<template id="stats-row-template">
+  <tr>
+    <td class="stats-col-latest"></td>
+    <td class="stats-col-channel"></td>
+    <td class="stats-col-title"></td>
+    <td class="stats-col-type"></td>
+    <td class="stats-col-ip"></td>
+    <td class="stats-col-country"></td>
+    <td class="stats-col-region"></td>
+    <td class="stats-col-city"></td>
+    <td class="stats-col-first"></td>
+  </tr>
 </template>
 
 <template id="output-row-template">

@@ -233,6 +233,27 @@ stream goes:
   - **YouTube**: see the dedicated section below - picking this in the
     popup takes you straight to Google's sign-in.
 
+## Viewer stats
+
+Click **Stats** next to Log out to see who's watched each channel - one row
+per viewer's watch session (starting playback again after a 30+ minute gap
+counts as a new row; anything within that just updates "Latest Play"), with
+Latest Play, Channel, Title (whatever the stream's title was set to at the
+time), Type (Mobile/Desktop), IP Address, Country, Region, City, and First
+Play. Filter by channel and/or date range, and export the currently-filtered
+rows as a CSV via the **Export CSV** button.
+
+Country/Region/City need an IP-to-location lookup, which is optional:
+
+1. Sign up for a free account at
+   [maxmind.com/en/geolite2/signup](https://www.maxmind.com/en/geolite2/signup).
+2. Under your account, go to **My License Key** and generate one.
+3. Set `GEOIP_LICENSE_KEY` in `.env` to that key and restart the backend.
+
+The backend downloads MaxMind's free GeoLite2 City database on startup (and
+refreshes it weekly to keep boundaries current) - no key means those three
+columns just stay blank; everything else on the Stats page works either way.
+
 ## Relaying to YouTube
 
 Unlike a plain RTMP destination, YouTube needs an account connected via
