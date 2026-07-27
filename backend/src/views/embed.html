@@ -117,8 +117,34 @@
 
     if (window.Hls && Hls.isSupported()) {
       hls = new Hls({ liveDurationInfinity: true, backBufferLength: 30 });
+      var manifestParsed = false;
+      var mediaErrorRecoveries = 0;
+      hls.on(Hls.Events.MANIFEST_PARSED, function () {
+        manifestParsed = true;
+      });
       hls.on(Hls.Events.ERROR, function (event, data) {
         if (!data || !data.fatal) return;
+        // eslint-disable-next-line no-console
+        console.warn('[embed] fatal hls.js error', data.type, data.details, data);
+
+        // Per hls.js's own recommendation: try to recover network/media
+        // errors in place first (without tearing down the instance), and
+        // only fall back to a full destroy + retry-from-scratch when that
+        // isn't possible. hls.startLoad() only resumes loading a manifest
+        // that has already been parsed at least once - if the very first
+        // manifest fetch itself fails (the common "segment doesn't exist
+        // yet" startup race), startLoad() is a no-op and playback would get
+        // stuck forever, so that case always needs the full restart.
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && manifestParsed) {
+          hls.startLoad();
+          return;
+        }
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaErrorRecoveries < 3) {
+          mediaErrorRecoveries++;
+          hls.recoverMediaError();
+          return;
+        }
+
         if (hls) {
           hls.destroy();
           hls = null;
