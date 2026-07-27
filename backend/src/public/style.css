@@ -93,8 +93,6 @@ button.danger:hover { background: #fbe9e7; }
 }
 .gallery-item .gallery-remove:hover { background: #8f1e17; }
 
-.youtube-panel { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-
 /* Channel list / picker */
 .channel-row {
   display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit;

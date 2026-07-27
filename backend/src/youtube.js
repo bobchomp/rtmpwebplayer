@@ -60,7 +60,11 @@ async function apiCall(accessToken, method, path, body) {
   return res.status === 204 ? null : res.json();
 }
 
-async function handleOAuthCallback(code) {
+// Each channel connects its own YouTube account independently (a church
+// running multiple venues/channels may want each relaying to a different
+// YouTube channel), so the connection lives on channel.youtube rather than
+// as a single account shared by the whole app.
+async function handleOAuthCallback(code, channelId) {
   const tokens = await exchangeCodeForTokens(code);
   if (!tokens.refresh_token) {
     throw new Error(
@@ -73,7 +77,9 @@ async function handleOAuthCallback(code) {
     channels.items && channels.items[0] ? channels.items[0].snippet.title : 'Connected';
 
   const db = readDb();
-  db.youtube = {
+  const channel = db.channels[channelId];
+  if (!channel) throw new Error('Channel not found');
+  channel.youtube = {
     refreshToken: tokens.refresh_token,
     channelTitle,
     connectedAt: new Date().toISOString(),
@@ -82,19 +88,21 @@ async function handleOAuthCallback(code) {
   return channelTitle;
 }
 
-function getStatus() {
+function getStatus(channelId) {
   const db = readDb();
-  if (!db.youtube || !db.youtube.refreshToken) return { connected: false };
-  return { connected: true, channelTitle: db.youtube.channelTitle };
+  const channel = db.channels[channelId];
+  if (!channel || !channel.youtube || !channel.youtube.refreshToken) return { connected: false };
+  return { connected: true, channelTitle: channel.youtube.channelTitle };
 }
 
-function isConnected() {
-  return getStatus().connected;
+function isConnected(channelId) {
+  return getStatus(channelId).connected;
 }
 
-function disconnect() {
+function disconnect(channelId) {
   const db = readDb();
-  delete db.youtube;
+  const channel = db.channels[channelId];
+  if (channel) delete channel.youtube;
   writeDb(db);
 }
 
@@ -102,11 +110,14 @@ function disconnect() {
 // details to relay to. enableAutoStart/enableAutoStop let YouTube manage
 // the live/complete transitions itself based on whether it's receiving
 // data, so we never need to poll stream health or call transition APIs.
-async function createBroadcastAndStream(title, description) {
+async function createBroadcastAndStream(channelId, title, description) {
   const db = readDb();
-  if (!db.youtube || !db.youtube.refreshToken) throw new Error('YouTube is not connected');
+  const channel = db.channels[channelId];
+  if (!channel || !channel.youtube || !channel.youtube.refreshToken) {
+    throw new Error('YouTube is not connected for this channel');
+  }
 
-  const { access_token: accessToken } = await refreshAccessToken(db.youtube.refreshToken);
+  const { access_token: accessToken } = await refreshAccessToken(channel.youtube.refreshToken);
   const streamTitle = (title || '').trim() || 'Live Stream';
   const streamDescription = (description || '').trim();
 

@@ -35,13 +35,28 @@ function generateStreamKey() {
   return crypto.randomBytes(20).toString('hex');
 }
 
+// The dashboard needs to know whether a channel's YouTube account is
+// connected (and its channel title), but the OAuth refresh token itself is
+// a server-to-Google credential that should never reach the browser -
+// every route that serializes a channel goes through this first.
+function redactChannel(channel) {
+  if (!channel.youtube) return channel;
+  return Object.assign({}, channel, {
+    youtube: {
+      connected: true,
+      channelTitle: channel.youtube.channelTitle,
+      connectedAt: channel.youtube.connectedAt,
+    },
+  });
+}
+
 // Admin: list channels (includes stream keys, admin-only)
 router.get('/', requireAuth, (req, res) => {
   const db = readDb();
   const channels = Object.values(db.channels).sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt)
   );
-  res.json(channels);
+  res.json(channels.map(redactChannel));
 });
 
 // Admin: create a channel
@@ -68,6 +83,7 @@ router.post('/', requireAuth, (req, res) => {
     liveThumbnails: [],
     activeLiveThumbnail: null,
     youtubeEnabled: false,
+    youtube: null, // { refreshToken, channelTitle, connectedAt } once connected - see youtube.js
     youtubeBroadcastId: null,
     youtubeIngestAddress: null,
     youtubeStreamName: null,
@@ -76,7 +92,7 @@ router.post('/', requireAuth, (req, res) => {
   };
   db.channels[id] = channel;
   writeDb(db);
-  res.status(201).json(channel);
+  res.status(201).json(redactChannel(channel));
 });
 
 // Admin: fetch a single channel (includes stream key, admin-only)
@@ -84,7 +100,7 @@ router.get('/:id', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
   if (!channel) return res.status(404).json({ error: 'Not found' });
-  res.json(channel);
+  res.json(redactChannel(channel));
 });
 
 // Admin: rename a channel
@@ -99,7 +115,7 @@ router.patch('/:id', requireAuth, (req, res) => {
 
   channel.name = name;
   writeDb(db);
-  res.json(channel);
+  res.json(redactChannel(channel));
 });
 
 // Admin: toggle whether the embed page / HLS proxy serve this channel at
@@ -114,7 +130,7 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
     channel.websiteEnabled = req.body.websiteEnabled;
   }
   writeDb(db);
-  res.json(channel);
+  res.json(redactChannel(channel));
 });
 
 // Admin: update per-channel YouTube relay settings (currently just the toggle
@@ -128,7 +144,7 @@ router.patch('/:id/youtube-settings', requireAuth, (req, res) => {
     channel.youtubeEnabled = req.body.youtubeEnabled;
   }
   writeDb(db);
-  res.json(channel);
+  res.json(redactChannel(channel));
 });
 
 // Admin: update the shared title/description used both for the embed page's
@@ -152,7 +168,7 @@ router.patch('/:id/metadata', requireAuth, (req, res) => {
     channel.description = req.body.description.trim();
   }
   writeDb(db);
-  res.json(channel);
+  res.json(redactChannel(channel));
 });
 
 const MAX_CUSTOM_OUTPUTS = 10;
@@ -231,7 +247,7 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
 
   Object.assign(output, update);
   writeDb(db);
-  res.json(channel);
+  res.json(redactChannel(channel));
 });
 
 // Admin: remove a custom RTMP output
@@ -245,7 +261,7 @@ router.delete('/:id/outputs/:outputId', requireAuth, (req, res) => {
   if (channel.customOutputs.length === before) return res.status(404).json({ error: 'Output not found' });
 
   writeDb(db);
-  res.json(channel);
+  res.json(redactChannel(channel));
 });
 
 // Admin: delete a channel
@@ -272,7 +288,7 @@ router.post('/:id/regenerate-key', requireAuth, (req, res) => {
   channel.streamKey = generateStreamKey();
   channel.isLive = false;
   writeDb(db);
-  res.json(channel);
+  res.json(redactChannel(channel));
 });
 
 // Registers upload/list/delete/activate routes for a channel image gallery
@@ -324,7 +340,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField) {
     if (fs.existsSync(p)) fs.unlinkSync(p);
 
     writeDb(db);
-    res.json(channel);
+    res.json(redactChannel(channel));
   });
 
   // Set which image in the gallery is currently in use.
@@ -340,7 +356,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField) {
 
     channel[activeField] = filename;
     writeDb(db);
-    res.json(channel);
+    res.json(redactChannel(channel));
   });
 }
 

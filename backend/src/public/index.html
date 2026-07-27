@@ -30,16 +30,6 @@
 
   <div id="channel-list-view">
     <section class="panel">
-      <h2>YouTube</h2>
-      <div class="youtube-panel">
-        <span id="youtube-not-connected" class="hint hidden">Not connected - channels with "Send to YouTube" enabled won't relay until you connect an account.</span>
-        <span id="youtube-connected" class="hidden">Connected as <strong id="youtube-channel-name"></strong>.</span>
-        <button id="youtube-connect-btn" class="hidden">Connect YouTube</button>
-        <button id="youtube-disconnect-btn" class="secondary hidden">Disconnect</button>
-      </div>
-    </section>
-
-    <section class="panel">
       <h2>Create a channel</h2>
       <form id="create-form" class="inline-form">
         <input type="text" id="new-channel-name" placeholder="Channel name (e.g. Main Camera)" required maxlength="100">
@@ -139,6 +129,10 @@
               <input type="checkbox" id="detail-youtube-toggle">
               <span class="switch-track"></span>
             </label>
+          </div>
+          <div class="field-row">
+            <button class="secondary hidden" id="detail-youtube-connect-btn">Connect YouTube account</button>
+            <button class="secondary hidden" id="detail-youtube-disconnect-btn">Disconnect YouTube account</button>
           </div>
 
           <hr class="output-divider">

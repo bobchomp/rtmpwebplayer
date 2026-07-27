@@ -19,7 +19,7 @@
   var detailPollTimer = null;
   var currentChannelId = null;
   var currentChannelMetadata = { title: '', description: '' };
-  var youtubeConnected = false;
+  var youtubeStatus = { connected: false, channelTitle: null };
   var detailListenersWired = false;
 
   function api(url, opts) {
@@ -123,27 +123,6 @@
       .catch(function (err) { alert(err.message); });
   });
 
-  function loadYoutubeGlobalPanel() {
-    return api('/api/youtube/status').then(function (data) {
-      document.getElementById('youtube-not-connected').classList.toggle('hidden', data.connected);
-      document.getElementById('youtube-connected').classList.toggle('hidden', !data.connected);
-      document.getElementById('youtube-connect-btn').classList.toggle('hidden', data.connected);
-      document.getElementById('youtube-disconnect-btn').classList.toggle('hidden', !data.connected);
-      if (data.connected) {
-        document.getElementById('youtube-channel-name').textContent = data.channelTitle;
-      }
-    });
-  }
-
-  document.getElementById('youtube-connect-btn').addEventListener('click', function () {
-    window.location.href = '/api/youtube/connect';
-  });
-
-  document.getElementById('youtube-disconnect-btn').addEventListener('click', function () {
-    if (!confirm('Disconnect YouTube? Channels with "Send to YouTube" enabled will stop relaying until you reconnect.')) return;
-    api('/api/youtube/disconnect', { method: 'POST' }).then(loadYoutubeGlobalPanel);
-  });
-
   // ===================== Channel detail view =====================
 
   var detailName = document.getElementById('detail-name');
@@ -167,6 +146,8 @@
 
   var detailYoutubeHint = document.getElementById('detail-youtube-hint');
   var detailYoutubeToggle = document.getElementById('detail-youtube-toggle');
+  var detailYoutubeConnectBtn = document.getElementById('detail-youtube-connect-btn');
+  var detailYoutubeDisconnectBtn = document.getElementById('detail-youtube-disconnect-btn');
 
   var editMetadataBtn = document.getElementById('edit-metadata-btn');
   var metadataModalBackdrop = document.getElementById('metadata-modal-backdrop');
@@ -197,10 +178,10 @@
   function refreshChannelDetail() {
     return Promise.all([
       api('/api/channels/' + currentChannelId),
-      api('/api/youtube/status'),
+      api('/api/youtube/status?channelId=' + encodeURIComponent(currentChannelId)),
     ])
       .then(function (results) {
-        youtubeConnected = results[1].connected;
+        youtubeStatus = results[1];
         renderChannelDetail(results[0]);
       })
       .catch(function (err) {
@@ -328,12 +309,15 @@
       : 'Off - the embed and your website are not showing this stream';
 
     detailYoutubeToggle.checked = !!channel.youtubeEnabled;
-    if (!youtubeConnected) {
-      detailYoutubeHint.textContent = 'Connect a YouTube account first (see the channel list page)';
+    detailYoutubeToggle.disabled = !youtubeStatus.connected;
+    detailYoutubeConnectBtn.classList.toggle('hidden', youtubeStatus.connected);
+    detailYoutubeDisconnectBtn.classList.toggle('hidden', !youtubeStatus.connected);
+    if (!youtubeStatus.connected) {
+      detailYoutubeHint.textContent = 'Connect a YouTube account for this channel first';
     } else if (channel.youtubeEnabled) {
-      detailYoutubeHint.textContent = 'Relaying automatically while live';
+      detailYoutubeHint.textContent = 'Relaying to ' + youtubeStatus.channelTitle + ' automatically while live';
     } else {
-      detailYoutubeHint.textContent = 'Off';
+      detailYoutubeHint.textContent = 'Connected as ' + youtubeStatus.channelTitle + ' - off';
     }
 
     detailCustomOutputsList.innerHTML = '';
@@ -458,6 +442,19 @@
         });
     });
 
+    detailYoutubeConnectBtn.addEventListener('click', function () {
+      window.location.href = '/api/youtube/connect?channelId=' + encodeURIComponent(currentChannelId);
+    });
+    detailYoutubeDisconnectBtn.addEventListener('click', function () {
+      if (!confirm('Disconnect this channel\'s YouTube account? It will stop relaying until you reconnect.')) return;
+      api('/api/youtube/disconnect', {
+        method: 'POST',
+        body: JSON.stringify({ channelId: currentChannelId }),
+      })
+        .then(refreshChannelDetail)
+        .catch(function (err) { alert(err.message); });
+    });
+
     editMetadataBtn.addEventListener('click', function () {
       metadataTitleInput.value = currentChannelMetadata.title;
       metadataDescriptionInput.value = currentChannelMetadata.description;
@@ -524,7 +521,6 @@
 
   function enterDashboard() {
     show('dashboard');
-    loadYoutubeGlobalPanel();
     api('/api/config').then(function (cfg) {
       config = cfg;
       route();

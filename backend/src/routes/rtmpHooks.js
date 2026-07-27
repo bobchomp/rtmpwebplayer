@@ -39,9 +39,9 @@ router.post('/on_publish', (req, res) => {
   // below separately until the ingest details are ready.
   res.status(200).send('OK');
 
-  if (channel.youtubeEnabled && youtube.isConnected()) {
+  if (channel.youtubeEnabled && youtube.isConnected(channel.id)) {
     youtube
-      .createBroadcastAndStream(channel.title, channel.description)
+      .createBroadcastAndStream(channel.id, channel.title, channel.description)
       .then((result) => {
         const freshDb = readDb();
         const freshChannel = freshDb.channels[channel.id];

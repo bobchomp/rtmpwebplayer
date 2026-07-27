@@ -225,10 +225,13 @@ stream goes:
 ## Relaying to YouTube
 
 YouTube gets its own dedicated toggle (rather than living under custom
-outputs) because, unlike a plain RTMP destination, it needs your YouTube
-account connected once via OAuth - after that it creates a live broadcast
-with your chosen title automatically every time you go live, no need to
-touch YouTube Studio or paste stream keys manually.
+outputs) because, unlike a plain RTMP destination, it needs a YouTube
+account connected via OAuth - after that it creates a live broadcast with
+your chosen title automatically every time you go live, no need to touch
+YouTube Studio or paste stream keys manually. Each channel connects its
+own YouTube account independently, so different channels can relay to
+different YouTube channels (or share the same one, by connecting the same
+Google account on each).
 
 ### One-time Google Cloud setup
 
@@ -255,19 +258,22 @@ touch YouTube Studio or paste stream keys manually.
 
 ### Using it
 
-- In the dashboard's **YouTube** panel, click **Connect YouTube** and
-  approve access - this is a one-time, whole-app connection (single admin,
-  single YouTube account), not per-channel.
-- On any channel's detail page, flip the **YouTube** switch on (takes
-  effect immediately) and set a title with its own **Save** button.
+- On a channel's detail page, under the **YouTube** output, click
+  **Connect YouTube account** and approve access - this connects a YouTube
+  account to that one channel specifically.
+- Flip the **YouTube** switch on (takes effect immediately; disabled until
+  an account is connected). Title and description come from that channel's
+  shared **Edit title & description** popup, not a separate YouTube-only
+  field.
 - When that channel goes live, the app automatically creates a YouTube live
-  broadcast with that title and relays the incoming stream to it
-  (`ffmpeg -c copy` - repackaged, not re-encoded, so it's cheap on CPU). The
-  broadcast goes live on YouTube automatically once it detects healthy
+  broadcast with that title/description and relays the incoming stream to
+  it (`ffmpeg -c copy` - repackaged, not re-encoded, so it's cheap on CPU).
+  The broadcast goes live on YouTube automatically once it detects healthy
   incoming data, and completes automatically when the stream ends - no
   manual steps in YouTube Studio either way.
-- Disconnecting YouTube (or turning a channel's toggle off) stops that
-  channel from relaying on future streams.
+- Disconnecting a channel's YouTube account (or turning its toggle off)
+  stops that channel from relaying on future streams - other channels'
+  connections are unaffected.
 
 ### How it works, if you're curious
 
