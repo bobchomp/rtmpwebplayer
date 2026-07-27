@@ -16,13 +16,12 @@
     display: none;
   }
   #live-badge {
-    position: absolute; top: 10px; left: 10px; z-index: 4; pointer-events: auto;
-    background: #e11d2e; color: #fff; border: none; cursor: pointer;
+    position: absolute; top: 10px; left: 10px; z-index: 2; pointer-events: none;
+    background: #e11d2e; color: #fff;
     font: 600 12px/1 -apple-system, "Segoe UI", Roboto, sans-serif;
     padding: 5px 9px; border-radius: 4px; letter-spacing: .04em;
     display: none;
   }
-  #live-badge.behind { background: #52525b; }
   #thumb-overlay {
     position: absolute; inset: 0; width: 100%; height: 100%;
     object-fit: cover; z-index: 1; display: none; background: #111;
@@ -64,20 +63,8 @@
   }
   #playpause-btn.paused::after { display: none; }
 
-  #seek-track {
-    position: relative; flex: 1; height: 4px; border-radius: 2px; cursor: pointer;
-    background: rgba(255, 255, 255, .3);
-  }
-  #seek-fill {
-    position: absolute; top: 0; left: 0; height: 100%; width: 0%;
-    background: #e11d2e; border-radius: 2px; pointer-events: none;
-  }
-  #seek-handle {
-    position: absolute; top: 50%; left: 0%; width: 11px; height: 11px;
-    background: #fff; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
-  }
   #elapsed-label {
-    flex-shrink: 0; min-width: 44px; text-align: right; color: #fff;
+    flex: 1; color: #fff;
     font: 600 12px/1 -apple-system, "Segoe UI", Roboto, sans-serif;
   }
 
@@ -94,14 +81,13 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="live-badge" role="button" tabindex="0" aria-label="Jump to live">LIVE</div>
+  <div id="live-badge">LIVE</div>
   <div id="offline-label">Offline</div>
   <img id="thumb-overlay" alt="">
   <button id="play-button" aria-label="Play live stream"></button>
   <video id="video" playsinline></video>
   <div id="controls-bar">
     <button id="playpause-btn" class="paused" aria-label="Play/Pause"></button>
-    <div id="seek-track"><div id="seek-fill"></div><div id="seek-handle"></div></div>
     <div id="elapsed-label">0:00</div>
     <button id="mute-btn" aria-label="Mute">
       <svg viewBox="0 0 24 24"><path id="mute-icon-path" d=""></path></svg>
@@ -124,9 +110,6 @@
   var playButton = document.getElementById('play-button');
   var controlsBar = document.getElementById('controls-bar');
   var playPauseBtn = document.getElementById('playpause-btn');
-  var seekTrack = document.getElementById('seek-track');
-  var seekFill = document.getElementById('seek-fill');
-  var seekHandle = document.getElementById('seek-handle');
   var elapsedLabel = document.getElementById('elapsed-label');
   var muteBtn = document.getElementById('mute-btn');
   var muteIconPath = document.getElementById('mute-icon-path');
@@ -159,8 +142,6 @@
 
   var broadcastStartedAt = null; // ms epoch this session went live, drives the elapsed-time label
   var uiTimer = null;
-  var seekDragging = false;
-  var BEHIND_THRESHOLD_SECONDS = 2; // small lag is normal buffering, not worth flagging as "behind"
 
   function formatDuration(totalSeconds) {
     totalSeconds = Math.max(0, Math.floor(totalSeconds));
@@ -172,76 +153,15 @@
     return h > 0 ? h + ':' + mm + ':' + ss : mm + ':' + ss;
   }
 
-  // hls.js keeps refreshing the live playlist (and so hls.liveSyncPosition
-  // keeps advancing) even while segment loading itself has paused because
-  // the buffer is already full relative to a stalled playback position - so
-  // it stays accurate even during a long pause, unlike video.buffered.end(),
-  // which stops advancing once loading pauses.
-  function getLiveEdge() {
-    if (hls && typeof hls.liveSyncPosition === 'number' && !isNaN(hls.liveSyncPosition)) {
-      return hls.liveSyncPosition;
-    }
-    if (video.seekable && video.seekable.length) {
-      return video.seekable.end(video.seekable.length - 1);
-    }
-    if (video.buffered && video.buffered.length) {
-      return video.buffered.end(video.buffered.length - 1);
-    }
-    return video.currentTime;
-  }
-
-  function getBufferStart() {
-    return video.buffered && video.buffered.length ? video.buffered.start(0) : 0;
-  }
-
-  function updateLiveBadge() {
-    if (!currentlyLive) return;
-    var behindSeconds = Math.max(0, getLiveEdge() - video.currentTime);
-    if (playRequested && (video.paused || behindSeconds > BEHIND_THRESHOLD_SECONDS)) {
-      liveBadge.textContent = Math.round(behindSeconds) + 's behind · click to go live';
-      liveBadge.classList.add('behind');
-    } else {
-      liveBadge.textContent = 'LIVE';
-      liveBadge.classList.remove('behind');
-    }
-  }
-
   function updateElapsedLabel() {
     if (broadcastStartedAt) {
       elapsedLabel.textContent = formatDuration((Date.now() - broadcastStartedAt) / 1000);
     }
   }
 
-  function updateSeekUI() {
-    if (seekDragging) return;
-    var start = getBufferStart();
-    var span = Math.max(getLiveEdge() - start, 0.001);
-    var pct = Math.min(Math.max((video.currentTime - start) / span, 0), 1) * 100;
-    seekFill.style.width = pct + '%';
-    seekHandle.style.left = pct + '%';
-  }
-
-  function jumpToLive() {
-    // Land a touch behind the true edge so playback doesn't immediately
-    // stall waiting on a segment that hasn't finished loading yet.
-    video.currentTime = Math.max(getLiveEdge() - 1, 0);
-    if (video.paused) video.play().catch(function () {});
-  }
-
-  function seekToClientX(clientX) {
-    var rect = seekTrack.getBoundingClientRect();
-    var ratio = rect.width > 0 ? (clientX - rect.left) / rect.width : 0;
-    ratio = Math.min(Math.max(ratio, 0), 1);
-    var start = getBufferStart();
-    video.currentTime = start + ratio * Math.max(getLiveEdge() - start, 0);
-  }
-
   function startUiTimer() {
     if (uiTimer) return;
-    uiTimer = setInterval(function () {
-      updateElapsedLabel();
-      updateLiveBadge();
-    }, 1000);
+    uiTimer = setInterval(updateElapsedLabel, 1000);
   }
 
   function stopUiTimer() {
@@ -256,7 +176,6 @@
     playRequested = false;
     stopUiTimer();
     broadcastStartedAt = null;
-    liveBadge.classList.remove('behind');
     controlsBar.style.display = 'none';
     if (retryTimer) {
       clearTimeout(retryTimer);
@@ -368,8 +287,6 @@
     video.removeAttribute('src');
     video.load();
 
-    liveBadge.textContent = 'LIVE';
-    liveBadge.classList.remove('behind');
     liveBadge.style.display = 'block';
     offlineLabel.style.display = 'none';
     playButton.style.display = 'flex';
@@ -377,8 +294,6 @@
     thumbOverlay.style.display = 'block';
     controlsBar.style.display = 'none';
     playPauseBtn.classList.add('paused');
-    seekFill.style.width = '0%';
-    seekHandle.style.left = '0%';
     updateElapsedLabel();
     startUiTimer();
     // Deliberately doesn't attach/load the stream here - see startPlayback().
@@ -406,7 +321,6 @@
   // actually about to render), not "play" (fires as soon as play() is
   // called, even with no data buffered yet) - otherwise clicking early
   // during a retry would swap the thumbnail for a black video briefly.
-  // Also covers a viewer using the native controls' play button instead.
   video.addEventListener('playing', function () {
     playButton.style.display = 'none';
     thumbOverlay.style.display = 'none';
@@ -438,39 +352,9 @@
   });
   video.addEventListener('pause', function () {
     playPauseBtn.classList.add('paused');
-    updateLiveBadge();
   });
   video.addEventListener('play', function () {
     playPauseBtn.classList.remove('paused');
-  });
-  video.addEventListener('timeupdate', function () {
-    updateSeekUI();
-    updateLiveBadge();
-  });
-
-  seekTrack.addEventListener('click', function (e) {
-    seekToClientX(e.clientX);
-  });
-  seekTrack.addEventListener('pointerdown', function (e) {
-    seekDragging = true;
-    seekToClientX(e.clientX);
-    seekTrack.setPointerCapture(e.pointerId);
-  });
-  seekTrack.addEventListener('pointermove', function (e) {
-    if (seekDragging) seekToClientX(e.clientX);
-  });
-  ['pointerup', 'pointercancel'].forEach(function (evt) {
-    seekTrack.addEventListener(evt, function () {
-      seekDragging = false;
-    });
-  });
-
-  liveBadge.addEventListener('click', jumpToLive);
-  liveBadge.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      jumpToLive();
-    }
   });
 
   function updateMuteIcon() {
