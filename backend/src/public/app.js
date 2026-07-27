@@ -152,7 +152,6 @@
   var detailCancelNameBtn = document.getElementById('detail-cancel-name-btn');
   var detailDeleteBtn = document.getElementById('detail-delete-btn');
 
-  var detailLiveBadge = document.getElementById('detail-live-badge');
   var detailOfflineBadge = document.getElementById('detail-offline-badge');
   var detailOfflineInfo = document.getElementById('detail-offline-info');
   var detailPreviewIframe = document.getElementById('detail-preview-iframe');
@@ -205,7 +204,9 @@
   }
 
   function updatePreviewState(isLive, channelId) {
-    detailLiveBadge.classList.toggle('hidden', !isLive);
+    // No separate "live" badge here - the preview iframe (embed.html) shows
+    // its own live/behind-live status internally, so a duplicate at the
+    // dashboard level would just visually collide with it.
     detailOfflineBadge.classList.toggle('hidden', isLive);
     detailOfflineInfo.classList.toggle('hidden', isLive);
     detailPreviewIframe.classList.toggle('hidden', !isLive);
