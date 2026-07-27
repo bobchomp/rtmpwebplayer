@@ -67,11 +67,20 @@ router.post('/', requireAuth, (req, res) => {
     youtubeBroadcastId: null,
     youtubeIngestAddress: null,
     youtubeStreamName: null,
+    customOutputs: [],
     createdAt: new Date().toISOString(),
   };
   db.channels[id] = channel;
   writeDb(db);
   res.status(201).json(channel);
+});
+
+// Admin: fetch a single channel (includes stream key, admin-only)
+router.get('/:id', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+  res.json(channel);
 });
 
 // Admin: rename a channel
@@ -104,6 +113,99 @@ router.patch('/:id/youtube-settings', requireAuth, (req, res) => {
     }
     channel.youtubeTitle = req.body.youtubeTitle.trim();
   }
+  writeDb(db);
+  res.json(channel);
+});
+
+const MAX_CUSTOM_OUTPUTS = 10;
+
+// The relay-targets endpoint emits tab/newline-delimited lines for the shell
+// script to parse - reject those characters here so a pasted value can never
+// break that format.
+const HAS_CONTROL_CHARS = /[\t\r\n]/;
+
+function validateOutputInput(body, { partial } = {}) {
+  const errors = [];
+  const update = {};
+
+  if (!partial || body.name !== undefined) {
+    const name = String(body.name || '').trim();
+    if (!name) errors.push('Name is required');
+    if (name.length > 60) errors.push('Name too long');
+    if (HAS_CONTROL_CHARS.test(name)) errors.push('Name contains invalid characters');
+    update.name = name;
+  }
+  if (!partial || body.rtmpUrl !== undefined) {
+    const rtmpUrl = String(body.rtmpUrl || '').trim().replace(/\/+$/, '');
+    if (!/^rtmps?:\/\/.+/i.test(rtmpUrl)) errors.push('RTMP URL must start with rtmp:// or rtmps://');
+    if (HAS_CONTROL_CHARS.test(rtmpUrl)) errors.push('RTMP URL contains invalid characters');
+    update.rtmpUrl = rtmpUrl;
+  }
+  if (!partial || body.streamKey !== undefined) {
+    const streamKey = String(body.streamKey || '').trim();
+    if (!streamKey) errors.push('Stream key is required');
+    if (HAS_CONTROL_CHARS.test(streamKey)) errors.push('Stream key contains invalid characters');
+    update.streamKey = streamKey;
+  }
+  if (typeof body.enabled === 'boolean') update.enabled = body.enabled;
+
+  return { errors, update };
+}
+
+// Admin: add a custom RTMP output (e.g. Twitch, Facebook, another server) -
+// relayed to automatically while live, same mechanism as the YouTube relay.
+router.post('/:id/outputs', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  channel.customOutputs = channel.customOutputs || [];
+  if (channel.customOutputs.length >= MAX_CUSTOM_OUTPUTS) {
+    return res.status(400).json({ error: `Maximum of ${MAX_CUSTOM_OUTPUTS} custom outputs per channel` });
+  }
+
+  const { errors, update } = validateOutputInput(req.body || {});
+  if (errors.length) return res.status(400).json({ error: errors.join(', ') });
+
+  const output = {
+    id: crypto.randomUUID(),
+    name: update.name,
+    rtmpUrl: update.rtmpUrl,
+    streamKey: update.streamKey,
+    enabled: update.enabled !== undefined ? update.enabled : true,
+  };
+  channel.customOutputs.push(output);
+  writeDb(db);
+  res.status(201).json(channel);
+});
+
+// Admin: update a custom RTMP output (name, URL, key, and/or on/off)
+router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  const output = (channel.customOutputs || []).find((o) => o.id === req.params.outputId);
+  if (!output) return res.status(404).json({ error: 'Output not found' });
+
+  const { errors, update } = validateOutputInput(req.body || {}, { partial: true });
+  if (errors.length) return res.status(400).json({ error: errors.join(', ') });
+
+  Object.assign(output, update);
+  writeDb(db);
+  res.json(channel);
+});
+
+// Admin: remove a custom RTMP output
+router.delete('/:id/outputs/:outputId', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  const before = (channel.customOutputs || []).length;
+  channel.customOutputs = (channel.customOutputs || []).filter((o) => o.id !== req.params.outputId);
+  if (channel.customOutputs.length === before) return res.status(404).json({ error: 'Output not found' });
+
   writeDb(db);
   res.json(channel);
 });

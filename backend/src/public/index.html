@@ -28,92 +28,161 @@
     <button id="logout-btn" class="secondary">Log out</button>
   </header>
 
-  <section class="panel">
-    <h2>YouTube</h2>
-    <div class="youtube-panel">
-      <span id="youtube-not-connected" class="hint hidden">Not connected - channels with "Send to YouTube" enabled won't relay until you connect an account.</span>
-      <span id="youtube-connected" class="hidden">Connected as <strong id="youtube-channel-name"></strong>.</span>
-      <button id="youtube-connect-btn" class="hidden">Connect YouTube</button>
-      <button id="youtube-disconnect-btn" class="secondary hidden">Disconnect</button>
+  <div id="channel-list-view">
+    <section class="panel">
+      <h2>YouTube</h2>
+      <div class="youtube-panel">
+        <span id="youtube-not-connected" class="hint hidden">Not connected - channels with "Send to YouTube" enabled won't relay until you connect an account.</span>
+        <span id="youtube-connected" class="hidden">Connected as <strong id="youtube-channel-name"></strong>.</span>
+        <button id="youtube-connect-btn" class="hidden">Connect YouTube</button>
+        <button id="youtube-disconnect-btn" class="secondary hidden">Disconnect</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Create a channel</h2>
+      <form id="create-form" class="inline-form">
+        <input type="text" id="new-channel-name" placeholder="Channel name (e.g. Main Camera)" required maxlength="100">
+        <button type="submit">Create channel</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Channels</h2>
+      <div id="channels-list"></div>
+      <p id="empty-state" class="hint hidden">No channels yet - create one above to get a stream key.</p>
+    </section>
+  </div>
+
+  <div id="channel-detail-view" class="hidden">
+    <div class="detail-header">
+      <a href="#/" class="back-link">&larr; All channels</a>
+      <span class="channel-name" id="detail-name"></span>
+      <input type="text" class="channel-name-input hidden" id="detail-name-input" maxlength="100">
+      <button class="secondary" id="detail-rename-btn">Rename</button>
+      <button class="hidden" id="detail-save-name-btn">Save</button>
+      <button class="secondary hidden" id="detail-cancel-name-btn">Cancel</button>
+      <button class="secondary danger" id="detail-delete-btn">Delete channel</button>
     </div>
-  </section>
 
-  <section class="panel">
-    <h2>Create a channel</h2>
-    <form id="create-form" class="inline-form">
-      <input type="text" id="new-channel-name" placeholder="Channel name (e.g. Main Camera)" required maxlength="100">
-      <button type="submit">Create channel</button>
-    </form>
-  </section>
+    <div class="detail-columns">
+      <div class="panel preview-panel">
+        <div class="preview-frame">
+          <div class="preview-status-badge live-badge hidden" id="detail-live-badge">LIVE</div>
+          <div class="preview-status-badge offline-badge" id="detail-offline-badge">OFFLINE</div>
 
-  <section>
-    <h2>Channels</h2>
-    <div id="channels-list"></div>
-    <p id="empty-state" class="hint hidden">No channels yet - create one above to get a stream key.</p>
-  </section>
+          <div id="detail-offline-info">
+            <h3>Connect your encoder</h3>
+            <p class="hint">Copy &amp; paste into your streaming software (OBS, vMix, etc).</p>
+
+            <div class="field-row">
+              <label>RTMP URL</label>
+              <div class="copy-row">
+                <input type="text" class="rtmp-url" id="detail-rtmp-url" readonly>
+                <button class="copy-btn" data-target="detail-rtmp-url">Copy</button>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <label>Stream key</label>
+              <div class="copy-row">
+                <input type="password" class="stream-key" id="detail-stream-key" readonly>
+                <button class="secondary" id="detail-reveal-btn">Show</button>
+                <button class="copy-btn" data-target="detail-stream-key">Copy</button>
+                <button class="secondary" id="detail-regen-btn">Regenerate</button>
+              </div>
+            </div>
+          </div>
+
+          <iframe id="detail-preview-iframe" class="preview-iframe hidden" allow="autoplay; fullscreen" loading="lazy"></iframe>
+        </div>
+      </div>
+
+      <div class="panel outputs-panel">
+        <h3>Outputs</h3>
+
+        <div class="output-row">
+          <div class="output-info">
+            <span class="output-name">Your Website</span>
+            <span class="hint">Always on - this is the embed player itself</span>
+          </div>
+          <span class="output-always-on hint">Always on</span>
+        </div>
+        <div class="field-row">
+          <label>Embed code (paste into your website)</label>
+          <div class="copy-row">
+            <textarea class="embed-code" id="detail-embed-code" readonly rows="3"></textarea>
+            <button class="copy-btn" data-target="detail-embed-code">Copy</button>
+          </div>
+        </div>
+
+        <hr class="output-divider">
+
+        <div class="output-row">
+          <div class="output-info">
+            <span class="output-name">YouTube</span>
+            <span class="hint" id="detail-youtube-hint"></span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="detail-youtube-toggle">
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="field-row">
+          <div class="copy-row">
+            <input type="text" id="detail-youtube-title" placeholder="YouTube stream title" maxlength="100">
+            <button class="secondary" id="detail-youtube-save-btn">Save</button>
+          </div>
+        </div>
+
+        <hr class="output-divider">
+
+        <div id="detail-custom-outputs-list"></div>
+
+        <button class="secondary" id="detail-add-output-btn">+ Add custom RTMP output</button>
+        <form id="detail-add-output-form" class="hidden add-output-form">
+          <input type="text" id="new-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>
+          <input type="text" id="new-output-rtmp-url" placeholder="RTMP URL (e.g. rtmp://live.twitch.tv/app)" required>
+          <input type="text" id="new-output-stream-key" placeholder="Stream key" required>
+          <div class="inline-form">
+            <button type="submit">Add output</button>
+            <button type="button" class="secondary" id="cancel-add-output-btn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="panel detail-extras">
+      <h3>Offline cover images (shown when not streaming) - click one to make it active</h3>
+      <div class="gallery" id="detail-cover-gallery"></div>
+      <input type="file" id="detail-cover-upload-input" accept=".png,.jpg,.jpeg,.webp">
+
+      <h3>Live thumbnails (shown once live, before play is pressed) - click one to make it active</h3>
+      <div class="gallery" id="detail-thumb-gallery"></div>
+      <input type="file" id="detail-thumb-upload-input" accept=".png,.jpg,.jpeg,.webp">
+    </div>
+  </div>
 </div>
 
-<template id="channel-card-template">
-  <div class="channel-card">
-    <div class="channel-header">
-      <span class="channel-name"></span>
-      <input type="text" class="channel-name-input hidden" maxlength="100">
-      <span class="live-badge hidden">LIVE</span>
-      <button class="rename-btn secondary">Rename</button>
-      <button class="save-name-btn hidden">Save</button>
-      <button class="cancel-name-btn secondary hidden">Cancel</button>
-      <button class="delete-btn secondary danger">Delete</button>
-    </div>
+<template id="channel-row-template">
+  <a class="channel-row">
+    <span class="channel-row-name"></span>
+    <span class="live-badge hidden">LIVE</span>
+    <span class="channel-row-arrow">&rarr;</span>
+  </a>
+</template>
 
-    <div class="field-row">
-      <label>RTMP URL</label>
-      <div class="copy-row">
-        <input type="text" class="rtmp-url" readonly>
-        <button class="copy-btn" data-target="rtmp-url">Copy</button>
-      </div>
+<template id="custom-output-template">
+  <div class="output-row custom-output-row">
+    <div class="output-info">
+      <span class="output-name"></span>
+      <span class="hint output-url"></span>
     </div>
-
-    <div class="field-row">
-      <label>Stream key</label>
-      <div class="copy-row">
-        <input type="password" class="stream-key" readonly>
-        <button class="reveal-btn secondary">Show</button>
-        <button class="copy-btn" data-target="stream-key">Copy</button>
-        <button class="regen-btn secondary">Regenerate</button>
-      </div>
-    </div>
-
-    <div class="field-row">
-      <label>Offline cover images (shown when not streaming) - click one to make it active</label>
-      <div class="gallery cover-gallery"></div>
-      <input type="file" class="cover-upload-input" accept=".png,.jpg,.jpeg,.webp">
-    </div>
-
-    <div class="field-row">
-      <label>Live thumbnails (shown once live, before play is pressed) - click one to make it active</label>
-      <div class="gallery thumb-gallery"></div>
-      <input type="file" class="thumb-upload-input" accept=".png,.jpg,.jpeg,.webp">
-    </div>
-
-    <div class="field-row">
-      <label>YouTube</label>
-      <div class="youtube-row">
-        <label class="toggle-label">
-          <input type="checkbox" class="youtube-toggle">
-          Send to YouTube when live
-        </label>
-        <input type="text" class="youtube-title-input" placeholder="Stream title" maxlength="100">
-        <button class="youtube-save-btn secondary">Save</button>
-      </div>
-    </div>
-
-    <div class="field-row">
-      <label>Embed code (paste into your website)</label>
-      <div class="copy-row">
-        <textarea class="embed-code" readonly rows="3"></textarea>
-        <button class="copy-btn" data-target="embed-code">Copy</button>
-      </div>
-    </div>
+    <label class="switch">
+      <input type="checkbox" class="output-toggle">
+      <span class="switch-track"></span>
+    </label>
+    <button class="secondary danger output-delete-btn">Delete</button>
   </div>
 </template>
 

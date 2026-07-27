@@ -78,25 +78,35 @@ router.post('/on_publish_done', (req, res) => {
 });
 
 // Internal only (protected by WEBHOOK_SECRET) - used by the rtmp container's
-// relay-start.sh script to find where to relay this stream for YouTube.
-// Plain-text responses so the shell script doesn't need JSON parsing:
-//   empty    -> not applicable for this stream, stop retrying
-//   PENDING  -> enabled but the YouTube broadcast isn't ready yet, keep polling
-//   anything else -> the full RTMP URL to relay to
-router.get('/youtube-target', (req, res) => {
+// relay-start.sh script (polled repeatedly for ~12s after publish starts,
+// since YouTube's broadcast takes a couple of seconds to become ready while
+// custom outputs are ready instantly) to find every destination currently
+// enabled and ready to relay this stream to.
+//
+// Plain text, one "id<TAB>rtmp-url" pair per line (tab rather than a more
+// common character like "|" or "," since neither is guaranteed absent from
+// a pasted stream key) - empty body means nothing is ready (yet, or ever).
+router.get('/relay-targets', (req, res) => {
   if (!checkSecret(req, res)) return;
 
   const streamKey = req.query.streamKey;
   const db = readDb();
   const channel = findChannelByKey(db, streamKey);
+  if (!channel) return res.type('text/plain').send('');
 
-  if (!channel || !channel.youtubeEnabled) {
-    return res.type('text/plain').send('');
+  const lines = [];
+
+  if (channel.youtubeEnabled && channel.youtubeIngestAddress && channel.youtubeStreamName) {
+    lines.push(`youtube\t${channel.youtubeIngestAddress}/${channel.youtubeStreamName}`);
   }
-  if (!channel.youtubeIngestAddress || !channel.youtubeStreamName) {
-    return res.type('text/plain').send('PENDING');
-  }
-  res.type('text/plain').send(`${channel.youtubeIngestAddress}/${channel.youtubeStreamName}`);
+
+  (channel.customOutputs || []).forEach((output) => {
+    if (output.enabled && output.rtmpUrl && output.streamKey) {
+      lines.push(`${output.id}\t${output.rtmpUrl}/${output.streamKey}`);
+    }
+  });
+
+  res.type('text/plain').send(lines.join('\n'));
 });
 
 module.exports = router;

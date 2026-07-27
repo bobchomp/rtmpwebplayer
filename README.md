@@ -87,22 +87,18 @@ Log in, click **Create channel**, give it a name. You'll get:
 - A **stream key** (unique per channel, secret)
 - An **embed code** you can copy straight into your website
 
-## 4. Point Restream at it
+## 4. Point your encoder at it
 
-In Restream, add a **Custom RTMP** destination and fill in the fields from
-the dashboard:
+Click into the channel you just created. Its detail page opens with a
+**"Connect your encoder"** panel (this is what shows whenever the channel
+isn't live) - copy the **RTMP URL** and **stream key** shown there straight
+into your encoder (OBS, vMix, or a service like Restream if you're using
+one as a relay). There's no separate username/password to configure - the
+stream key itself is the secret.
 
-- **Display name**: anything you like
-- **RTMP URL**: the RTMP URL shown on the dashboard, e.g.
-  `rtmp://stream.example.com:1935/live`
-- **Stream key**: the channel's stream key (click "Show" to reveal, "Copy"
-  to copy)
-- **Use authentication**: leave off - the stream key itself is the secret;
-  there's no separate username/password on the RTMP connection.
-
-When Restream starts pushing to that destination, the channel flips to
-"live" within a couple of seconds and anyone viewing the embed sees the
-stream automatically.
+The moment your encoder starts pushing, that panel is replaced by a real
+live preview of the stream right there in the dashboard, and the channel
+flips to "live" for anyone viewing the embed too.
 
 ## 5. Embed the player
 
@@ -194,18 +190,40 @@ Then open `http://localhost:4000/embed/<channel-id>` to watch it.
 
 ## Managing channels
 
+The dashboard's channel list is a simple picker - click a channel to open
+its detail page, laid out like Restream's own dashboard: what's actually
+streaming on the left, the outputs it fans out to on the right.
+
+- **Left panel**: shows "Connect your encoder" (RTMP URL + stream key) when
+  offline, or a real live preview of the stream once you're live.
 - **Regenerate key**: rotates a channel's stream key immediately; update
-  Restream with the new key. Useful if a key ever leaks.
-- **Delete channel**: removes it and its uploaded cover image. The embed
-  URL for that channel stops working.
-- **Cover image**: PNG/JPEG/WebP, up to 5MB, shown whenever the channel
-  isn't live. Remove it to revert to the plain "Offline" placeholder.
+  whatever's pushing to it with the new key. Useful if a key ever leaks.
+- **Delete channel**: removes it, its uploaded images, and any custom
+  outputs. The embed URL for that channel stops working.
+- **Cover/thumbnail images**: at the bottom of the detail page - upload as
+  many as you like to each gallery, click one to make it active. PNG/JPEG/
+  WebP, up to 5MB each.
+
+## Outputs: relaying to other platforms
+
+The right panel on a channel's detail page lists everywhere that channel's
+stream goes:
+
+- **Your Website** - always on, this is the embed player itself (see above).
+- **YouTube** - see the dedicated section below.
+- **Custom RTMP outputs** - click "+ Add custom RTMP output" and fill in a
+  name, RTMP URL, and stream key (the same fields Restream or any platform
+  gives you for a "custom RTMP" destination - Twitch, Facebook, another
+  server, etc). Toggle each on/off independently; they relay automatically
+  (via `ffmpeg -c copy`, no re-encoding) whenever the channel is live.
 
 ## Relaying to YouTube
 
-Each channel can also relay its stream on to YouTube automatically while
-live - a "Send to YouTube" toggle plus a stream title, no need to touch
-YouTube Studio or paste stream keys manually.
+YouTube gets its own dedicated toggle (rather than living under custom
+outputs) because, unlike a plain RTMP destination, it needs your YouTube
+account connected once via OAuth - after that it creates a live broadcast
+with your chosen title automatically every time you go live, no need to
+touch YouTube Studio or paste stream keys manually.
 
 ### One-time Google Cloud setup
 
@@ -235,8 +253,8 @@ YouTube Studio or paste stream keys manually.
 - In the dashboard's **YouTube** panel, click **Connect YouTube** and
   approve access - this is a one-time, whole-app connection (single admin,
   single YouTube account), not per-channel.
-- On any channel, check **Send to YouTube when live**, set a title, and
-  click **Save**.
+- On any channel's detail page, flip the **YouTube** switch on (takes
+  effect immediately) and set a title with its own **Save** button.
 - When that channel goes live, the app automatically creates a YouTube live
   broadcast with that title and relays the incoming stream to it
   (`ffmpeg -c copy` - repackaged, not re-encoded, so it's cheap on CPU). The
