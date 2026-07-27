@@ -59,6 +59,8 @@ router.post('/', requireAuth, (req, res) => {
     isLive: false,
     lastLiveAt: null,
     websiteEnabled: true,
+    websiteTitle: '',
+    websiteDescription: '',
     coverImages: [],
     activeCoverImage: null,
     liveThumbnails: [],
@@ -109,6 +111,18 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
 
   if (typeof req.body.websiteEnabled === 'boolean') {
     channel.websiteEnabled = req.body.websiteEnabled;
+  }
+  if (typeof req.body.websiteTitle === 'string') {
+    if (req.body.websiteTitle.length > 100) {
+      return res.status(400).json({ error: 'Title too long' });
+    }
+    channel.websiteTitle = req.body.websiteTitle.trim();
+  }
+  if (typeof req.body.websiteDescription === 'string') {
+    if (req.body.websiteDescription.length > 300) {
+      return res.status(400).json({ error: 'Description too long' });
+    }
+    channel.websiteDescription = req.body.websiteDescription.trim();
   }
   writeDb(db);
   res.json(channel);

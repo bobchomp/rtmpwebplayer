@@ -21,6 +21,15 @@ function escapeHtml(str) {
   }[c]));
 }
 
+// Safely embeds a value as a JS string literal inside an inline <script>
+// block. JSON.stringify handles JS-string escaping (quotes, backslashes,
+// newlines) and also supplies the surrounding quotes; escaping "<"/">" on
+// top of that stops a title/description containing something like
+// "</script><script>..." from prematurely closing the script block itself.
+function escapeForInlineScript(str) {
+  return JSON.stringify(String(str)).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+}
+
 router.get('/:channelId', (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.channelId];
@@ -33,10 +42,16 @@ router.get('/:channelId', (req, res) => {
     return res.status(404).send('This stream is not available here.');
   }
 
-  const html = TEMPLATE.replace(/__CHANNEL_ID__/g, channel.id).replace(
-    /__CHANNEL_NAME__/g,
-    escapeHtml(channel.name)
-  );
+  const displayTitle = channel.websiteTitle || channel.name;
+  const description = channel.websiteDescription || '';
+
+  const html = TEMPLATE
+    .replace(/__CHANNEL_ID__/g, channel.id)
+    .replace(/__CHANNEL_NAME__/g, escapeHtml(channel.name))
+    .replace(/__PAGE_TITLE__/g, escapeHtml(displayTitle))
+    .replace(/__META_DESCRIPTION__/g, escapeHtml(description))
+    .replace(/__WEBSITE_TITLE_JSON__/g, escapeForInlineScript(channel.websiteTitle || ''))
+    .replace(/__WEBSITE_DESCRIPTION_JSON__/g, escapeForInlineScript(description));
 
   // Controls which sites may frame this page at all - see ALLOWED_EMBED_DOMAINS.
   res.set('Content-Security-Policy', frameAncestorsHeader());

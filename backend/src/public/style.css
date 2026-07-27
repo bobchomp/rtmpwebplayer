@@ -39,6 +39,7 @@ input[type="text"], input[type="password"], textarea {
 }
 
 textarea { resize: vertical; font-family: ui-monospace, monospace; font-size: 12px; }
+textarea.prose-textarea { font-family: inherit; font-size: 14px; }
 
 button {
   font: inherit; padding: 8px 14px; border-radius: 6px; border: none;
