@@ -1,7 +1,7 @@
 const express = require('express');
 const { Readable } = require('stream');
 const { readDb } = require('../db');
-const { isRefererAllowed } = require('../embedSecurity');
+const { isRefererAllowed, isDirectNavigation } = require('../embedSecurity');
 
 const router = express.Router();
 const HLS_INTERNAL_URL = process.env.HLS_INTERNAL_URL || 'http://rtmp:8080';
@@ -18,6 +18,12 @@ router.get('/:channelId/:file', async (req, res) => {
   // Stops someone bypassing the iframe entirely by hotlinking these URLs
   // into their own player on another site - see ALLOWED_EMBED_DOMAINS.
   if (!isRefererAllowed(req)) return res.status(403).send('Forbidden');
+
+  // Blocks pasting a raw manifest/segment URL straight into a browser's
+  // address bar - real playback (hls.js's fetch()/XHR calls, or a native
+  // <video src> load) never has Sec-Fetch-Dest: document, so this doesn't
+  // touch actual viewers either from the embed or the /watch page.
+  if (isDirectNavigation(req)) return res.status(403).send('Forbidden');
 
   const db = readDb();
   const channel = db.channels[channelId];

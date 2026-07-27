@@ -143,6 +143,19 @@ embedding to certain domains" setting:
 
 Leave it unset to keep the original open-embed-anywhere behavior.
 
+Separately from which sites are allowed to embed it, the embed page also
+refuses to open as a direct, top-level page at all - someone pasting the
+`/embed/<id>` URL straight into their browser's address bar gets redirected
+to the Public Link output instead (see above), or a plain "not available
+here" message if that channel doesn't have one. This is on unconditionally,
+regardless of `ALLOWED_EMBED_DOMAINS` - it's a separate check based on the
+`Sec-Fetch-Dest` header browsers send (which a page's own JavaScript can't
+forge, unlike `Referer`), so it can't be worked around by just spoofing a
+referrer. It's still a best-effort browser signal rather than a guarantee -
+a small number of older browsers or non-browser clients don't send it at
+all, and those requests are allowed through rather than blocked, the same
+fail-open philosophy as the `Referer` check above.
+
 ## Scaling to many concurrent viewers (Cloudflare CDN)
 
 The backend's HLS proxy is lightweight, but if you expect many concurrent
