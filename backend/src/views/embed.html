@@ -67,12 +67,20 @@
 
   var hls = null;
   var currentlyLive = false;
+  var playRequested = false;
+  var retryTimer = null;
+  var RETRY_DELAY_MS = 2000;
 
   var lastCoverUrl = null;
   var lastLiveThumbnailUrl = null;
 
   function showOffline() {
     currentlyLive = false;
+    playRequested = false;
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
     liveBadge.style.display = 'none';
     playButton.style.display = 'none';
     thumbOverlay.style.display = 'none';
@@ -94,25 +102,30 @@
     }
   }
 
-  // Loads/attaches the stream in the background but does not start playback -
-  // playback only ever starts from a real click, never automatically. Since
-  // hls.js pre-buffers in the background for an instant start, the browser
-  // can decode and display a real video frame before playback technically
-  // "starts", overriding the poster - so the thumbnail here is a real image
-  // element layered on top of the video, not the poster attribute, to
-  // reliably cover whatever the video is doing underneath until clicked.
-  function prepareLive() {
-    currentlyLive = true;
-    liveBadge.style.display = 'block';
-    offlineLabel.style.display = 'none';
-    playButton.style.display = 'flex';
-    thumbOverlay.src = lastLiveThumbnailUrl || lastCoverUrl || DEFAULT_POSTER;
-    thumbOverlay.style.display = 'block';
+  // Attaches (or re-attaches) the stream in the background. The very first
+  // segment can take a few seconds to exist on disk after the encoder
+  // connects, so hls.js's first load attempt commonly fails with a fatal
+  // error even though the stream is genuinely live - rather than treating
+  // that as "offline", we quietly retry for as long as the server still
+  // reports the channel as live. Playback itself only ever starts from a
+  // real click (playRequested), never automatically.
+  function attemptLoad() {
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
 
     if (window.Hls && Hls.isSupported()) {
       hls = new Hls({ liveDurationInfinity: true, backBufferLength: 30 });
       hls.on(Hls.Events.ERROR, function (event, data) {
-        if (data && data.fatal) showOffline();
+        if (!data || !data.fatal) return;
+        if (hls) {
+          hls.destroy();
+          hls = null;
+        }
+        if (currentlyLive) {
+          retryTimer = setTimeout(attemptLoad, RETRY_DELAY_MS);
+        }
       });
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
@@ -125,15 +138,45 @@
     }
   }
 
+  function prepareLive() {
+    currentlyLive = true;
+    liveBadge.style.display = 'block';
+    offlineLabel.style.display = 'none';
+    playButton.style.display = 'flex';
+    thumbOverlay.src = lastLiveThumbnailUrl || lastCoverUrl || DEFAULT_POSTER;
+    thumbOverlay.style.display = 'block';
+    attemptLoad();
+  }
+
   function startPlayback() {
+    playRequested = true;
     video.play().catch(function () {});
   }
 
   playButton.addEventListener('click', startPlayback);
-  // Covers the case where a viewer uses the native controls' play button instead.
-  video.addEventListener('play', function () {
+  // Hide the button/thumbnail on "playing" (fires once real frames are
+  // actually about to render), not "play" (fires as soon as play() is
+  // called, even with no data buffered yet) - otherwise clicking early
+  // during a retry would swap the thumbnail for a black video briefly.
+  // Also covers a viewer using the native controls' play button instead.
+  video.addEventListener('playing', function () {
     playButton.style.display = 'none';
     thumbOverlay.style.display = 'none';
+  });
+  // If play was requested before media was actually ready (e.g. clicked
+  // during the startup race, or during a quiet retry), start it the moment
+  // the browser has enough data - covers both the hls.js/MSE path and the
+  // native Safari HLS path, since both drive the same <video> element.
+  video.addEventListener('loadedmetadata', function () {
+    if (playRequested) video.play().catch(function () {});
+  });
+  // Native Safari HLS playback has no hls.js layer to retry through - if the
+  // browser reports a media error while we still believe we're live, retry
+  // the same way the hls.js path does.
+  video.addEventListener('error', function () {
+    if (currentlyLive && !hls) {
+      retryTimer = setTimeout(attemptLoad, RETRY_DELAY_MS);
+    }
   });
 
   function poll() {
