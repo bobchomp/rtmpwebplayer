@@ -171,11 +171,23 @@
     playButton.style.display = 'flex';
     thumbOverlay.src = lastLiveThumbnailUrl || lastCoverUrl || DEFAULT_POSTER;
     thumbOverlay.style.display = 'block';
-    attemptLoad();
+    // Deliberately doesn't attach/load the stream here - see startPlayback().
   }
 
   function startPlayback() {
     playRequested = true;
+    // Load the stream fresh right when the viewer actually wants to watch,
+    // not as soon as the channel goes live. Loading early would let hls.js
+    // buffer forward from near the very start of the live window while
+    // nobody's watching yet (nothing was consuming the buffer to make it
+    // track forward); once nginx's rolling ~30s playlist evicted those early
+    // segments, a later play() would start from that stale position and
+    // then stall once it ran out of the pre-buffered data. Loading at click
+    // time means hls.js computes its "start near the live edge" position
+    // against the playlist as it genuinely is right now.
+    if (!hls && !retryTimer) {
+      attemptLoad();
+    }
     video.play().catch(function () {});
   }
 
