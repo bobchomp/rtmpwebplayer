@@ -343,38 +343,47 @@ works today with zero code changes as a plain **Custom RTMP** output (see
 above) - the one-click version below is only worth it if you don't want to
 copy Facebook's stream key over by hand.
 
-**Heads up before you start**: unlike Google's OAuth consent screen (where
-adding yourself as a "test user" is enough for personal use), Facebook
-requires the `pages_manage_posts` permission this needs to go through their
-formal **App Review** process - and often business verification - before
-it'll work with anything beyond your own developer account. That's Meta's
-call to make, not something either of us can speed up, and it can take
-anywhere from days to a few weeks. If you'd rather not deal with that, the
-Custom RTMP route above gets you the exact same stream on Facebook today.
+**Heads up before you start**: every Facebook permission has a "Standard
+Access" tier that works immediately - no review, no waiting - for anyone
+added as an Admin, Developer, or Tester on the app itself. Since you're both
+the one creating this app and the one managing your church's Page, that's
+almost certainly all you need. Facebook's formal **App Review** process
+(and sometimes business verification on top) is only required to unlock
+these permissions for people outside the app's own team - skip it entirely
+unless you actually hit a permission error. If you'd rather not deal with
+any of this, the Custom RTMP route above gets you the exact same stream on
+Facebook today, with no Facebook app at all.
 
 ### One-time Meta developer setup
 
-1. Create an app at [developers.facebook.com](https://developers.facebook.com/apps)
-   (choose the "Business" app type).
-2. Add the **Facebook Login** product, and under its settings set a valid
-   OAuth redirect URI of:
+1. Create an app at [developers.facebook.com/apps](https://developers.facebook.com/apps)
+   (choose the "Business" app type) - log in with the Facebook account that
+   manages your church's Page.
+2. Add the **Facebook Login** product (left sidebar → **Add Product** →
+   **Facebook Login** → **Set Up**), then under its **Settings**, add a
+   valid OAuth Redirect URI:
    ```
    https://<PUBLIC_HOST>/api/facebook/callback
    ```
-3. Under **App Review → Permissions and Features**, request:
-   `pages_show_list`, `pages_read_engagement`, `pages_manage_posts` - explain
-   in the submission that this is for broadcasting your own organization's
-   live services to your own Facebook Page. This is the step that requires
-   Meta's approval before it works for your real Page (your own account,
-   added as an admin/tester on the app, can use it immediately without
-   waiting for review).
-4. Add the resulting App ID/Secret to `.env`:
+3. Left sidebar → **App roles → Roles** → add yourself (the same Facebook
+   account from step 1) as an **Administrator**. This is what unlocks
+   Standard Access to `pages_show_list`, `pages_read_engagement`, and
+   `pages_manage_posts` for your own account immediately, without needing
+   App Review at all. You may get a notification/request to accept - do
+   that from your own Facebook account.
+4. Copy the **App ID** and **App Secret** from **App settings → Basic**,
+   and add them to `.env`:
    ```
    FACEBOOK_APP_ID=...
    FACEBOOK_APP_SECRET=...
    FACEBOOK_REDIRECT_URI=https://<PUBLIC_HOST>/api/facebook/callback
    ```
    then `docker compose up -d --build`.
+5. Try connecting from the dashboard (see "Using it" below). If it works,
+   you're done - no App Review needed. If Facebook specifically rejects a
+   permission as needing Advanced Access, that's when you'd go to **App
+   Review → Permissions and Features** and request it, explaining it's for
+   broadcasting your own organization's services to your own Page.
 
 ### Using it
 
