@@ -2,6 +2,10 @@ worker_processes auto;
 error_log /dev/stderr warn;
 pid /tmp/nginx.pid;
 
+# nginx clears the environment for worker/exec'd processes by default -
+# this makes WEBHOOK_SECRET visible to relay-start.sh (see exec_publish below).
+env WEBHOOK_SECRET;
+
 events {
     worker_connections 1024;
 }
@@ -24,6 +28,11 @@ rtmp {
             # WEBHOOK_SECRET keeps these callbacks from being spoofed.
             on_publish http://backend:4000/api/rtmp/on_publish?secret=${WEBHOOK_SECRET};
             on_publish_done http://backend:4000/api/rtmp/on_publish_done?secret=${WEBHOOK_SECRET};
+
+            # Optionally relays the stream on to YouTube - the scripts check
+            # with the backend themselves for whether/where to relay.
+            exec_publish /usr/local/bin/relay-start.sh $name;
+            exec_publish_done /usr/local/bin/relay-stop.sh $name;
 
             hls on;
             hls_path /tmp/hls;

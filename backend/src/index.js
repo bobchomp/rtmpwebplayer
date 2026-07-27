@@ -10,6 +10,7 @@ const channelRoutes = require('./routes/channels');
 const rtmpHooks = require('./routes/rtmpHooks');
 const hlsProxy = require('./routes/hlsProxy');
 const embed = require('./routes/embed');
+const youtubeAuth = require('./routes/youtubeAuth');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -55,6 +56,7 @@ app.get('/api/config', (req, res) => {
 app.use('/api', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/rtmp', rtmpHooks);
+app.use('/api/youtube', youtubeAuth);
 app.use('/live', hlsProxy);
 app.use('/embed', embed);
 

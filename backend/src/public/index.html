@@ -29,6 +29,16 @@
   </header>
 
   <section class="panel">
+    <h2>YouTube</h2>
+    <div class="youtube-panel">
+      <span id="youtube-not-connected" class="hint hidden">Not connected - channels with "Send to YouTube" enabled won't relay until you connect an account.</span>
+      <span id="youtube-connected" class="hidden">Connected as <strong id="youtube-channel-name"></strong>.</span>
+      <button id="youtube-connect-btn" class="hidden">Connect YouTube</button>
+      <button id="youtube-disconnect-btn" class="secondary hidden">Disconnect</button>
+    </div>
+  </section>
+
+  <section class="panel">
     <h2>Create a channel</h2>
     <form id="create-form" class="inline-form">
       <input type="text" id="new-channel-name" placeholder="Channel name (e.g. Main Camera)" required maxlength="100">
@@ -83,6 +93,18 @@
       <label>Live thumbnails (shown once live, before play is pressed) - click one to make it active</label>
       <div class="gallery thumb-gallery"></div>
       <input type="file" class="thumb-upload-input" accept=".png,.jpg,.jpeg,.webp">
+    </div>
+
+    <div class="field-row">
+      <label>YouTube</label>
+      <div class="youtube-row">
+        <label class="toggle-label">
+          <input type="checkbox" class="youtube-toggle">
+          Send to YouTube when live
+        </label>
+        <input type="text" class="youtube-title-input" placeholder="Stream title" maxlength="100">
+        <button class="youtube-save-btn secondary">Save</button>
+      </div>
     </div>
 
     <div class="field-row">

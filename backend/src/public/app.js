@@ -195,6 +195,23 @@
     wireGallery('cover', 'covers', 'coverImages', 'activeCoverImage');
     wireGallery('thumb', 'live-thumbnails', 'liveThumbnails', 'activeLiveThumbnail');
 
+    var youtubeToggle = node.querySelector('.youtube-toggle');
+    var youtubeTitleInput = node.querySelector('.youtube-title-input');
+    youtubeToggle.checked = !!channel.youtubeEnabled;
+    youtubeTitleInput.value = channel.youtubeTitle || '';
+
+    node.querySelector('.youtube-save-btn').addEventListener('click', function () {
+      api('/api/channels/' + channel.id + '/youtube-settings', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          youtubeEnabled: youtubeToggle.checked,
+          youtubeTitle: youtubeTitleInput.value,
+        }),
+      })
+        .then(loadChannels)
+        .catch(function (err) { alert(err.message); });
+    });
+
     return node;
   }
 
@@ -213,12 +230,34 @@
     refreshTimer = setInterval(loadChannels, 10000);
   }
 
+  function loadYoutubeStatus() {
+    return api('/api/youtube/status').then(function (data) {
+      document.getElementById('youtube-not-connected').classList.toggle('hidden', data.connected);
+      document.getElementById('youtube-connected').classList.toggle('hidden', !data.connected);
+      document.getElementById('youtube-connect-btn').classList.toggle('hidden', data.connected);
+      document.getElementById('youtube-disconnect-btn').classList.toggle('hidden', !data.connected);
+      if (data.connected) {
+        document.getElementById('youtube-channel-name').textContent = data.channelTitle;
+      }
+    });
+  }
+
+  document.getElementById('youtube-connect-btn').addEventListener('click', function () {
+    window.location.href = '/api/youtube/connect';
+  });
+
+  document.getElementById('youtube-disconnect-btn').addEventListener('click', function () {
+    if (!confirm('Disconnect YouTube? Channels with "Send to YouTube" enabled will stop relaying until you reconnect.')) return;
+    api('/api/youtube/disconnect', { method: 'POST' }).then(loadYoutubeStatus);
+  });
+
   function enterDashboard() {
     show('dashboard');
     api('/api/config').then(function (cfg) {
       config = cfg;
       return loadChannels();
     });
+    loadYoutubeStatus();
     startAutoRefresh();
   }
 

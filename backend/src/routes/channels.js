@@ -62,6 +62,11 @@ router.post('/', requireAuth, (req, res) => {
     activeCoverImage: null,
     liveThumbnails: [],
     activeLiveThumbnail: null,
+    youtubeEnabled: false,
+    youtubeTitle: '',
+    youtubeBroadcastId: null,
+    youtubeIngestAddress: null,
+    youtubeStreamName: null,
     createdAt: new Date().toISOString(),
   };
   db.channels[id] = channel;
@@ -80,6 +85,25 @@ router.patch('/:id', requireAuth, (req, res) => {
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   channel.name = name;
+  writeDb(db);
+  res.json(channel);
+});
+
+// Admin: update per-channel YouTube relay settings (toggle + stream title)
+router.patch('/:id/youtube-settings', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  if (typeof req.body.youtubeEnabled === 'boolean') {
+    channel.youtubeEnabled = req.body.youtubeEnabled;
+  }
+  if (typeof req.body.youtubeTitle === 'string') {
+    if (req.body.youtubeTitle.length > 100) {
+      return res.status(400).json({ error: 'Title too long' });
+    }
+    channel.youtubeTitle = req.body.youtubeTitle.trim();
+  }
   writeDb(db);
   res.json(channel);
 });

@@ -100,3 +100,13 @@ button.danger:hover { background: #fbe9e7; }
 .gallery-item .gallery-remove:hover { background: #8f1e17; }
 
 .copy-btn.copied { background: #16a34a; }
+
+.youtube-panel { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.youtube-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.toggle-label {
+  flex-direction: row; align-items: center; gap: 6px; white-space: nowrap;
+  font-size: 14px; color: #1a1a1a;
+}
+.toggle-label input[type="checkbox"] { width: 16px; height: 16px; }
+.youtube-title-input { flex: 1; min-width: 160px; }

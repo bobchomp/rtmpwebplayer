@@ -26,6 +26,9 @@ services:
       RTMP_PORT: "1935"
       HLS_INTERNAL_URL: "http://rtmp:8080"
       PORT: "4000"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
     volumes:
       - backend_data:/app/data
       - backend_uploads:/app/uploads

@@ -178,6 +178,59 @@ Then open `http://localhost:4000/embed/<channel-id>` to watch it.
 - **Cover image**: PNG/JPEG/WebP, up to 5MB, shown whenever the channel
   isn't live. Remove it to revert to the plain "Offline" placeholder.
 
+## Relaying to YouTube
+
+Each channel can also relay its stream on to YouTube automatically while
+live - a "Send to YouTube" toggle plus a stream title, no need to touch
+YouTube Studio or paste stream keys manually.
+
+### One-time Google Cloud setup
+
+1. Create a project at [console.cloud.google.com](https://console.cloud.google.com)
+2. **APIs & Services → Library** - enable the **YouTube Data API v3**
+3. **APIs & Services → OAuth consent screen** (Google's newer UI splits this
+   across a few pages):
+   - **Audience**: user type External; add your own Google account under
+     **Test users** (this avoids Google's full public-app verification
+     process, which isn't needed for personal use)
+   - **Data access**: add the scope `.../auth/youtube`
+4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**,
+   application type **Web application**, with an authorized redirect URI of:
+   ```
+   https://<PUBLIC_HOST>/api/youtube/callback
+   ```
+5. Add the resulting Client ID/Secret to `.env`:
+   ```
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
+   GOOGLE_REDIRECT_URI=https://<PUBLIC_HOST>/api/youtube/callback
+   ```
+   then `docker compose up -d --build`.
+
+### Using it
+
+- In the dashboard's **YouTube** panel, click **Connect YouTube** and
+  approve access - this is a one-time, whole-app connection (single admin,
+  single YouTube account), not per-channel.
+- On any channel, check **Send to YouTube when live**, set a title, and
+  click **Save**.
+- When that channel goes live, the app automatically creates a YouTube live
+  broadcast with that title and relays the incoming stream to it
+  (`ffmpeg -c copy` - repackaged, not re-encoded, so it's cheap on CPU). The
+  broadcast goes live on YouTube automatically once it detects healthy
+  incoming data, and completes automatically when the stream ends - no
+  manual steps in YouTube Studio either way.
+- Disconnecting YouTube (or turning a channel's toggle off) stops that
+  channel from relaying on future streams.
+
+### How it works, if you're curious
+
+`nginx-rtmp`'s `exec_publish`/`exec_publish_done` hooks (see
+`rtmp/relay-start.sh` / `relay-stop.sh`) ask the backend for a relay target
+whenever a channel goes live, and spawn/kill the `ffmpeg` relay accordingly.
+The backend creates the actual YouTube broadcast+stream via the YouTube
+Data API the moment a YouTube-enabled channel starts publishing.
+
 ## Production security checklist
 
 - `docker-compose.yml` publishes the backend directly on port **4000** for

@@ -18,13 +18,15 @@ RUN cd nginx-${NGINX_VERSION} \
 
 FROM alpine:3.19
 
-RUN apk add --no-cache pcre zlib openssl ca-certificates gettext
+RUN apk add --no-cache pcre zlib openssl ca-certificates gettext ffmpeg curl
 
 COPY --from=build /usr/local/nginx /usr/local/nginx
 
 COPY nginx.conf.template /usr/local/nginx/conf/nginx.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+COPY relay-start.sh /usr/local/bin/relay-start.sh
+COPY relay-stop.sh /usr/local/bin/relay-stop.sh
+RUN chmod +x /docker-entrypoint.sh /usr/local/bin/relay-start.sh /usr/local/bin/relay-stop.sh
 
 EXPOSE 1935 8080
 
