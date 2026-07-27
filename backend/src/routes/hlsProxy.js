@@ -1,5 +1,6 @@
 const express = require('express');
 const { readDb } = require('../db');
+const { isRefererAllowed } = require('../embedSecurity');
 
 const router = express.Router();
 const HLS_INTERNAL_URL = process.env.HLS_INTERNAL_URL || 'http://rtmp:8080';
@@ -12,6 +13,10 @@ router.get('/:channelId/:file', async (req, res) => {
   const { channelId, file } = req.params;
 
   if (!/^[a-zA-Z0-9_.-]+$/.test(file)) return res.status(400).send('Bad request');
+
+  // Stops someone bypassing the iframe entirely by hotlinking these URLs
+  // into their own player on another site - see ALLOWED_EMBED_DOMAINS.
+  if (!isRefererAllowed(req)) return res.status(403).send('Forbidden');
 
   const db = readDb();
   const channel = db.channels[channelId];

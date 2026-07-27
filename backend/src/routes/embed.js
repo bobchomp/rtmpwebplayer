@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { readDb } = require('../db');
+const { frameAncestorsHeader } = require('../embedSecurity');
 
 const router = express.Router();
 const TEMPLATE = fs.readFileSync(
@@ -30,8 +31,8 @@ router.get('/:channelId', (req, res) => {
     escapeHtml(channel.name)
   );
 
-  // Explicitly allow this page to be framed on any site - it's meant to be embedded.
-  res.set('Content-Security-Policy', 'frame-ancestors *');
+  // Controls which sites may frame this page at all - see ALLOWED_EMBED_DOMAINS.
+  res.set('Content-Security-Policy', frameAncestorsHeader());
   res.type('html').send(html);
 });
 

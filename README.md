@@ -124,6 +124,29 @@ the video automatically. Viewers can unmute/control playback with the
 native video controls (it starts muted so autoplay isn't blocked by
 browsers).
 
+### Restricting embedding to your own site(s)
+
+By default the embed is playable anywhere - anyone who copies the
+`<iframe>` code, or even just the raw `/live/...` video URLs, can put your
+stream on their own site. To lock this down, set in `.env`:
+
+```
+ALLOWED_EMBED_DOMAINS=yourdomain.com,www.yourdomain.com
+```
+
+and restart (`docker compose up -d --build`). This enforces the
+restriction two ways - the same mechanism behind YouTube's own "restrict
+embedding to certain domains" setting:
+
+- The embed page sends a `Content-Security-Policy: frame-ancestors` header,
+  so browsers refuse to render your `<iframe>` at all on any site not
+  listed - stops someone copy-pasting your embed code onto their own page.
+- The video proxy checks the `Referer` header on each request, so someone
+  bypassing the iframe entirely (building their own player pointed
+  directly at your `/live/...` URLs) gets blocked too.
+
+Leave it unset to keep the original open-embed-anywhere behavior.
+
 ## Scaling to many concurrent viewers (Cloudflare CDN)
 
 The backend's HLS proxy is lightweight, but if you expect many concurrent
