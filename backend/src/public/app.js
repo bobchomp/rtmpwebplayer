@@ -238,6 +238,7 @@
   var addOutputTypeRow = document.getElementById('add-output-type-row');
   var addOutputTypeYoutubeBtn = document.getElementById('add-output-type-youtube');
   var addOutputTypeRtmpBtn = document.getElementById('add-output-type-rtmp');
+  var addOutputTypePublicLinkBtn = document.getElementById('add-output-type-public-link');
   var addOutputRtmpForm = document.getElementById('add-output-rtmp-form');
   var addOutputCancelBtn = document.getElementById('add-output-cancel-btn');
   var newOutputName = document.getElementById('new-output-name');
@@ -385,13 +386,16 @@
     var outputs = channel.outputs || [];
     detailOutputsList.innerHTML = '';
     detailOutputsEmpty.classList.toggle('hidden', outputs.length > 0);
+    addOutputTypePublicLinkBtn.disabled = outputs.some(function (o) { return o.type === 'public-link'; });
     outputs.forEach(function (output) {
       var isYoutube = output.type === 'youtube';
+      var isPublicLink = output.type === 'public-link';
+      var publicLinkUrl = embedOrigin() + '/watch/' + channel.id;
       var node = outputRowTemplate.content.firstElementChild.cloneNode(true);
-      node.querySelector('.output-name').textContent = isYoutube ? 'YouTube' : output.name;
+      node.querySelector('.output-name').textContent = isYoutube ? 'YouTube' : isPublicLink ? 'Public Link' : output.name;
       node.querySelector('.output-url').textContent = isYoutube
         ? 'Connected as ' + output.channelTitle
-        : output.rtmpUrl;
+        : isPublicLink ? publicLinkUrl : output.rtmpUrl;
 
       var toggle = node.querySelector('.output-toggle');
       toggle.checked = !!output.enabled;
@@ -407,9 +411,26 @@
           });
       });
 
+      var copyBtn = node.querySelector('.output-copy-btn');
+      if (isPublicLink) {
+        copyBtn.classList.remove('hidden');
+        copyBtn.addEventListener('click', function () {
+          navigator.clipboard.writeText(publicLinkUrl).then(function () {
+            var original = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            copyBtn.classList.add('copied');
+            setTimeout(function () {
+              copyBtn.textContent = original;
+              copyBtn.classList.remove('copied');
+            }, 1500);
+          });
+        });
+      }
+
       node.querySelector('.output-delete-btn').addEventListener('click', function () {
         var message = isYoutube
           ? 'Disconnect YouTube account "' + output.channelTitle + '"?'
+          : isPublicLink ? 'Remove the public link? The current link will stop working.'
           : 'Remove output "' + output.name + '"?';
         if (!confirm(message)) return;
         api('/api/channels/' + channel.id + '/outputs/' + output.id, { method: 'DELETE' })
@@ -546,6 +567,17 @@
     addOutputTypeRtmpBtn.addEventListener('click', function () {
       addOutputTypeRow.classList.add('hidden');
       addOutputRtmpForm.classList.remove('hidden');
+    });
+    addOutputTypePublicLinkBtn.addEventListener('click', function () {
+      api('/api/channels/' + currentChannelId + '/outputs', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'public-link' }),
+      })
+        .then(function () {
+          closeAddOutputModal();
+          return refreshChannelDetail();
+        })
+        .catch(function (err) { alert(err.message); });
     });
     addOutputRtmpForm.addEventListener('submit', function (e) {
       e.preventDefault();

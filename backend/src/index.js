@@ -10,6 +10,7 @@ const channelRoutes = require('./routes/channels');
 const rtmpHooks = require('./routes/rtmpHooks');
 const hlsProxy = require('./routes/hlsProxy');
 const embed = require('./routes/embed');
+const watch = require('./routes/watch');
 const youtubeAuth = require('./routes/youtubeAuth');
 const statsRoutes = require('./routes/stats');
 const geoip = require('./geoip');
@@ -62,6 +63,7 @@ app.use('/api/youtube', youtubeAuth);
 app.use('/api/stats', statsRoutes);
 app.use('/live', hlsProxy);
 app.use('/embed', embed);
+app.use('/watch', watch);
 
 app.use(express.static(path.join(__dirname, 'public')));
 

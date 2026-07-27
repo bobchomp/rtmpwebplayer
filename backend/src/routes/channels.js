@@ -191,8 +191,13 @@ function validateOutputInput(body, { partial } = {}) {
   return { errors, update };
 }
 
-// Admin: add a custom RTMP output (e.g. Twitch, Facebook, another server) -
-// relayed to automatically while live, same mechanism as the YouTube relay.
+// Admin: add an output. Most fields depend on type:
+// - 'rtmp': a custom RTMP destination (e.g. Twitch, Facebook, another
+//   server) - relayed to automatically while live, name/URL/key required.
+// - 'public-link': a direct, non-embeddable watch link for this channel (see
+//   routes/watch.js) - no fields needed beyond the type itself, and a
+//   channel can only have one (there's nothing to differentiate a second
+//   one - it'd point at the exact same URL).
 // (YouTube outputs are added via the OAuth flow in youtubeAuth.js/youtube.js,
 // not through this route, since they need a Google sign-in redirect rather
 // than a plain form submission.)
@@ -204,6 +209,16 @@ router.post('/:id/outputs', requireAuth, (req, res) => {
   channel.outputs = channel.outputs || [];
   if (channel.outputs.length >= MAX_OUTPUTS) {
     return res.status(400).json({ error: `Maximum of ${MAX_OUTPUTS} outputs per channel` });
+  }
+
+  if (req.body && req.body.type === 'public-link') {
+    if (channel.outputs.some((o) => o.type === 'public-link')) {
+      return res.status(400).json({ error: 'This channel already has a public link' });
+    }
+    const output = { id: crypto.randomUUID(), type: 'public-link', enabled: true };
+    channel.outputs.push(output);
+    writeDb(db);
+    return res.status(201).json(redactChannel(channel));
   }
 
   const { errors, update } = validateOutputInput(req.body || {});
@@ -223,8 +238,8 @@ router.post('/:id/outputs', requireAuth, (req, res) => {
 });
 
 // Admin: update an output. RTMP outputs can have their name/URL/key edited;
-// a YouTube output can only be switched on/off here (everything else about
-// it comes from the OAuth connection or the shared title/description).
+// a YouTube or public-link output can only be switched on/off here (there's
+// nothing else about either of those a form could meaningfully edit).
 router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
@@ -233,7 +248,7 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const output = (channel.outputs || []).find((o) => o.id === req.params.outputId);
   if (!output) return res.status(404).json({ error: 'Output not found' });
 
-  if (output.type === 'youtube') {
+  if (output.type === 'youtube' || output.type === 'public-link') {
     if (typeof req.body.enabled === 'boolean') output.enabled = req.body.enabled;
     writeDb(db);
     return res.json(redactChannel(channel));

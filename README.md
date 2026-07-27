@@ -232,6 +232,18 @@ stream goes:
     a "custom RTMP" destination - Twitch, Facebook, another server, etc).
   - **YouTube**: see the dedicated section below - picking this in the
     popup takes you straight to Google's sign-in.
+  - **Public Link**: adds a direct, shareable watch link for this channel
+    (`/watch/<channel-id>`) - the same player as the embed, just full-page
+    instead of in an iframe, for pasting into WhatsApp, Facebook, email,
+    etc. It's added instantly (no form to fill in) and there's only ever one
+    per channel; click **Copy link** on its row any time to grab the URL.
+    Independent of the "Your Website" toggle above - turning that off
+    doesn't affect this link, since it's a different sharing channel, not
+    embedding on your own site. Unlike every other link in this app, it
+    deliberately refuses to render inside anyone else's `<iframe>` (sends
+    `X-Frame-Options: DENY` and a `frame-ancestors 'none'` CSP), so it can't
+    be passed off as someone else's embedded content - only opening it
+    directly works.
 
 ## Viewer stats
 

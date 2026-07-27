@@ -223,6 +223,7 @@
       <input type="checkbox" class="output-toggle">
       <span class="switch-track"></span>
     </label>
+    <button class="secondary copy-btn output-copy-btn hidden">Copy link</button>
     <button class="secondary danger output-delete-btn">Delete</button>
   </div>
 </template>
@@ -251,6 +252,7 @@
     <div class="add-output-type-row" id="add-output-type-row">
       <button class="secondary" id="add-output-type-youtube">YouTube</button>
       <button class="secondary" id="add-output-type-rtmp">Custom RTMP</button>
+      <button class="secondary" id="add-output-type-public-link">Public Link</button>
     </div>
     <form id="add-output-rtmp-form" class="hidden add-output-form">
       <input type="text" id="new-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>
