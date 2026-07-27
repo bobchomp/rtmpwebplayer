@@ -9,7 +9,7 @@
   var emptyState = document.getElementById('empty-state');
   var cardTemplate = document.getElementById('channel-card-template');
 
-  var config = { publicHost: window.location.hostname, rtmpPort: 1935 };
+  var config = { publicHost: window.location.hostname, rtmpHost: window.location.hostname, rtmpPort: 1935 };
   var refreshTimer = null;
 
   function api(url, opts) {
@@ -84,7 +84,7 @@
       if (e.key === 'Escape') exitEditMode();
     });
 
-    var rtmpUrl = 'rtmp://' + config.publicHost + ':' + config.rtmpPort + '/live';
+    var rtmpUrl = 'rtmp://' + config.rtmpHost + ':' + config.rtmpPort + '/live';
     node.querySelector('.rtmp-url').value = rtmpUrl;
 
     var keyInput = node.querySelector('.stream-key');

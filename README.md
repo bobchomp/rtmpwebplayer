@@ -137,9 +137,17 @@ bill flat regardless of audience size. Steps:
    the proxy (orange cloud) enabled.
 2. Set Cloudflare's SSL mode to "Full (strict)" - Caddy's automatic cert
    makes this straightforward.
-3. Add a Cache Rule (or Page Rule) for `/live/*` to cache by default,
-   respecting origin `Cache-Control` headers (the backend already sets short
-   cache lifetimes appropriate for live segments).
+3. Add a Cache Rule matching **URI Path starts with `/live/`**, set to
+   "Eligible for cache" (not the paid Cache Reserve add-on - the free,
+   standard Cache Rules feature is all that's needed here). It'll respect
+   the origin's `Cache-Control` headers, which the backend already sets to
+   short lifetimes appropriate for live segments.
+4. Set `RTMP_PUBLIC_HOST` in `.env` to your server's raw IP address (not
+   the domain). Cloudflare's free plan only proxies standard web ports
+   (80/443), not RTMP's port 1935 - so Restream must keep connecting via
+   the IP directly, and this setting makes the dashboard display that IP
+   as the RTMP URL instead of the (now-proxied) domain. `PUBLIC_HOST` stays
+   as your domain for everything else (embed links, HTTPS).
 
 ## Cost estimate
 

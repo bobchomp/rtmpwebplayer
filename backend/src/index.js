@@ -44,6 +44,10 @@ app.get('/healthz', (req, res) => res.send('ok'));
 app.get('/api/config', (req, res) => {
   res.json({
     publicHost: process.env.PUBLIC_HOST || req.hostname,
+    // Separate from publicHost: if you're behind a CDN proxy (e.g. Cloudflare)
+    // that doesn't forward the RTMP port, set this to your server's raw IP
+    // (or an unproxied hostname) so the dashboard shows a working RTMP URL.
+    rtmpHost: process.env.RTMP_PUBLIC_HOST || process.env.PUBLIC_HOST || req.hostname,
     rtmpPort: process.env.RTMP_PORT || 1935,
   });
 });
