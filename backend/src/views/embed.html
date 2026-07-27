@@ -105,56 +105,19 @@
     currentlyLive = true;
     liveBadge.style.display = 'block';
     offlineLabel.style.display = 'none';
-    playButton.style.display = 'none'; // shown only once confirmed playable, see attemptLoadStream
+    playButton.style.display = 'flex';
     thumbOverlay.src = lastLiveThumbnailUrl || lastCoverUrl || DEFAULT_POSTER;
     thumbOverlay.style.display = 'block';
 
-    attemptLoadStream();
-  }
-
-  // The server reports a channel "live" the instant the encoder connects,
-  // which is a couple of seconds before the first real HLS segment exists.
-  // Rather than show a play button that might fail if clicked immediately,
-  // this waits for actual confirmation that playable data exists, retrying
-  // quietly in the background until it does (or until the stream ends).
-  function attemptLoadStream() {
-    if (hls) {
-      hls.destroy();
-      hls = null;
-    }
-
     if (window.Hls && Hls.isSupported()) {
       hls = new Hls({ liveDurationInfinity: true, backBufferLength: 30 });
-      hls.on(Hls.Events.MANIFEST_PARSED, function () {
-        playButton.style.display = 'flex';
-      });
       hls.on(Hls.Events.ERROR, function (event, data) {
-        if (!data || !data.fatal) return;
-        if (playButton.style.display === 'flex') {
-          // Was already confirmed playable and has now genuinely failed.
-          showOffline();
-        } else if (currentlyLive) {
-          // Not ready yet (or a transient hiccup before ever being ready) -
-          // retry quietly rather than show a button that won't work yet.
-          setTimeout(function () {
-            if (currentlyLive) attemptLoadStream();
-          }, 2000);
-        }
+        if (data && data.fatal) showOffline();
       });
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari's native HLS has no manifest-parsed event to hook - confirm
-      // the playlist is actually fetchable first instead.
-      fetch(streamUrl, { cache: 'no-store' })
-        .then(function (r) {
-          if (!r.ok) throw new Error('not ready');
-          video.src = streamUrl;
-          playButton.style.display = 'flex';
-        })
-        .catch(function () {
-          if (currentlyLive) setTimeout(attemptLoadStream, 2000);
-        });
+      video.src = streamUrl;
     } else {
       showOffline();
       offlineLabel.textContent = 'Your browser cannot play this stream.';
