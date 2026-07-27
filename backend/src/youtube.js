@@ -102,19 +102,24 @@ function disconnect() {
 // details to relay to. enableAutoStart/enableAutoStop let YouTube manage
 // the live/complete transitions itself based on whether it's receiving
 // data, so we never need to poll stream health or call transition APIs.
-async function createBroadcastAndStream(title) {
+async function createBroadcastAndStream(title, description) {
   const db = readDb();
   if (!db.youtube || !db.youtube.refreshToken) throw new Error('YouTube is not connected');
 
   const { access_token: accessToken } = await refreshAccessToken(db.youtube.refreshToken);
   const streamTitle = (title || '').trim() || 'Live Stream';
+  const streamDescription = (description || '').trim();
 
   const broadcast = await apiCall(
     accessToken,
     'POST',
     '/liveBroadcasts?part=snippet,status,contentDetails',
     {
-      snippet: { title: streamTitle, scheduledStartTime: new Date().toISOString() },
+      snippet: {
+        title: streamTitle,
+        description: streamDescription,
+        scheduledStartTime: new Date().toISOString(),
+      },
       status: { privacyStatus: 'public' },
       contentDetails: { enableAutoStart: true, enableAutoStop: true },
     }

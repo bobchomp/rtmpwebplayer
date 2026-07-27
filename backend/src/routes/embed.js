@@ -42,16 +42,16 @@ router.get('/:channelId', (req, res) => {
     return res.status(404).send('This stream is not available here.');
   }
 
-  const displayTitle = channel.websiteTitle || channel.name;
-  const description = channel.websiteDescription || '';
+  const displayTitle = channel.title || channel.name;
+  const description = channel.description || '';
 
   const html = TEMPLATE
     .replace(/__CHANNEL_ID__/g, channel.id)
     .replace(/__CHANNEL_NAME__/g, escapeHtml(channel.name))
     .replace(/__PAGE_TITLE__/g, escapeHtml(displayTitle))
     .replace(/__META_DESCRIPTION__/g, escapeHtml(description))
-    .replace(/__WEBSITE_TITLE_JSON__/g, escapeForInlineScript(channel.websiteTitle || ''))
-    .replace(/__WEBSITE_DESCRIPTION_JSON__/g, escapeForInlineScript(description));
+    .replace(/__TITLE_JSON__/g, escapeForInlineScript(channel.title || ''))
+    .replace(/__DESCRIPTION_JSON__/g, escapeForInlineScript(description));
 
   // Controls which sites may frame this page at all - see ALLOWED_EMBED_DOMAINS.
   res.set('Content-Security-Policy', frameAncestorsHeader());

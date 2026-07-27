@@ -58,15 +58,16 @@ router.post('/', requireAuth, (req, res) => {
     streamKey: generateStreamKey(),
     isLive: false,
     lastLiveAt: null,
+    // Shared across every output (embed page metadata + YouTube broadcast
+    // title/description) - see the /:id/metadata route below.
+    title: '',
+    description: '',
     websiteEnabled: true,
-    websiteTitle: '',
-    websiteDescription: '',
     coverImages: [],
     activeCoverImage: null,
     liveThumbnails: [],
     activeLiveThumbnail: null,
     youtubeEnabled: false,
-    youtubeTitle: '',
     youtubeBroadcastId: null,
     youtubeIngestAddress: null,
     youtubeStreamName: null,
@@ -112,23 +113,12 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
   if (typeof req.body.websiteEnabled === 'boolean') {
     channel.websiteEnabled = req.body.websiteEnabled;
   }
-  if (typeof req.body.websiteTitle === 'string') {
-    if (req.body.websiteTitle.length > 100) {
-      return res.status(400).json({ error: 'Title too long' });
-    }
-    channel.websiteTitle = req.body.websiteTitle.trim();
-  }
-  if (typeof req.body.websiteDescription === 'string') {
-    if (req.body.websiteDescription.length > 300) {
-      return res.status(400).json({ error: 'Description too long' });
-    }
-    channel.websiteDescription = req.body.websiteDescription.trim();
-  }
   writeDb(db);
   res.json(channel);
 });
 
-// Admin: update per-channel YouTube relay settings (toggle + stream title)
+// Admin: update per-channel YouTube relay settings (currently just the toggle
+// - title/description live on the shared /:id/metadata route below)
 router.patch('/:id/youtube-settings', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
@@ -137,11 +127,29 @@ router.patch('/:id/youtube-settings', requireAuth, (req, res) => {
   if (typeof req.body.youtubeEnabled === 'boolean') {
     channel.youtubeEnabled = req.body.youtubeEnabled;
   }
-  if (typeof req.body.youtubeTitle === 'string') {
-    if (req.body.youtubeTitle.length > 100) {
+  writeDb(db);
+  res.json(channel);
+});
+
+// Admin: update the shared title/description used both for the embed page's
+// metadata (title tag, meta/OG description, on-screen overlay) and as the
+// YouTube broadcast's title/description.
+router.patch('/:id/metadata', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  if (typeof req.body.title === 'string') {
+    if (req.body.title.length > 100) {
       return res.status(400).json({ error: 'Title too long' });
     }
-    channel.youtubeTitle = req.body.youtubeTitle.trim();
+    channel.title = req.body.title.trim();
+  }
+  if (typeof req.body.description === 'string') {
+    if (req.body.description.length > 300) {
+      return res.status(400).json({ error: 'Description too long' });
+    }
+    channel.description = req.body.description.trim();
   }
   writeDb(db);
   res.json(channel);

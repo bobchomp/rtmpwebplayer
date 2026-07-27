@@ -18,6 +18,7 @@
   var listRefreshTimer = null;
   var detailPollTimer = null;
   var currentChannelId = null;
+  var currentChannelMetadata = { title: '', description: '' };
   var youtubeConnected = false;
   var detailListenersWired = false;
 
@@ -163,14 +164,16 @@
 
   var detailWebsiteHint = document.getElementById('detail-website-hint');
   var detailWebsiteToggle = document.getElementById('detail-website-toggle');
-  var detailWebsiteTitle = document.getElementById('detail-website-title');
-  var detailWebsiteDescription = document.getElementById('detail-website-description');
-  var detailWebsiteMetaSaveBtn = document.getElementById('detail-website-meta-save-btn');
 
   var detailYoutubeHint = document.getElementById('detail-youtube-hint');
   var detailYoutubeToggle = document.getElementById('detail-youtube-toggle');
-  var detailYoutubeTitle = document.getElementById('detail-youtube-title');
-  var detailYoutubeSaveBtn = document.getElementById('detail-youtube-save-btn');
+
+  var editMetadataBtn = document.getElementById('edit-metadata-btn');
+  var metadataModalBackdrop = document.getElementById('metadata-modal-backdrop');
+  var metadataTitleInput = document.getElementById('metadata-title-input');
+  var metadataDescriptionInput = document.getElementById('metadata-description-input');
+  var metadataSaveBtn = document.getElementById('metadata-save-btn');
+  var metadataCancelBtn = document.getElementById('metadata-cancel-btn');
 
   var detailCustomOutputsList = document.getElementById('detail-custom-outputs-list');
   var detailAddOutputBtn = document.getElementById('detail-add-output-btn');
@@ -317,15 +320,14 @@
 
     updatePreviewState(channel.isLive, channel.id);
 
+    currentChannelMetadata = { title: channel.title || '', description: channel.description || '' };
+
     detailWebsiteToggle.checked = channel.websiteEnabled !== false;
     detailWebsiteHint.textContent = channel.websiteEnabled !== false
       ? 'This is the embed player itself'
       : 'Off - the embed and your website are not showing this stream';
-    detailWebsiteTitle.value = channel.websiteTitle || '';
-    detailWebsiteDescription.value = channel.websiteDescription || '';
 
     detailYoutubeToggle.checked = !!channel.youtubeEnabled;
-    detailYoutubeTitle.value = channel.youtubeTitle || '';
     if (!youtubeConnected) {
       detailYoutubeHint.textContent = 'Connect a YouTube account first (see the channel list page)';
     } else if (channel.youtubeEnabled) {
@@ -444,18 +446,6 @@
         });
     });
 
-    detailWebsiteMetaSaveBtn.addEventListener('click', function () {
-      api('/api/channels/' + currentChannelId + '/website-settings', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          websiteTitle: detailWebsiteTitle.value,
-          websiteDescription: detailWebsiteDescription.value,
-        }),
-      })
-        .then(refreshChannelDetail)
-        .catch(function (err) { alert(err.message); });
-    });
-
     detailYoutubeToggle.addEventListener('change', function () {
       api('/api/channels/' + currentChannelId + '/youtube-settings', {
         method: 'PATCH',
@@ -468,12 +458,29 @@
         });
     });
 
-    detailYoutubeSaveBtn.addEventListener('click', function () {
-      api('/api/channels/' + currentChannelId + '/youtube-settings', {
+    editMetadataBtn.addEventListener('click', function () {
+      metadataTitleInput.value = currentChannelMetadata.title;
+      metadataDescriptionInput.value = currentChannelMetadata.description;
+      metadataModalBackdrop.classList.remove('hidden');
+    });
+    metadataCancelBtn.addEventListener('click', function () {
+      metadataModalBackdrop.classList.add('hidden');
+    });
+    metadataModalBackdrop.addEventListener('click', function (e) {
+      if (e.target === metadataModalBackdrop) metadataModalBackdrop.classList.add('hidden');
+    });
+    metadataSaveBtn.addEventListener('click', function () {
+      api('/api/channels/' + currentChannelId + '/metadata', {
         method: 'PATCH',
-        body: JSON.stringify({ youtubeTitle: detailYoutubeTitle.value }),
+        body: JSON.stringify({
+          title: metadataTitleInput.value,
+          description: metadataDescriptionInput.value,
+        }),
       })
-        .then(refreshChannelDetail)
+        .then(function () {
+          metadataModalBackdrop.classList.add('hidden');
+          return refreshChannelDetail();
+        })
         .catch(function (err) { alert(err.message); });
     });
 

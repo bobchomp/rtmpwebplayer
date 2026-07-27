@@ -41,7 +41,7 @@ router.post('/on_publish', (req, res) => {
 
   if (channel.youtubeEnabled && youtube.isConnected()) {
     youtube
-      .createBroadcastAndStream(channel.youtubeTitle)
+      .createBroadcastAndStream(channel.title, channel.description)
       .then((result) => {
         const freshDb = readDb();
         const freshChannel = freshDb.channels[channel.id];
