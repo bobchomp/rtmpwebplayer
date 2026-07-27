@@ -35,15 +35,21 @@ function generateStreamKey() {
   return crypto.randomBytes(20).toString('hex');
 }
 
-// A YouTube-type output carries an OAuth refresh token (a server-to-Google
-// credential with no legitimate reason to reach the browser) - every route
-// that serializes a channel goes through this first to strip it out.
+// A YouTube output carries an OAuth refresh token, and a Facebook output a
+// Page access token - both are server-to-platform credentials with no
+// legitimate reason to reach the browser. Every route that serializes a
+// channel goes through this first to strip whichever of these is present.
+const SECRET_OUTPUT_FIELDS = ['refreshToken', 'pageAccessToken'];
+
 function redactChannel(channel) {
-  if (!channel.outputs || !channel.outputs.some((o) => o.refreshToken)) return channel;
+  const hasSecret = channel.outputs && channel.outputs.some(
+    (o) => SECRET_OUTPUT_FIELDS.some((field) => o[field] !== undefined)
+  );
+  if (!hasSecret) return channel;
   return Object.assign({}, channel, {
     outputs: channel.outputs.map((o) => {
-      if (!o.refreshToken) return o;
-      const { refreshToken, ...safe } = o;
+      const safe = Object.assign({}, o);
+      SECRET_OUTPUT_FIELDS.forEach((field) => delete safe[field]);
       return safe;
     }),
   });
@@ -238,8 +244,8 @@ router.post('/:id/outputs', requireAuth, (req, res) => {
 });
 
 // Admin: update an output. RTMP outputs can have their name/URL/key edited;
-// a YouTube or public-link output can only be switched on/off here (there's
-// nothing else about either of those a form could meaningfully edit).
+// a YouTube, Facebook, or public-link output can only be switched on/off
+// here (there's nothing else about any of those a form could meaningfully edit).
 router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
@@ -248,7 +254,7 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const output = (channel.outputs || []).find((o) => o.id === req.params.outputId);
   if (!output) return res.status(404).json({ error: 'Output not found' });
 
-  if (output.type === 'youtube' || output.type === 'public-link') {
+  if (output.type === 'youtube' || output.type === 'facebook' || output.type === 'public-link') {
     if (typeof req.body.enabled === 'boolean') output.enabled = req.body.enabled;
     writeDb(db);
     return res.json(redactChannel(channel));

@@ -238,6 +238,7 @@
   var addOutputModalBackdrop = document.getElementById('add-output-modal-backdrop');
   var addOutputTypeRow = document.getElementById('add-output-type-row');
   var addOutputTypeYoutubeBtn = document.getElementById('add-output-type-youtube');
+  var addOutputTypeFacebookBtn = document.getElementById('add-output-type-facebook');
   var addOutputTypeRtmpBtn = document.getElementById('add-output-type-rtmp');
   var addOutputTypePublicLinkBtn = document.getElementById('add-output-type-public-link');
   var addOutputRtmpForm = document.getElementById('add-output-rtmp-form');
@@ -390,12 +391,14 @@
     addOutputTypePublicLinkBtn.disabled = outputs.some(function (o) { return o.type === 'public-link'; });
     outputs.forEach(function (output) {
       var isYoutube = output.type === 'youtube';
+      var isFacebook = output.type === 'facebook';
       var isPublicLink = output.type === 'public-link';
       var publicLinkUrl = embedOrigin() + '/watch/' + channel.id;
       var node = outputRowTemplate.content.firstElementChild.cloneNode(true);
-      node.querySelector('.output-name').textContent = isYoutube ? 'YouTube' : isPublicLink ? 'Public Link' : output.name;
+      node.querySelector('.output-name').textContent = isYoutube ? 'YouTube' : isFacebook ? 'Facebook' : isPublicLink ? 'Public Link' : output.name;
       node.querySelector('.output-url').textContent = isYoutube
         ? 'Connected as ' + output.channelTitle
+        : isFacebook ? 'Connected as ' + output.pageName
         : isPublicLink ? publicLinkUrl : output.rtmpUrl;
 
       var toggle = node.querySelector('.output-toggle');
@@ -431,6 +434,7 @@
       node.querySelector('.output-delete-btn').addEventListener('click', function () {
         var message = isYoutube
           ? 'Disconnect YouTube account "' + output.channelTitle + '"?'
+          : isFacebook ? 'Disconnect Facebook Page "' + output.pageName + '"?'
           : isPublicLink ? 'Remove the public link? The current link will stop working.'
           : 'Remove output "' + output.name + '"?';
         if (!confirm(message)) return;
@@ -564,6 +568,9 @@
     });
     addOutputTypeYoutubeBtn.addEventListener('click', function () {
       window.location.href = '/api/youtube/connect?channelId=' + encodeURIComponent(currentChannelId);
+    });
+    addOutputTypeFacebookBtn.addEventListener('click', function () {
+      window.location.href = '/api/facebook/connect?channelId=' + encodeURIComponent(currentChannelId);
     });
     addOutputTypeRtmpBtn.addEventListener('click', function () {
       addOutputTypeRow.classList.add('hidden');

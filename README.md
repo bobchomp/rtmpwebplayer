@@ -221,17 +221,22 @@ stream goes:
   keeps working, since it's a genuinely useful way to confirm a stream is
   live even if you're not publishing it to your site) - handy if a channel
   is only ever meant to go to YouTube or a custom output.
-- Everything else - YouTube and custom RTMP destinations - is added via the
-  **+ Add output** button and shows up in the same list below "Your
-  Website", each with its own on/off toggle and a Delete button. There's no
-  limit on how many of each type a channel can have (up to 10 outputs
-  total), so you can relay to several YouTube channels and/or several
-  custom RTMP destinations at once.
+- Everything else - YouTube, Facebook, and custom RTMP destinations - is
+  added via the **+ Add output** button and shows up in the same list below
+  "Your Website", each with its own on/off toggle and a Delete button.
+  There's no limit on how many of each type a channel can have (up to 10
+  outputs total), so you can relay to several YouTube channels and/or
+  several custom RTMP destinations at once.
   - **Custom RTMP**: picking this in the popup asks for a name, RTMP URL,
     and stream key (the same fields Restream or any platform gives you for
-    a "custom RTMP" destination - Twitch, Facebook, another server, etc).
+    a "custom RTMP" destination - Twitch, another server, etc). This also
+    works for Facebook without any of the setup below - Facebook's Live
+    Producer gives you a persistent RTMPS URL + stream key you can paste in
+    here directly, if you'd rather skip the App Review process entirely.
   - **YouTube**: see the dedicated section below - picking this in the
     popup takes you straight to Google's sign-in.
+  - **Facebook**: see the dedicated section below - picking this in the
+    popup takes you straight to Facebook's sign-in.
   - **Public Link**: adds a direct, shareable watch link for this channel
     (`/watch/<channel-id>`) - the same player as the embed, just full-page
     instead of in an iframe, for pasting into WhatsApp, Facebook, email,
@@ -327,6 +332,68 @@ custom RTMP destination and a YouTube one simultaneously) - just click
 whenever a channel goes live, and spawn/kill the `ffmpeg` relay accordingly.
 The backend creates the actual YouTube broadcast+stream via the YouTube
 Data API the moment a YouTube-enabled channel starts publishing.
+
+## Relaying to Facebook
+
+Same idea as YouTube: connect a Facebook Page once via OAuth, and every time
+you go live the app creates a new Facebook Live Video on that Page
+automatically with your channel's title/description - no pasting a stream
+key by hand. If you'd rather skip all of the setup below, Facebook also
+works today with zero code changes as a plain **Custom RTMP** output (see
+above) - the one-click version below is only worth it if you don't want to
+copy Facebook's stream key over by hand.
+
+**Heads up before you start**: unlike Google's OAuth consent screen (where
+adding yourself as a "test user" is enough for personal use), Facebook
+requires the `pages_manage_posts` permission this needs to go through their
+formal **App Review** process - and often business verification - before
+it'll work with anything beyond your own developer account. That's Meta's
+call to make, not something either of us can speed up, and it can take
+anywhere from days to a few weeks. If you'd rather not deal with that, the
+Custom RTMP route above gets you the exact same stream on Facebook today.
+
+### One-time Meta developer setup
+
+1. Create an app at [developers.facebook.com](https://developers.facebook.com/apps)
+   (choose the "Business" app type).
+2. Add the **Facebook Login** product, and under its settings set a valid
+   OAuth redirect URI of:
+   ```
+   https://<PUBLIC_HOST>/api/facebook/callback
+   ```
+3. Under **App Review → Permissions and Features**, request:
+   `pages_show_list`, `pages_read_engagement`, `pages_manage_posts` - explain
+   in the submission that this is for broadcasting your own organization's
+   live services to your own Facebook Page. This is the step that requires
+   Meta's approval before it works for your real Page (your own account,
+   added as an admin/tester on the app, can use it immediately without
+   waiting for review).
+4. Add the resulting App ID/Secret to `.env`:
+   ```
+   FACEBOOK_APP_ID=...
+   FACEBOOK_APP_SECRET=...
+   FACEBOOK_REDIRECT_URI=https://<PUBLIC_HOST>/api/facebook/callback
+   ```
+   then `docker compose up -d --build`.
+
+### Using it
+
+- On a channel's detail page, click **+ Add output**, then **Facebook** in
+  the popup - this takes you to Facebook's sign-in, and connects whichever
+  Page you approve access to (if your account manages more than one Page,
+  it connects the first one Facebook returns - there's no picker yet).
+- The new output shows up as "Facebook - Connected as <your Page name>",
+  with its own on/off toggle. Title and description come from that
+  channel's shared **Edit title & description** popup, same as YouTube.
+- When the channel goes live, the app creates a new Facebook Live Video on
+  that Page (one per enabled Facebook output) and relays the incoming
+  stream to it. Facebook detects the incoming stream automatically and ends
+  the live video on its own once the stream stops - no manual steps in
+  Facebook's Live Producer either way.
+- Deleting a Facebook output (same Delete button as any other output) only
+  removes it from this app - it doesn't revoke the app's access on
+  Facebook's side. To fully revoke it, remove the app under your Facebook
+  account's Settings → Apps and Websites.
 
 ## Production security checklist
 

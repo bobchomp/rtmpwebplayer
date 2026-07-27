@@ -12,6 +12,7 @@ const hlsProxy = require('./routes/hlsProxy');
 const embed = require('./routes/embed');
 const watch = require('./routes/watch');
 const youtubeAuth = require('./routes/youtubeAuth');
+const facebookAuth = require('./routes/facebookAuth');
 const statsRoutes = require('./routes/stats');
 const geoip = require('./geoip');
 
@@ -60,6 +61,7 @@ app.use('/api', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/rtmp', rtmpHooks);
 app.use('/api/youtube', youtubeAuth);
+app.use('/api/facebook', facebookAuth);
 app.use('/api/stats', statsRoutes);
 app.use('/live', hlsProxy);
 app.use('/embed', embed);

@@ -1,6 +1,7 @@
 const express = require('express');
 const { readDb, writeDb } = require('../db');
 const youtube = require('../youtube');
+const facebook = require('../facebook');
 
 const router = express.Router();
 
@@ -23,8 +24,8 @@ function findChannelByKey(db, streamKey) {
 // seconds to settle. Waiting this long before flipping isLive means nobody
 // (dashboard included) ever sees "live" during that window, so there's
 // never a moment where the play button is visible but silently can't do
-// anything yet. Doesn't affect YouTube - relay-start.sh already polls
-// separately for when that becomes ready.
+// anything yet. Doesn't affect YouTube/Facebook relaying - relay-start.sh
+// already polls separately for when those become ready.
 const LIVE_DELAY_MS = Number(process.env.LIVE_DELAY_MS) || 15000;
 
 // Keyed by channel id - lets a quick reconnect (or a disconnect before the
@@ -54,6 +55,9 @@ router.post('/on_publish', (req, res) => {
       output.broadcastId = null;
       output.ingestAddress = null;
       output.streamName = null;
+    } else if (output.type === 'facebook') {
+      output.liveVideoId = null;
+      output.streamUrl = null;
     }
   });
   writeDb(db);
@@ -99,6 +103,32 @@ router.post('/on_publish', (req, res) => {
           );
         });
     });
+
+  (channel.outputs || [])
+    .filter((output) => output.type === 'facebook' && output.enabled && output.pageAccessToken)
+    .forEach((output) => {
+      facebook
+        .createLiveVideo(output.pageId, output.pageAccessToken, channel.title, channel.description)
+        .then((result) => {
+          const freshDb = readDb();
+          const freshChannel = freshDb.channels[channel.id];
+          // Guard against the stream having already ended before Facebook's
+          // API calls finished, so a late response can't resurrect stale state.
+          if (!freshChannel || !freshChannel.isLive) return;
+          const freshOutput = (freshChannel.outputs || []).find((o) => o.id === output.id);
+          if (freshOutput) {
+            freshOutput.liveVideoId = result.liveVideoId;
+            freshOutput.streamUrl = result.streamUrl;
+            writeDb(freshDb);
+          }
+        })
+        .catch((err) => {
+          console.error(
+            `Failed to create Facebook live video for channel ${channel.id} output ${output.id}:`,
+            err.message
+          );
+        });
+    });
 });
 
 // Called by nginx-rtmp when the publisher disconnects.
@@ -116,6 +146,9 @@ router.post('/on_publish_done', (req, res) => {
         output.broadcastId = null;
         output.ingestAddress = null;
         output.streamName = null;
+      } else if (output.type === 'facebook') {
+        output.liveVideoId = null;
+        output.streamUrl = null;
       }
     });
     writeDb(db);
@@ -125,9 +158,9 @@ router.post('/on_publish_done', (req, res) => {
 
 // Internal only (protected by WEBHOOK_SECRET) - used by the rtmp container's
 // relay-start.sh script (polled repeatedly for ~12s after publish starts,
-// since a YouTube broadcast takes a couple of seconds to become ready while
-// custom RTMP outputs are ready instantly) to find every destination
-// currently enabled and ready to relay this stream to.
+// since a YouTube/Facebook broadcast takes a couple of seconds to become
+// ready while custom RTMP outputs are ready instantly) to find every
+// destination currently enabled and ready to relay this stream to.
 //
 // Plain text, one "id<TAB>rtmp-url" pair per line (tab rather than a more
 // common character like "|" or "," since neither is guaranteed absent from
@@ -146,6 +179,10 @@ router.get('/relay-targets', (req, res) => {
     if (!output.enabled) return;
     if (output.type === 'youtube' && output.ingestAddress && output.streamName) {
       lines.push(`${output.id}\t${output.ingestAddress}/${output.streamName}`);
+    } else if (output.type === 'facebook' && output.streamUrl) {
+      // Facebook returns one complete RTMPS URL with the stream key already
+      // baked in, unlike YouTube's separate ingest address + stream name.
+      lines.push(`${output.id}\t${output.streamUrl}`);
     } else if (output.type === 'rtmp' && output.rtmpUrl && output.streamKey) {
       lines.push(`${output.id}\t${output.rtmpUrl}/${output.streamKey}`);
     }
