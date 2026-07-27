@@ -393,13 +393,16 @@
       var isYoutube = output.type === 'youtube';
       var isFacebook = output.type === 'facebook';
       var isPublicLink = output.type === 'public-link';
-      var publicLinkUrl = embedOrigin() + '/watch/' + channel.id;
+      // Never rendered as visible text (screen shares, screenshots) - the
+      // token in this URL is a real access-control secret now, same trust
+      // level as a stream key, so it only ever leaves via the Copy button.
+      var publicLinkUrl = embedOrigin() + '/watch/' + channel.id + '/' + output.token;
       var node = outputRowTemplate.content.firstElementChild.cloneNode(true);
       node.querySelector('.output-name').textContent = isYoutube ? 'YouTube' : isFacebook ? 'Facebook' : isPublicLink ? 'Public Link' : output.name;
       node.querySelector('.output-url').textContent = isYoutube
         ? 'Connected as ' + output.channelTitle
         : isFacebook ? 'Connected as ' + output.pageName
-        : isPublicLink ? publicLinkUrl : output.rtmpUrl;
+        : isPublicLink ? 'Anyone with the link can watch - click Copy link to share it' : output.rtmpUrl;
 
       var toggle = node.querySelector('.output-toggle');
       toggle.checked = !!output.enabled;

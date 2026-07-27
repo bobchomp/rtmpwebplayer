@@ -221,7 +221,15 @@ router.post('/:id/outputs', requireAuth, (req, res) => {
     if (channel.outputs.some((o) => o.type === 'public-link')) {
       return res.status(400).json({ error: 'This channel already has a public link' });
     }
-    const output = { id: crypto.randomUUID(), type: 'public-link', enabled: true };
+    // The channel id alone isn't a secret - it's the same id already visible
+    // in the embed code - so the actual URL needs a random token nobody
+    // could guess just by taking the embed link and swapping the path.
+    const output = {
+      id: crypto.randomUUID(),
+      type: 'public-link',
+      token: crypto.randomBytes(16).toString('hex'),
+      enabled: true,
+    };
     channel.outputs.push(output);
     writeDb(db);
     return res.status(201).json(redactChannel(channel));
