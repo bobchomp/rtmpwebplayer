@@ -9,7 +9,7 @@ body {
 
 .hidden { display: none !important; }
 
-.view { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.view { max-width: 1600px; margin: 0 auto; padding: 24px; }
 
 h1 { font-size: 20px; margin: 0; }
 h2 { font-size: 16px; margin: 0 0 12px; }
@@ -112,11 +112,16 @@ button.danger:hover { background: #fbe9e7; }
 .back-link:hover { text-decoration: underline; }
 
 .detail-columns {
-  display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; align-items: start;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;
 }
 @media (max-width: 760px) {
   .detail-columns { grid-template-columns: 1fr; }
 }
+
+.detail-col-left, .detail-col-right {
+  display: flex; flex-direction: column; gap: 20px; min-width: 0;
+}
+.detail-col-left .panel, .detail-col-right .panel { margin-bottom: 0; }
 
 .preview-panel { padding: 0; overflow: hidden; }
 .preview-frame {
