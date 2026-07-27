@@ -22,13 +22,27 @@
     padding: 5px 9px; border-radius: 4px; letter-spacing: .04em;
     display: none;
   }
+  #play-button {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 3; width: 84px; height: 84px; border-radius: 50%;
+    background: rgba(0, 0, 0, .6); border: 2px solid rgba(255, 255, 255, .85);
+    cursor: pointer; display: none; align-items: center; justify-content: center;
+    transition: background .15s ease, transform .15s ease;
+  }
+  #play-button:hover { background: rgba(0, 0, 0, .8); transform: translate(-50%, -50%) scale(1.05); }
+  #play-button::after {
+    content: ""; display: block; margin-left: 6px;
+    border-style: solid; border-width: 16px 0 16px 26px;
+    border-color: transparent transparent transparent #fff;
+  }
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="live-badge">LIVE</div>
   <div id="offline-label">Offline</div>
-  <video id="video" playsinline muted controls></video>
+  <button id="play-button" aria-label="Play live stream"></button>
+  <video id="video" playsinline controls></video>
 </div>
 <script src="/vendor/hls.min.js"></script>
 <script>
@@ -37,6 +51,7 @@
   var video = document.getElementById('video');
   var offlineLabel = document.getElementById('offline-label');
   var liveBadge = document.getElementById('live-badge');
+  var playButton = document.getElementById('play-button');
   var streamUrl = '/live/' + channelId + '/index.m3u8';
 
   // Plain dark 16:9 rectangle, used as the video's poster whenever there's no custom cover.
@@ -46,11 +61,13 @@
 
   var hls = null;
   var currentlyLive = false;
+
   var lastCoverUrl = null;
 
   function showOffline() {
     currentlyLive = false;
     liveBadge.style.display = 'none';
+    playButton.style.display = 'none';
     video.removeAttribute('src');
     video.load();
 
@@ -69,11 +86,14 @@
     }
   }
 
-  function showLive() {
+  // Loads/attaches the stream in the background but does not start playback -
+  // playback only ever starts from a real click, never automatically.
+  function prepareLive() {
     currentlyLive = true;
     liveBadge.style.display = 'block';
     offlineLabel.style.display = 'none';
     video.removeAttribute('poster');
+    playButton.style.display = 'flex';
 
     if (window.Hls && Hls.isSupported()) {
       hls = new Hls({ liveDurationInfinity: true, backBufferLength: 30 });
@@ -82,18 +102,24 @@
       });
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, function () {
-        video.play().catch(function () {});
-      });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
-      video.play().catch(function () {});
     } else {
       showOffline();
       offlineLabel.textContent = 'Your browser cannot play this stream.';
       offlineLabel.style.display = 'block';
     }
   }
+
+  function startPlayback() {
+    video.play().catch(function () {});
+  }
+
+  playButton.addEventListener('click', startPlayback);
+  // Covers the case where a viewer uses the native controls' play button instead.
+  video.addEventListener('play', function () {
+    playButton.style.display = 'none';
+  });
 
   function poll() {
     fetch('/api/channels/' + channelId + '/status', { cache: 'no-store' })
@@ -103,7 +129,7 @@
         lastCoverUrl = data.coverUrl;
 
         if (data.isLive && !currentlyLive) {
-          showLive();
+          prepareLive();
         } else if (!data.isLive) {
           showOffline();
         }
