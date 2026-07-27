@@ -41,7 +41,12 @@ router.get('/:channelId/:file', async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   if (file.endsWith('.m3u8')) {
     res.set('Content-Type', 'application/vnd.apple.mpegurl');
-    res.set('Cache-Control', 'no-cache');
+    // "no-cache" alone permits a cache to store this and revalidate later -
+    // but there's no ETag/Last-Modified here to revalidate against, so an
+    // intermediate cache (CDN or browser) could end up just treating a
+    // stored copy as good indefinitely. "no-store" leaves no ambiguity: the
+    // live playlist must never be served from any cache.
+    res.set('Cache-Control', 'no-store');
   } else if (file.endsWith('.ts')) {
     res.set('Content-Type', 'video/mp2t');
     res.set('Cache-Control', 'public, max-age=5');

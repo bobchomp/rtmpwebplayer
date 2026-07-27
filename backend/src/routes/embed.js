@@ -40,6 +40,11 @@ router.get('/:channelId', (req, res) => {
 
   // Controls which sites may frame this page at all - see ALLOWED_EMBED_DOMAINS.
   res.set('Content-Security-Policy', frameAncestorsHeader());
+  // Without this, a browser (or the CDN) could serve a stale cached copy of
+  // this page's script indefinitely - e.g. the dashboard's own live-preview
+  // iframe, left open across many deploys, silently running old player code
+  // until someone thought to manually clear site data.
+  res.set('Cache-Control', 'no-store');
   res.type('html').send(html);
 });
 

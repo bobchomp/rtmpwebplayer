@@ -333,6 +333,11 @@ router.get('/:id/status', (req, res) => {
   const channel = db.channels[req.params.id];
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
+  // The client's fetch() cache:'no-store' option only governs the browser's
+  // own cache - it does nothing to stop an intermediary (CDN) from caching
+  // this response if some other rule ever ends up matching /api/ paths, so
+  // this needs to be explicit here too.
+  res.set('Cache-Control', 'no-store');
   res.json({
     id: channel.id,
     name: channel.name,
