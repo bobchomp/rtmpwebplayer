@@ -1,6 +1,10 @@
+const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
-const { readDb, writeDb } = require('./db');
+const { readDb, writeDb, DATA_DIR } = require('./db');
 const geoip = require('./geoip');
+
+const PLAYS_FILE = path.join(DATA_DIR, 'plays.json');
 
 // A viewer who keeps watching (pausing/buffering/resuming) generates repeated
 // "playing" events - within this window they're treated as one ongoing watch
@@ -8,11 +12,70 @@ const geoip = require('./geoip');
 // than this means they've genuinely come back later, so it's a fresh row.
 const SESSION_GAP_MS = 30 * 60 * 1000;
 
+// A busy service start can mean dozens of viewers' first play event landing
+// within the same few seconds. Writing plays.json straight through on every
+// single one would mean that many synchronous full-file rewrites blocking
+// Node's single thread back to back, and the file only grows over time as
+// more history accumulates, so each of those rewrites gets more expensive
+// the longer this has been running. Buffering in memory and only flushing
+// on a timer turns "one disk write per viewer" into "at most one disk write
+// per FLUSH_INTERVAL_MS", regardless of how many people show up at once.
+const FLUSH_INTERVAL_MS = 5000;
+
+let plays = null; // in-memory, authoritative between flushes - null means not loaded yet
+let dirty = false;
+
+function ensurePlaysFile() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(PLAYS_FILE)) {
+    fs.writeFileSync(PLAYS_FILE, JSON.stringify({ plays: [] }, null, 2));
+  }
+}
+
+function readPlaysFile() {
+  ensurePlaysFile();
+  return JSON.parse(fs.readFileSync(PLAYS_FILE, 'utf8')).plays || [];
+}
+
+function writePlaysFile(rows) {
+  ensurePlaysFile();
+  const tmpFile = `${PLAYS_FILE}.tmp`;
+  fs.writeFileSync(tmpFile, JSON.stringify({ plays: rows }, null, 2));
+  fs.renameSync(tmpFile, PLAYS_FILE);
+}
+
+// Loads plays.json into memory once. Also migrates the one-time case of an
+// earlier version of this app that stored the plays array embedded directly
+// in db.json instead of its own file - idempotent, since db.plays is deleted
+// once migrated.
+function ensureLoaded() {
+  if (plays !== null) return;
+  plays = readPlaysFile();
+
+  const db = readDb();
+  if (db.plays) {
+    plays = plays.concat(db.plays);
+    delete db.plays;
+    writeDb(db);
+    writePlaysFile(plays);
+  }
+}
+
+function flush() {
+  if (!dirty) return;
+  writePlaysFile(plays);
+  dirty = false;
+}
+
 function detectDeviceType(userAgent) {
   return /Mobi|Android|iPhone|iPod|iPad/i.test(userAgent || '') ? 'Mobile' : 'Desktop';
 }
 
+// Only ever touches the in-memory array - see FLUSH_INTERVAL_MS above for
+// why this deliberately doesn't write to disk itself.
 function recordPlay({ channelId, ip, userAgent }) {
+  ensureLoaded();
+
   const db = readDb();
   const channel = db.channels[channelId];
   if (!channel) return;
@@ -20,7 +83,7 @@ function recordPlay({ channelId, ip, userAgent }) {
   const now = Date.now();
   const nowIso = new Date(now).toISOString();
 
-  const existing = db.plays.find(
+  const existing = plays.find(
     (p) =>
       p.channelId === channelId &&
       p.ip === ip &&
@@ -29,12 +92,12 @@ function recordPlay({ channelId, ip, userAgent }) {
 
   if (existing) {
     existing.latestPlayAt = nowIso;
-    writeDb(db);
+    dirty = true;
     return;
   }
 
   const geo = geoip.lookupIp(ip);
-  db.plays.push({
+  plays.push({
     id: crypto.randomUUID(),
     channelId,
     channelName: channel.name,
@@ -48,26 +111,41 @@ function recordPlay({ channelId, ip, userAgent }) {
     firstPlayAt: nowIso,
     latestPlayAt: nowIso,
   });
-  writeDb(db);
+  dirty = true;
 }
 
+// Reads straight from the in-memory array - always fully up to date
+// regardless of the flush timer, since that's only about disk durability.
 function listPlays({ channelId, from, to } = {}) {
-  const db = readDb();
-  let plays = db.plays.slice();
+  ensureLoaded();
+  let rows = plays.slice();
 
   if (channelId) {
-    plays = plays.filter((p) => p.channelId === channelId);
+    rows = rows.filter((p) => p.channelId === channelId);
   }
   if (from) {
     const fromMs = new Date(from).getTime();
-    plays = plays.filter((p) => new Date(p.latestPlayAt).getTime() >= fromMs);
+    rows = rows.filter((p) => new Date(p.latestPlayAt).getTime() >= fromMs);
   }
   if (to) {
     const toMs = new Date(to).getTime();
-    plays = plays.filter((p) => new Date(p.latestPlayAt).getTime() <= toMs);
+    rows = rows.filter((p) => new Date(p.latestPlayAt).getTime() <= toMs);
   }
 
-  return plays.sort((a, b) => new Date(b.latestPlayAt) - new Date(a.latestPlayAt));
+  return rows.sort((a, b) => new Date(b.latestPlayAt) - new Date(a.latestPlayAt));
 }
+
+setInterval(flush, FLUSH_INTERVAL_MS).unref();
+
+// Best-effort durability for whatever's still only in memory when the
+// process stops (e.g. `docker compose restart`, which sends SIGTERM before
+// killing it) - without this, up to FLUSH_INTERVAL_MS worth of play history
+// could be lost on every single restart.
+['SIGTERM', 'SIGINT'].forEach((signal) => {
+  process.on(signal, () => {
+    flush();
+    process.exit(0);
+  });
+});
 
 module.exports = { recordPlay, listPlays };

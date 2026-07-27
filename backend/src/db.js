@@ -8,7 +8,7 @@ const DB_FILE = path.join(DATA_DIR, 'db.json');
 function ensureDb() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify({ channels: {}, plays: [] }, null, 2));
+    fs.writeFileSync(DB_FILE, JSON.stringify({ channels: {} }, null, 2));
   }
 }
 
@@ -57,7 +57,6 @@ function readDb() {
   ensureDb();
   const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   Object.values(db.channels || {}).forEach(migrateChannel);
-  db.plays = db.plays || [];
   return db;
 }
 
@@ -68,4 +67,4 @@ function writeDb(data) {
   fs.renameSync(tmpFile, DB_FILE);
 }
 
-module.exports = { readDb, writeDb };
+module.exports = { readDb, writeDb, DATA_DIR };
