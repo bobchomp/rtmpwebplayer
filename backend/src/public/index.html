@@ -74,12 +74,22 @@
     </div>
 
     <div class="field-row">
-      <label>Offline cover image</label>
+      <label>Offline cover image (shown when not streaming)</label>
       <div class="cover-row">
         <img class="cover-preview hidden" alt="cover preview">
         <span class="cover-none hint">Using default placeholder</span>
         <input type="file" class="cover-input" accept=".png,.jpg,.jpeg,.webp">
         <button class="remove-cover-btn secondary hidden">Remove</button>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label>Live thumbnail (shown once live, before play is pressed)</label>
+      <div class="cover-row">
+        <img class="thumb-preview hidden" alt="live thumbnail preview">
+        <span class="thumb-none hint">Falls back to the offline cover, or the default placeholder</span>
+        <input type="file" class="thumb-input" accept=".png,.jpg,.jpeg,.webp">
+        <button class="remove-thumb-btn secondary hidden">Remove</button>
       </div>
     </div>
 

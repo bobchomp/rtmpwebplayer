@@ -59,6 +59,7 @@ router.post('/', requireAuth, (req, res) => {
     isLive: false,
     lastLiveAt: null,
     coverImage: null,
+    liveThumbnail: null,
     createdAt: new Date().toISOString(),
   };
   db.channels[id] = channel;
@@ -91,6 +92,10 @@ router.delete('/:id', requireAuth, (req, res) => {
     const p = path.join(UPLOADS_DIR, channel.coverImage);
     if (fs.existsSync(p)) fs.unlinkSync(p);
   }
+  if (channel.liveThumbnail) {
+    const p = path.join(UPLOADS_DIR, channel.liveThumbnail);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
   delete db.channels[req.params.id];
   writeDb(db);
   res.json({ ok: true });
@@ -108,47 +113,54 @@ router.post('/:id/regenerate-key', requireAuth, (req, res) => {
   res.json(channel);
 });
 
-// Admin: upload a custom offline cover image
-router.post('/:id/cover', requireAuth, (req, res) => {
-  const db = readDb();
-  const channel = db.channels[req.params.id];
-  if (!channel) return res.status(404).json({ error: 'Not found' });
+// Registers upload/remove routes for a channel image field (offline cover,
+// live-pending thumbnail) - same validation and file-cleanup logic either way.
+function registerImageRoutes(routeSegment, dbField) {
+  router.post(`/:id/${routeSegment}`, requireAuth, (req, res) => {
+    const db = readDb();
+    const channel = db.channels[req.params.id];
+    if (!channel) return res.status(404).json({ error: 'Not found' });
 
-  upload.single('cover')(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    upload.single('image')(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-    const fresh = readDb();
-    const ch = fresh.channels[req.params.id];
-    if (!ch) {
-      fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
-      return res.status(404).json({ error: 'Not found' });
-    }
+      const fresh = readDb();
+      const ch = fresh.channels[req.params.id];
+      if (!ch) {
+        fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
+        return res.status(404).json({ error: 'Not found' });
+      }
 
-    if (ch.coverImage) {
-      const old = path.join(UPLOADS_DIR, ch.coverImage);
-      if (fs.existsSync(old)) fs.unlinkSync(old);
-    }
-    ch.coverImage = req.file.filename;
-    writeDb(fresh);
-    res.json(ch);
+      if (ch[dbField]) {
+        const old = path.join(UPLOADS_DIR, ch[dbField]);
+        if (fs.existsSync(old)) fs.unlinkSync(old);
+      }
+      ch[dbField] = req.file.filename;
+      writeDb(fresh);
+      res.json(ch);
+    });
   });
-});
 
-// Admin: remove the custom cover image (revert to default placeholder)
-router.delete('/:id/cover', requireAuth, (req, res) => {
-  const db = readDb();
-  const channel = db.channels[req.params.id];
-  if (!channel) return res.status(404).json({ error: 'Not found' });
+  router.delete(`/:id/${routeSegment}`, requireAuth, (req, res) => {
+    const db = readDb();
+    const channel = db.channels[req.params.id];
+    if (!channel) return res.status(404).json({ error: 'Not found' });
 
-  if (channel.coverImage) {
-    const p = path.join(UPLOADS_DIR, channel.coverImage);
-    if (fs.existsSync(p)) fs.unlinkSync(p);
-    channel.coverImage = null;
-    writeDb(db);
-  }
-  res.json(channel);
-});
+    if (channel[dbField]) {
+      const p = path.join(UPLOADS_DIR, channel[dbField]);
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+      channel[dbField] = null;
+      writeDb(db);
+    }
+    res.json(channel);
+  });
+}
+
+// Admin: custom offline cover image (shown whenever the channel isn't live)
+registerImageRoutes('cover', 'coverImage');
+// Admin: custom live-pending thumbnail (shown once live, before the viewer presses play)
+registerImageRoutes('live-thumbnail', 'liveThumbnail');
 
 // Public: live status + cover, polled by the embed player. Never exposes the stream key.
 router.get('/:id/status', (req, res) => {
@@ -161,6 +173,7 @@ router.get('/:id/status', (req, res) => {
     name: channel.name,
     isLive: channel.isLive,
     coverUrl: channel.coverImage ? `/uploads/${channel.coverImage}` : null,
+    liveThumbnailUrl: channel.liveThumbnail ? `/uploads/${channel.liveThumbnail}` : null,
   });
 });
 

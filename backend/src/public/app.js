@@ -129,33 +129,39 @@
       api('/api/channels/' + channel.id, { method: 'DELETE' }).then(loadChannels);
     });
 
-    var coverPreview = node.querySelector('.cover-preview');
-    var coverNone = node.querySelector('.cover-none');
-    var removeCoverBtn = node.querySelector('.remove-cover-btn');
-    if (channel.coverImage) {
-      coverPreview.src = '/uploads/' + channel.coverImage + '?t=' + Date.now();
-      coverPreview.classList.remove('hidden');
-      coverNone.classList.add('hidden');
-      removeCoverBtn.classList.remove('hidden');
+    function wireImageField(prefix, routeSegment, dbField) {
+      var preview = node.querySelector('.' + prefix + '-preview');
+      var none = node.querySelector('.' + prefix + '-none');
+      var removeBtn = node.querySelector('.remove-' + prefix + '-btn');
+
+      if (channel[dbField]) {
+        preview.src = '/uploads/' + channel[dbField] + '?t=' + Date.now();
+        preview.classList.remove('hidden');
+        none.classList.add('hidden');
+        removeBtn.classList.remove('hidden');
+      }
+
+      node.querySelector('.' + prefix + '-input').addEventListener('change', function (e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        var formData = new FormData();
+        formData.append('image', file);
+        fetch('/api/channels/' + channel.id + '/' + routeSegment, { method: 'POST', body: formData })
+          .then(function (res) {
+            if (!res.ok) throw new Error('Upload failed');
+            return res.json();
+          })
+          .then(loadChannels)
+          .catch(function (err) { alert(err.message); });
+      });
+
+      removeBtn.addEventListener('click', function () {
+        api('/api/channels/' + channel.id + '/' + routeSegment, { method: 'DELETE' }).then(loadChannels);
+      });
     }
 
-    node.querySelector('.cover-input').addEventListener('change', function (e) {
-      var file = e.target.files[0];
-      if (!file) return;
-      var formData = new FormData();
-      formData.append('cover', file);
-      fetch('/api/channels/' + channel.id + '/cover', { method: 'POST', body: formData })
-        .then(function (res) {
-          if (!res.ok) throw new Error('Upload failed');
-          return res.json();
-        })
-        .then(loadChannels)
-        .catch(function (err) { alert(err.message); });
-    });
-
-    removeCoverBtn.addEventListener('click', function () {
-      api('/api/channels/' + channel.id + '/cover', { method: 'DELETE' }).then(loadChannels);
-    });
+    wireImageField('cover', 'cover', 'coverImage');
+    wireImageField('thumb', 'live-thumbnail', 'liveThumbnail');
 
     return node;
   }

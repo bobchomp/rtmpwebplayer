@@ -63,6 +63,7 @@
   var currentlyLive = false;
 
   var lastCoverUrl = null;
+  var lastLiveThumbnailUrl = null;
 
   function showOffline() {
     currentlyLive = false;
@@ -88,13 +89,15 @@
 
   // Loads/attaches the stream in the background but does not start playback -
   // playback only ever starts from a real click, never automatically. The
-  // cover image stays as the video's poster (thumbnail) throughout this
-  // state; browsers automatically stop showing it once real playback begins.
+  // live thumbnail (falling back to the offline cover, then a plain default)
+  // stays as the video's poster throughout this state; browsers automatically
+  // stop showing a poster once real playback begins.
   function prepareLive() {
     currentlyLive = true;
     liveBadge.style.display = 'block';
     offlineLabel.style.display = 'none';
     playButton.style.display = 'flex';
+    video.poster = lastLiveThumbnailUrl || lastCoverUrl || DEFAULT_POSTER;
 
     if (window.Hls && Hls.isSupported()) {
       hls = new Hls({ liveDurationInfinity: true, backBufferLength: 30 });
@@ -128,6 +131,7 @@
       .then(function (data) {
         if (!data) return;
         lastCoverUrl = data.coverUrl;
+        lastLiveThumbnailUrl = data.liveThumbnailUrl;
 
         if (data.isLive && !currentlyLive) {
           prepareLive();
