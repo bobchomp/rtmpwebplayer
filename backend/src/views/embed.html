@@ -139,7 +139,17 @@
   var volumeSlider = document.getElementById('volume-slider');
   var fullscreenBtn = document.getElementById('fullscreen-btn');
   var fullscreenIconPath = document.getElementById('fullscreen-icon-path');
-  var streamUrl = '/live/' + channelId + '/index.m3u8';
+  var manifestBaseUrl = '/live/' + channelId + '/index.m3u8';
+  // A fresh query string on every single attempt (not just every retry -
+  // every call) so a CDN or browser can never possibly have a cached
+  // response, positive or negative, for this exact URL from a previous
+  // attempt - this is the first request nginx has ever seen for it. Without
+  // this, an intermediary caching a 404 from the well-known "not ready yet"
+  // startup race (before nginx has written the first segment) could keep
+  // serving that same stale 404 well after the stream is genuinely live.
+  function freshManifestUrl() {
+    return manifestBaseUrl + '?_=' + Date.now();
+  }
 
   var pageTitle = __TITLE_JSON__;
   var pageDescription = __DESCRIPTION_JSON__;
@@ -285,10 +295,10 @@
           retryTimer = setTimeout(attemptLoad, RETRY_DELAY_MS);
         }
       });
-      hls.loadSource(streamUrl);
+      hls.loadSource(freshManifestUrl());
       hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = streamUrl;
+      video.src = freshManifestUrl();
     } else {
       showOffline();
       offlineLabel.textContent = 'Your browser cannot play this stream.';
