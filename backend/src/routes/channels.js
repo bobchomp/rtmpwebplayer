@@ -337,6 +337,7 @@ router.get('/:id/status', (req, res) => {
     id: channel.id,
     name: channel.name,
     isLive: channel.isLive,
+    lastLiveAt: channel.lastLiveAt,
     coverUrl: channel.activeCoverImage ? `/uploads/${channel.activeCoverImage}` : null,
     liveThumbnailUrl: channel.activeLiveThumbnail ? `/uploads/${channel.activeLiveThumbnail}` : null,
   });

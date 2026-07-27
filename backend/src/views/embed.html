@@ -73,6 +73,7 @@
 
   var lastCoverUrl = null;
   var lastLiveThumbnailUrl = null;
+  var lastSeenLiveAt = null;
 
   function showOffline() {
     currentlyLive = false;
@@ -164,8 +165,26 @@
     }
   }
 
+  // Called whenever the channel is (newly, or freshly) live - including when
+  // a viewer has had this page open across a stream restart. Always resets
+  // any previous hls.js/video state rather than assuming there was none, so
+  // a stale player left over from an earlier broadcast (which the 5s poll
+  // may never have observed going offline, if the gap between streams was
+  // shorter than that) doesn't just sit there frozen on old, dead data.
   function prepareLive() {
     currentlyLive = true;
+    playRequested = false;
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+    if (hls) {
+      hls.destroy();
+      hls = null;
+    }
+    video.removeAttribute('src');
+    video.load();
+
     liveBadge.style.display = 'block';
     offlineLabel.style.display = 'none';
     playButton.style.display = 'flex';
@@ -225,7 +244,13 @@
         lastCoverUrl = data.coverUrl;
         lastLiveThumbnailUrl = data.liveThumbnailUrl;
 
-        if (data.isLive && !currentlyLive) {
+        // A restart can be quicker than this 5s poll interval, so isLive can
+        // read true on every single poll straight through a restart with no
+        // observed offline gap in between - lastLiveAt changing is what
+        // actually marks this as a new broadcast session needing a reload.
+        var isNewSession = data.isLive && data.lastLiveAt && data.lastLiveAt !== lastSeenLiveAt;
+        if (data.isLive && (!currentlyLive || isNewSession)) {
+          lastSeenLiveAt = data.lastLiveAt;
           prepareLive();
         } else if (!data.isLive) {
           showOffline();
