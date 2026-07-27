@@ -129,19 +129,55 @@
       api('/api/channels/' + channel.id, { method: 'DELETE' }).then(loadChannels);
     });
 
-    function wireImageField(prefix, routeSegment, dbField) {
-      var preview = node.querySelector('.' + prefix + '-preview');
-      var none = node.querySelector('.' + prefix + '-none');
-      var removeBtn = node.querySelector('.remove-' + prefix + '-btn');
+    function wireGallery(prefix, routeSegment, listField, activeField) {
+      var galleryEl = node.querySelector('.' + prefix + '-gallery');
+      var list = channel[listField] || [];
 
-      if (channel[dbField]) {
-        preview.src = '/uploads/' + channel[dbField] + '?t=' + Date.now();
-        preview.classList.remove('hidden');
-        none.classList.add('hidden');
-        removeBtn.classList.remove('hidden');
+      galleryEl.innerHTML = '';
+      if (list.length === 0) {
+        var empty = document.createElement('span');
+        empty.className = 'gallery-empty hint';
+        empty.textContent = 'No images uploaded yet';
+        galleryEl.appendChild(empty);
       }
 
-      node.querySelector('.' + prefix + '-input').addEventListener('change', function (e) {
+      list.forEach(function (filename) {
+        var item = document.createElement('div');
+        item.className = 'gallery-item' + (filename === channel[activeField] ? ' active' : '');
+
+        var img = document.createElement('img');
+        img.src = '/uploads/' + filename;
+        img.alt = '';
+        img.title = 'Click to use this image';
+        img.addEventListener('click', function () {
+          api('/api/channels/' + channel.id + '/' + routeSegment + '/' + encodeURIComponent(filename) + '/activate', { method: 'POST' })
+            .then(loadChannels)
+            .catch(function (err) { alert(err.message); });
+        });
+        item.appendChild(img);
+
+        if (filename === channel[activeField]) {
+          var badge = document.createElement('span');
+          badge.className = 'gallery-active-badge';
+          badge.textContent = 'ACTIVE';
+          item.appendChild(badge);
+        }
+
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'gallery-remove';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Delete this image';
+        removeBtn.addEventListener('click', function () {
+          api('/api/channels/' + channel.id + '/' + routeSegment + '/' + encodeURIComponent(filename), { method: 'DELETE' })
+            .then(loadChannels)
+            .catch(function (err) { alert(err.message); });
+        });
+        item.appendChild(removeBtn);
+
+        galleryEl.appendChild(item);
+      });
+
+      node.querySelector('.' + prefix + '-upload-input').addEventListener('change', function (e) {
         var file = e.target.files[0];
         if (!file) return;
         var formData = new FormData();
@@ -154,14 +190,10 @@
           .then(loadChannels)
           .catch(function (err) { alert(err.message); });
       });
-
-      removeBtn.addEventListener('click', function () {
-        api('/api/channels/' + channel.id + '/' + routeSegment, { method: 'DELETE' }).then(loadChannels);
-      });
     }
 
-    wireImageField('cover', 'cover', 'coverImage');
-    wireImageField('thumb', 'live-thumbnail', 'liveThumbnail');
+    wireGallery('cover', 'covers', 'coverImages', 'activeCoverImage');
+    wireGallery('thumb', 'live-thumbnails', 'liveThumbnails', 'activeLiveThumbnail');
 
     return node;
   }

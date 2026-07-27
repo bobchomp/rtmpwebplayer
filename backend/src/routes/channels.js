@@ -58,8 +58,10 @@ router.post('/', requireAuth, (req, res) => {
     streamKey: generateStreamKey(),
     isLive: false,
     lastLiveAt: null,
-    coverImage: null,
-    liveThumbnail: null,
+    coverImages: [],
+    activeCoverImage: null,
+    liveThumbnails: [],
+    activeLiveThumbnail: null,
     createdAt: new Date().toISOString(),
   };
   db.channels[id] = channel;
@@ -88,14 +90,10 @@ router.delete('/:id', requireAuth, (req, res) => {
   const channel = db.channels[req.params.id];
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
-  if (channel.coverImage) {
-    const p = path.join(UPLOADS_DIR, channel.coverImage);
+  (channel.coverImages || []).concat(channel.liveThumbnails || []).forEach((filename) => {
+    const p = path.join(UPLOADS_DIR, filename);
     if (fs.existsSync(p)) fs.unlinkSync(p);
-  }
-  if (channel.liveThumbnail) {
-    const p = path.join(UPLOADS_DIR, channel.liveThumbnail);
-    if (fs.existsSync(p)) fs.unlinkSync(p);
-  }
+  });
   delete db.channels[req.params.id];
   writeDb(db);
   res.json({ ok: true });
@@ -113,9 +111,13 @@ router.post('/:id/regenerate-key', requireAuth, (req, res) => {
   res.json(channel);
 });
 
-// Registers upload/remove routes for a channel image field (offline cover,
-// live-pending thumbnail) - same validation and file-cleanup logic either way.
-function registerImageRoutes(routeSegment, dbField) {
+// Registers upload/list/delete/activate routes for a channel image gallery
+// (offline covers, live-pending thumbnails) - each is a list of uploaded
+// images plus a pointer to the one currently in use.
+function registerGalleryRoutes(routeSegment, listField, activeField) {
+  // Upload a new image into the gallery. The first image ever uploaded
+  // becomes active automatically; later ones are just added to the list
+  // until explicitly activated.
   router.post(`/:id/${routeSegment}`, requireAuth, (req, res) => {
     const db = readDb();
     const channel = db.channels[req.params.id];
@@ -132,35 +134,56 @@ function registerImageRoutes(routeSegment, dbField) {
         return res.status(404).json({ error: 'Not found' });
       }
 
-      if (ch[dbField]) {
-        const old = path.join(UPLOADS_DIR, ch[dbField]);
-        if (fs.existsSync(old)) fs.unlinkSync(old);
-      }
-      ch[dbField] = req.file.filename;
+      ch[listField] = ch[listField] || [];
+      ch[listField].push(req.file.filename);
+      if (!ch[activeField]) ch[activeField] = req.file.filename;
       writeDb(fresh);
       res.json(ch);
     });
   });
 
-  router.delete(`/:id/${routeSegment}`, requireAuth, (req, res) => {
+  // Remove one image from the gallery. If it was active, falls back to no
+  // active image (the player's own default-placeholder chain takes over).
+  router.delete(`/:id/${routeSegment}/:filename`, requireAuth, (req, res) => {
     const db = readDb();
     const channel = db.channels[req.params.id];
     if (!channel) return res.status(404).json({ error: 'Not found' });
 
-    if (channel[dbField]) {
-      const p = path.join(UPLOADS_DIR, channel[dbField]);
-      if (fs.existsSync(p)) fs.unlinkSync(p);
-      channel[dbField] = null;
-      writeDb(db);
+    const filename = req.params.filename;
+    const list = channel[listField] || [];
+    if (!list.includes(filename)) return res.status(404).json({ error: 'Image not found' });
+
+    channel[listField] = list.filter((f) => f !== filename);
+    if (channel[activeField] === filename) channel[activeField] = null;
+
+    const p = path.join(UPLOADS_DIR, filename);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+
+    writeDb(db);
+    res.json(channel);
+  });
+
+  // Set which image in the gallery is currently in use.
+  router.post(`/:id/${routeSegment}/:filename/activate`, requireAuth, (req, res) => {
+    const db = readDb();
+    const channel = db.channels[req.params.id];
+    if (!channel) return res.status(404).json({ error: 'Not found' });
+
+    const filename = req.params.filename;
+    if (!(channel[listField] || []).includes(filename)) {
+      return res.status(404).json({ error: 'Image not found' });
     }
+
+    channel[activeField] = filename;
+    writeDb(db);
     res.json(channel);
   });
 }
 
-// Admin: custom offline cover image (shown whenever the channel isn't live)
-registerImageRoutes('cover', 'coverImage');
-// Admin: custom live-pending thumbnail (shown once live, before the viewer presses play)
-registerImageRoutes('live-thumbnail', 'liveThumbnail');
+// Admin: offline cover gallery (shown whenever the channel isn't live)
+registerGalleryRoutes('covers', 'coverImages', 'activeCoverImage');
+// Admin: live-pending thumbnail gallery (shown once live, before play is pressed)
+registerGalleryRoutes('live-thumbnails', 'liveThumbnails', 'activeLiveThumbnail');
 
 // Public: live status + cover, polled by the embed player. Never exposes the stream key.
 router.get('/:id/status', (req, res) => {
@@ -172,8 +195,8 @@ router.get('/:id/status', (req, res) => {
     id: channel.id,
     name: channel.name,
     isLive: channel.isLive,
-    coverUrl: channel.coverImage ? `/uploads/${channel.coverImage}` : null,
-    liveThumbnailUrl: channel.liveThumbnail ? `/uploads/${channel.liveThumbnail}` : null,
+    coverUrl: channel.activeCoverImage ? `/uploads/${channel.activeCoverImage}` : null,
+    liveThumbnailUrl: channel.activeLiveThumbnail ? `/uploads/${channel.activeLiveThumbnail}` : null,
   });
 });
 
