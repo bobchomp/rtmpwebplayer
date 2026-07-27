@@ -162,6 +162,9 @@
   var detailRegenBtn = document.getElementById('detail-regen-btn');
   var detailEmbedCode = document.getElementById('detail-embed-code');
 
+  var detailWebsiteHint = document.getElementById('detail-website-hint');
+  var detailWebsiteToggle = document.getElementById('detail-website-toggle');
+
   var detailYoutubeHint = document.getElementById('detail-youtube-hint');
   var detailYoutubeToggle = document.getElementById('detail-youtube-toggle');
   var detailYoutubeTitle = document.getElementById('detail-youtube-title');
@@ -310,6 +313,11 @@
 
     updatePreviewState(channel.isLive, channel.id);
 
+    detailWebsiteToggle.checked = channel.websiteEnabled !== false;
+    detailWebsiteHint.textContent = channel.websiteEnabled !== false
+      ? 'This is the embed player itself'
+      : 'Off - the embed and your website are not showing this stream';
+
     detailYoutubeToggle.checked = !!channel.youtubeEnabled;
     detailYoutubeTitle.value = channel.youtubeTitle || '';
     if (!youtubeConnected) {
@@ -416,6 +424,18 @@
       api('/api/channels/' + currentChannelId + '/regenerate-key', { method: 'POST' })
         .then(refreshChannelDetail)
         .catch(function (err) { alert(err.message); });
+    });
+
+    detailWebsiteToggle.addEventListener('change', function () {
+      api('/api/channels/' + currentChannelId + '/website-settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ websiteEnabled: detailWebsiteToggle.checked }),
+      })
+        .then(refreshChannelDetail)
+        .catch(function (err) {
+          alert(err.message);
+          detailWebsiteToggle.checked = !detailWebsiteToggle.checked;
+        });
     });
 
     detailYoutubeToggle.addEventListener('change', function () {

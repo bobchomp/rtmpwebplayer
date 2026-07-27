@@ -149,7 +149,6 @@ button.danger:hover { background: #fbe9e7; }
 .output-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .output-name { font-weight: 600; font-size: 14px; }
 .output-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.output-always-on { white-space: nowrap; }
 .output-divider { border: none; border-top: 1px solid #e2e3e6; margin: 16px 0; }
 
 .add-output-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }

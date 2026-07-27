@@ -209,7 +209,12 @@ streaming on the left, the outputs it fans out to on the right.
 The right panel on a channel's detail page lists everywhere that channel's
 stream goes:
 
-- **Your Website** - always on, this is the embed player itself (see above).
+- **Your Website** - the embed player itself (see above). Has its own
+  on/off toggle: switching it off makes the embed page and video URLs
+  return "not found" to everyone except you (your own dashboard preview
+  keeps working, since it's a genuinely useful way to confirm a stream is
+  live even if you're not publishing it to your site) - handy if a channel
+  is only ever meant to go to YouTube or a custom output.
 - **YouTube** - see the dedicated section below.
 - **Custom RTMP outputs** - click "+ Add custom RTMP output" and fill in a
   name, RTMP URL, and stream key (the same fields Restream or any platform

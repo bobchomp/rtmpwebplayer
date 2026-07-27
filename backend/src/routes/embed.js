@@ -26,6 +26,13 @@ router.get('/:channelId', (req, res) => {
   const channel = db.channels[req.params.channelId];
   if (!channel) return res.status(404).send('Channel not found');
 
+  // Turning "Your Website" off only blocks public visitors - the dashboard's
+  // own live preview reuses this same route and should keep working for you.
+  const isAdmin = !!(req.session && req.session.isAdmin);
+  if (!channel.websiteEnabled && !isAdmin) {
+    return res.status(404).send('This stream is not available here.');
+  }
+
   const html = TEMPLATE.replace(/__CHANNEL_ID__/g, channel.id).replace(
     /__CHANNEL_NAME__/g,
     escapeHtml(channel.name)

@@ -22,6 +22,11 @@ router.get('/:channelId/:file', async (req, res) => {
   const channel = db.channels[channelId];
   if (!channel) return res.status(404).send('Not found');
 
+  // Same admin exception as embed.js - so the dashboard's own preview still
+  // works even when the public embed is switched off.
+  const isAdmin = !!(req.session && req.session.isAdmin);
+  if (!channel.websiteEnabled && !isAdmin) return res.status(404).send('Not found');
+
   const target = `${HLS_INTERNAL_URL}/hls/${channel.streamKey}/${file}`;
 
   let upstream;

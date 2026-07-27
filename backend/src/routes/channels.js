@@ -58,6 +58,7 @@ router.post('/', requireAuth, (req, res) => {
     streamKey: generateStreamKey(),
     isLive: false,
     lastLiveAt: null,
+    websiteEnabled: true,
     coverImages: [],
     activeCoverImage: null,
     liveThumbnails: [],
@@ -94,6 +95,21 @@ router.patch('/:id', requireAuth, (req, res) => {
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   channel.name = name;
+  writeDb(db);
+  res.json(channel);
+});
+
+// Admin: toggle whether the embed page / HLS proxy serve this channel at
+// all. RTMP ingest and other outputs (YouTube, custom RTMP) are unaffected -
+// this only gates the public-facing website/embed path.
+router.patch('/:id/website-settings', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  if (typeof req.body.websiteEnabled === 'boolean') {
+    channel.websiteEnabled = req.body.websiteEnabled;
+  }
   writeDb(db);
   res.json(channel);
 });
