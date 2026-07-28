@@ -64,6 +64,16 @@ button.danger:hover { background: #fbe9e7; }
 .error { color: #b3261e; font-size: 13px; }
 .hint { color: #777; font-size: 13px; }
 
+.info-banner {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
 .field-row { margin-bottom: 12px; }
 .field-row label { margin-bottom: 4px; }
 
