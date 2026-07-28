@@ -533,6 +533,12 @@
           .catch(function (err) { alert(err.message); });
       });
 
+      node.querySelector('.recording-download-btn').addEventListener('click', function () {
+        api('/api/channels/' + channelId + '/recordings/' + recording.id + '/url?download=1')
+          .then(function (data) { window.open(data.url, '_blank'); })
+          .catch(function (err) { alert(err.message); });
+      });
+
       node.querySelector('.recording-delete-btn').addEventListener('click', function () {
         if (!confirm('Delete this recording? This cannot be undone.')) return;
         api('/api/channels/' + channelId + '/recordings/' + recording.id, { method: 'DELETE' })

@@ -457,7 +457,7 @@ router.get('/:id/recordings/:recordingId/url', requireAuth, async (req, res) => 
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   try {
-    const url = await recordings.getPlaybackUrl(req.params.recordingId);
+    const url = await recordings.getPlaybackUrl(req.params.recordingId, { download: req.query.download === '1' });
     if (!url) return res.status(404).json({ error: 'Recording not found' });
     res.json({ url });
   } catch (err) {

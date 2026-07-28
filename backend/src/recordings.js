@@ -144,13 +144,26 @@ async function processFinishedRecording({ channel, rawFilePath }) {
 
 // Short-lived (10 min) signed URL - the browser fetches the video straight
 // from R2, so it's R2's bandwidth being used for playback/download, not the
-// droplet's.
-async function getPlaybackUrl(recordingId) {
+// droplet's. Passing download:true adds a Content-Disposition header to
+// R2's response (via ResponseContentDisposition - S3-compatible APIs honor
+// this on the object response itself, not just the URL), which is what
+// actually makes the browser save the file instead of just playing it
+// inline - a plain `download` attribute on a link doesn't force that for a
+// cross-origin URL like this one.
+async function getPlaybackUrl(recordingId, { download } = {}) {
   const recording = readAll().find((r) => r.id === recordingId);
   if (!recording) return null;
   const r2 = getR2Client();
   if (!r2) return null;
-  const command = new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: recording.r2Key });
+
+  const commandInput = { Bucket: process.env.R2_BUCKET_NAME, Key: recording.r2Key };
+  if (download) {
+    const safeTitle = (recording.title || 'recording').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
+    const dateStamp = recording.startedAt.slice(0, 10);
+    commandInput.ResponseContentDisposition = `attachment; filename="${safeTitle}-${dateStamp}.mp4"`;
+  }
+
+  const command = new GetObjectCommand(commandInput);
   return getSignedUrl(r2, command, { expiresIn: 600 });
 }
 
