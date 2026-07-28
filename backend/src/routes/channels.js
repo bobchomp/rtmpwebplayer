@@ -7,6 +7,7 @@ const fs = require('fs');
 const { readDb, writeDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
+const recordings = require('../recordings');
 
 const router = express.Router();
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
@@ -140,6 +141,11 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
   // be paused once going.
   if (typeof req.body.disablePauseButton === 'boolean') {
     channel.disablePauseButton = req.body.disablePauseButton;
+  }
+  // Opt-in per channel - record-start.sh (in the rtmp container) checks this
+  // via GET /api/rtmp/recording-enabled the moment a publish starts.
+  if (typeof req.body.recordingEnabled === 'boolean') {
+    channel.recordingEnabled = req.body.recordingEnabled;
   }
   writeDb(db);
   res.json(redactChannel(channel));
@@ -430,6 +436,47 @@ router.get('/:id/viewers', requireAuth, (req, res) => {
 
   res.set('Cache-Control', 'no-store');
   res.json({ count: plays.countActiveViewers(channel.id) });
+});
+
+// Admin-only - past recordings for this channel. Never public: recordings
+// live in a private R2 bucket, so this is the only way to get at them.
+router.get('/:id/recordings', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  res.json(recordings.listRecordings(channel.id));
+});
+
+// Admin-only - a short-lived signed R2 URL for playing/downloading one
+// recording. The browser fetches the video straight from R2 with this, so
+// it's R2's bandwidth serving it, not the droplet's.
+router.get('/:id/recordings/:recordingId/url', requireAuth, async (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  try {
+    const url = await recordings.getPlaybackUrl(req.params.recordingId);
+    if (!url) return res.status(404).json({ error: 'Recording not found' });
+    res.json({ url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/:id/recordings/:recordingId', requireAuth, async (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  try {
+    const deleted = await recordings.deleteRecording(req.params.recordingId);
+    if (!deleted) return res.status(404).json({ error: 'Recording not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

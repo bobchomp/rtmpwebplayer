@@ -302,6 +302,49 @@ The backend downloads MaxMind's free GeoLite2 City database on startup (and
 refreshes it weekly to keep boundaries current) - no key means those three
 columns just stay blank; everything else on the Stats page works either way.
 
+## Recording streams
+
+Turn on **Record streams** in a channel's **Recordings** panel and every
+future broadcast on that channel gets saved automatically - admin-only,
+never a public feature. Recordings are uploaded to a private Cloudflare R2
+bucket (not a public one - nobody can reach them by URL, only through the
+dashboard), and show up in the same panel with their date, duration, and
+size, each with **Play** (opens the video in a new tab via a short-lived,
+10-minute signed link - your browser fetches it straight from R2, not
+through your droplet) and **Delete**.
+
+### One-time Cloudflare R2 setup
+
+1. In the Cloudflare dashboard, open **R2 Object Storage** and create a
+   bucket (any name, doesn't need to be public).
+2. Under **R2 → Manage API Tokens**, create a token with **Object Read &
+   Write** permission, scoped to that bucket.
+3. Note your **Account ID** (shown on the R2 overview page) and the **Access
+   Key ID** / **Secret Access Key** from the token you just created.
+4. Add all four to `.env`:
+   ```
+   R2_ACCOUNT_ID=...
+   R2_ACCESS_KEY_ID=...
+   R2_SECRET_ACCESS_KEY=...
+   R2_BUCKET_NAME=your-bucket-name
+   ```
+   then `docker compose up -d --build` (this also needs `ffmpeg` in the
+   backend's image, already included).
+
+### How it works, if you're curious
+
+nginx-rtmp records the raw incoming stream (via the same `exec_publish`
+mechanism the YouTube/Facebook relays use) to a shared volume as MPEG-TS,
+stream-copied - no re-encoding, so it costs almost nothing in CPU. Once the
+stream ends, the backend remuxes that into a proper, seekable MP4 (again a
+stream copy, not a re-encode - fast and cheap either way), uploads it to R2,
+records the metadata, and deletes both local temp files - nothing recording-
+related is left sitting on your droplet's own disk once it succeeds.
+
+Optionally, set `RECORDING_RETENTION_DAYS` in `.env` to automatically delete
+recordings older than that many days - leave it unset to keep everything
+until you delete it yourself.
+
 ## Relaying to YouTube
 
 Unlike a plain RTMP destination, YouTube needs an account connected via

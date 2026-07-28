@@ -198,6 +198,22 @@
           <input type="file" id="detail-thumb-upload-input" accept=".png,.jpg,.jpeg,.webp">
         </div>
 
+        <div class="panel recordings-panel">
+          <h3>Recordings</h3>
+          <div class="output-row">
+            <div class="output-info">
+              <span class="output-name">Record streams</span>
+              <span class="hint">Saves each stream to private cloud storage - admin-only, never public</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="detail-recording-toggle">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <div id="detail-recordings-list"></div>
+          <p class="hint hidden" id="detail-recordings-empty">No recordings yet.</p>
+        </div>
+
       </div>
 
     </div>
@@ -210,6 +226,17 @@
     <span class="live-badge hidden">LIVE</span>
     <span class="channel-row-arrow">&rarr;</span>
   </a>
+</template>
+
+<template id="recording-row-template">
+  <div class="output-row recording-row">
+    <div class="output-info">
+      <span class="output-name recording-date"></span>
+      <span class="hint recording-meta"></span>
+    </div>
+    <button class="secondary recording-play-btn">Play</button>
+    <button class="secondary danger recording-delete-btn">Delete</button>
+  </div>
 </template>
 
 <template id="stats-row-template">

@@ -254,6 +254,11 @@
   var detailThumbGallery = document.getElementById('detail-thumb-gallery');
   var detailThumbUploadInput = document.getElementById('detail-thumb-upload-input');
 
+  var detailRecordingToggle = document.getElementById('detail-recording-toggle');
+  var detailRecordingsList = document.getElementById('detail-recordings-list');
+  var detailRecordingsEmpty = document.getElementById('detail-recordings-empty');
+  var recordingRowTemplate = document.getElementById('recording-row-template');
+
   function loadChannelDetail(channelId) {
     currentChannelId = channelId;
     wireDetailEventListeners();
@@ -405,6 +410,9 @@
 
     detailDisablePauseToggle.checked = !!channel.disablePauseButton;
 
+    detailRecordingToggle.checked = !!channel.recordingEnabled;
+    loadRecordings(channel.id);
+
     var outputs = channel.outputs || [];
     detailOutputsList.innerHTML = '';
     detailOutputsEmpty.classList.toggle('hidden', outputs.length > 0);
@@ -471,6 +479,55 @@
 
     renderGallery(detailCoverGallery, channel, 'coverImages', 'activeCoverImage', 'covers');
     renderGallery(detailThumbGallery, channel, 'liveThumbnails', 'activeLiveThumbnail', 'live-thumbnails');
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes) return '0 KB';
+    var mb = bytes / (1024 * 1024);
+    if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB';
+    if (mb >= 1) return Math.round(mb) + ' MB';
+    return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+  }
+
+  function formatDuration(totalSeconds) {
+    if (!totalSeconds) return '';
+    var h = Math.floor(totalSeconds / 3600);
+    var m = Math.floor((totalSeconds % 3600) / 60);
+    var s = totalSeconds % 60;
+    var mm = h > 0 && m < 10 ? '0' + m : String(m);
+    var ss = s < 10 ? '0' + s : String(s);
+    return h > 0 ? h + ':' + mm + ':' + ss : mm + ':' + ss;
+  }
+
+  function loadRecordings(channelId) {
+    return api('/api/channels/' + channelId + '/recordings').then(function (rows) {
+      detailRecordingsList.innerHTML = '';
+      detailRecordingsEmpty.classList.toggle('hidden', rows.length > 0);
+      rows.forEach(function (recording) {
+        var node = recordingRowTemplate.content.firstElementChild.cloneNode(true);
+        var when = new Date(recording.startedAt);
+        node.querySelector('.recording-date').textContent = when.toLocaleString();
+        var metaParts = [];
+        if (recording.durationSeconds) metaParts.push(formatDuration(recording.durationSeconds));
+        metaParts.push(formatBytes(recording.sizeBytes));
+        node.querySelector('.recording-meta').textContent = metaParts.join(' · ');
+
+        node.querySelector('.recording-play-btn').addEventListener('click', function () {
+          api('/api/channels/' + channelId + '/recordings/' + recording.id + '/url')
+            .then(function (data) { window.open(data.url, '_blank'); })
+            .catch(function (err) { alert(err.message); });
+        });
+
+        node.querySelector('.recording-delete-btn').addEventListener('click', function () {
+          if (!confirm('Delete this recording? This cannot be undone.')) return;
+          api('/api/channels/' + channelId + '/recordings/' + recording.id, { method: 'DELETE' })
+            .then(function () { loadRecordings(channelId); })
+            .catch(function (err) { alert(err.message); });
+        });
+
+        detailRecordingsList.appendChild(node);
+      });
+    });
   }
 
   function wireDetailEventListeners() {
@@ -558,6 +615,18 @@
         .catch(function (err) {
           alert(err.message);
           detailDisablePauseToggle.checked = !detailDisablePauseToggle.checked;
+        });
+    });
+
+    detailRecordingToggle.addEventListener('change', function () {
+      api('/api/channels/' + currentChannelId + '/website-settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ recordingEnabled: detailRecordingToggle.checked }),
+      })
+        .then(refreshChannelDetail)
+        .catch(function (err) {
+          alert(err.message);
+          detailRecordingToggle.checked = !detailRecordingToggle.checked;
         });
     });
 

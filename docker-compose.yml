@@ -8,6 +8,7 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
     volumes:
       - hls_data:/tmp/hls
+      - recordings_data:/recordings
     networks:
       - internal
 
@@ -35,9 +36,15 @@ services:
       ALLOWED_EMBED_DOMAINS: ${ALLOWED_EMBED_DOMAINS:-}
       GEOIP_LICENSE_KEY: ${GEOIP_LICENSE_KEY:-}
       LIVE_DELAY_MS: ${LIVE_DELAY_MS:-}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
+      RECORDING_RETENTION_DAYS: ${RECORDING_RETENTION_DAYS:-}
     volumes:
       - backend_data:/app/data
       - backend_uploads:/app/uploads
+      - recordings_data:/recordings
     depends_on:
       - rtmp
     networks:
@@ -67,5 +74,6 @@ volumes:
   hls_data:
   backend_data:
   backend_uploads:
+  recordings_data:
   caddy_data:
   caddy_config:

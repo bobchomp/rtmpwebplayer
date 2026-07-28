@@ -34,6 +34,11 @@ rtmp {
             exec_publish /usr/local/bin/relay-start.sh $name;
             exec_publish_done /usr/local/bin/relay-stop.sh $name;
 
+            # Optionally records the stream to a shared volume - same idea,
+            # the scripts check with the backend for whether recording is on.
+            exec_publish /usr/local/bin/record-start.sh $name;
+            exec_publish_done /usr/local/bin/record-stop.sh $name;
+
             hls on;
             hls_path /tmp/hls;
             hls_nested on;

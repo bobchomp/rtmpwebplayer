@@ -1,7 +1,9 @@
 const express = require('express');
+const fs = require('fs');
 const { readDb, writeDb } = require('../db');
 const youtube = require('../youtube');
 const facebook = require('../facebook');
+const recordings = require('../recordings');
 
 const router = express.Router();
 
@@ -189,6 +191,49 @@ router.get('/relay-targets', (req, res) => {
   });
 
   res.type('text/plain').send(lines.join('\n'));
+});
+
+// Internal only (protected by WEBHOOK_SECRET) - checked once by the rtmp
+// container's record-start.sh script right as a publish starts, so recording
+// (an opt-in, per-channel setting) can be turned on/off from the dashboard
+// without touching nginx config. Plain "yes"/"no" text, same style as
+// relay-targets above.
+router.get('/recording-enabled', (req, res) => {
+  if (!checkSecret(req, res)) return;
+
+  const streamKey = req.query.streamKey;
+  const db = readDb();
+  const channel = findChannelByKey(db, streamKey);
+  res.type('text/plain').send(channel && channel.recordingEnabled ? 'yes' : 'no');
+});
+
+// Internal only (protected by WEBHOOK_SECRET) - called by record-stop.sh
+// once ffmpeg has actually finished writing the raw recording file. Kicks
+// off the remux + R2 upload in the background - deliberately not awaited,
+// since record-stop.sh doesn't wait on the response either (it backgrounds
+// this call and moves on).
+router.post('/recording-done', (req, res) => {
+  if (!checkSecret(req, res)) return;
+
+  const streamKey = req.body.streamKey;
+  const rawFilePath = req.body.file;
+  res.status(200).send('OK');
+
+  if (!streamKey || !rawFilePath) return;
+
+  const db = readDb();
+  const channel = findChannelByKey(db, streamKey);
+  if (!channel) {
+    // No channel to attribute this to (e.g. deleted mid-stream) - nothing
+    // useful to do with the file, so just clean it up rather than leaving
+    // it on disk forever.
+    fs.rm(rawFilePath, { force: true }, () => {});
+    return;
+  }
+
+  recordings.processFinishedRecording({ channel, rawFilePath }).catch((err) => {
+    console.error(`Failed to process recording for channel ${channel.id}:`, err.message);
+  });
 });
 
 module.exports = router;

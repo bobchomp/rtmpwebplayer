@@ -159,9 +159,11 @@ button.danger:hover { background: #fbe9e7; }
 .add-output-type-row { display: flex; gap: 8px; }
 .add-output-type-row button { flex: 1; }
 
-.outputs-panel .output-row {
+.outputs-panel .output-row, .recordings-panel .output-row {
   display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
 }
+.recordings-panel .output-row { margin-bottom: 14px; }
+.recording-row { margin-bottom: 8px; }
 .output-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .output-name { font-weight: 600; font-size: 14px; }
 .output-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

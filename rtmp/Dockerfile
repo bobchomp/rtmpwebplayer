@@ -26,7 +26,10 @@ COPY nginx.conf.template /usr/local/nginx/conf/nginx.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 COPY relay-start.sh /usr/local/bin/relay-start.sh
 COPY relay-stop.sh /usr/local/bin/relay-stop.sh
-RUN chmod +x /docker-entrypoint.sh /usr/local/bin/relay-start.sh /usr/local/bin/relay-stop.sh
+COPY record-start.sh /usr/local/bin/record-start.sh
+COPY record-stop.sh /usr/local/bin/record-stop.sh
+RUN chmod +x /docker-entrypoint.sh /usr/local/bin/relay-start.sh /usr/local/bin/relay-stop.sh \
+    /usr/local/bin/record-start.sh /usr/local/bin/record-stop.sh
 
 EXPOSE 1935 8080
 
