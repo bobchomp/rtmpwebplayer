@@ -22,6 +22,12 @@ const SESSION_GAP_MS = 30 * 60 * 1000;
 // per FLUSH_INTERVAL_MS", regardless of how many people show up at once.
 const FLUSH_INTERVAL_MS = 5000;
 
+// The embed player pings every 45s while actively playing (see embed.html) -
+// double that gives one full missed beat of tolerance (a brief network hiccup,
+// a slow tab) before someone still genuinely watching would drop out of the
+// "currently watching" count.
+const ACTIVE_VIEWER_WINDOW_MS = 90 * 1000;
+
 let plays = null; // in-memory, authoritative between flushes - null means not loaded yet
 let dirty = false;
 
@@ -135,6 +141,19 @@ function listPlays({ channelId, from, to } = {}) {
   return rows.sort((a, b) => new Date(b.latestPlayAt) - new Date(a.latestPlayAt));
 }
 
+// Dashboard-only (see routes/channels.js) - never exposed on any public
+// route. Counts distinct viewers (by IP) whose most recent heartbeat for
+// this channel arrived within the last ACTIVE_VIEWER_WINDOW_MS, i.e. people
+// who are plausibly still actually watching right now, not just everyone
+// who's ever tuned in.
+function countActiveViewers(channelId) {
+  ensureLoaded();
+  const now = Date.now();
+  return plays.filter(
+    (p) => p.channelId === channelId && now - new Date(p.latestPlayAt).getTime() < ACTIVE_VIEWER_WINDOW_MS
+  ).length;
+}
+
 setInterval(flush, FLUSH_INTERVAL_MS).unref();
 
 // Best-effort durability for whatever's still only in memory when the
@@ -148,4 +167,4 @@ setInterval(flush, FLUSH_INTERVAL_MS).unref();
   });
 });
 
-module.exports = { recordPlay, listPlays };
+module.exports = { recordPlay, listPlays, countActiveViewers };

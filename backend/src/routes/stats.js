@@ -12,12 +12,16 @@ function clientIp(req) {
   return req.headers['cf-connecting-ip'] || req.ip;
 }
 
-// Called from the embed player itself once real playback starts. Public -
-// viewers aren't logged in - so this only ever writes a play record, never
-// reveals anything back about the channel.
+// Called from the embed player itself once real playback starts, and then
+// periodically while it keeps playing. Public - viewers aren't logged in -
+// so this only ever writes a play record, never reveals anything back about
+// the channel. Skipped entirely for an admin session, since the dashboard's
+// own live preview loads this exact same player - without this, checking on
+// your own stream would count as a viewer and pollute the Stats history.
 router.post('/track', (req, res) => {
+  const isAdmin = !!(req.session && req.session.isAdmin);
   const channelId = req.body && req.body.channelId;
-  if (typeof channelId === 'string' && channelId) {
+  if (!isAdmin && typeof channelId === 'string' && channelId) {
     plays.recordPlay({
       channelId,
       ip: clientIp(req),

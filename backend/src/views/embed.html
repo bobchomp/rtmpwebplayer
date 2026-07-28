@@ -227,6 +227,7 @@
     currentlyLive = false;
     playRequested = false;
     stopUiTimer();
+    stopHeartbeat();
     broadcastStartedAt = null;
     // Volume/fullscreen still work with nothing live to play, so the bar
     // stays up (unlike the pre-play "live" state, where it would otherwise
@@ -379,23 +380,37 @@
     video.play().catch(function () {});
   }
 
-  // "playing" can refire repeatedly during one sitting (resuming after a
-  // pause, or after hls.js recovers from a buffering stall), so this only
-  // pings the backend once per minute rather than on every single refire -
-  // the backend itself also collapses repeats from the same viewer into one
-  // row, but there's no reason to spam it with requests that would just be
-  // deduped anyway.
-  var lastTrackedAt = 0;
-  function trackPlay() {
-    var now = Date.now();
-    if (now - lastTrackedAt < 60000) return;
-    lastTrackedAt = now;
+  // "playing" fires when playback starts or resumes - not on a timer - so a
+  // session that plays smoothly for an hour with no pause/stall would only
+  // ever fire it once. Pinging just on that event would make a still-
+  // watching viewer look stale almost immediately, which matters now that
+  // the dashboard uses how recently a viewer last pinged to show a live
+  // "currently watching" count (admin-only - see /api/channels/:id/viewers).
+  // So this pings once immediately, then keeps pinging every
+  // HEARTBEAT_INTERVAL_MS for as long as playback is actually still going.
+  var HEARTBEAT_INTERVAL_MS = 45000;
+  var heartbeatTimer = null;
+
+  function sendTrackPing() {
     fetch('/api/stats/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ channelId: channelId }),
       keepalive: true,
     }).catch(function () {});
+  }
+
+  function startHeartbeat() {
+    if (heartbeatTimer) return;
+    sendTrackPing();
+    heartbeatTimer = setInterval(sendTrackPing, HEARTBEAT_INTERVAL_MS);
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
   }
 
   playButton.addEventListener('click', startPlayback);
@@ -410,7 +425,7 @@
     controlsBar.style.display = 'flex';
     playPauseBtn.disabled = false;
     playPauseBtn.classList.remove('paused');
-    trackPlay();
+    startHeartbeat();
   });
   // If play was requested before media was actually ready (e.g. clicked
   // during the startup race, or during a quiet retry), start it the moment
@@ -437,6 +452,7 @@
   });
   video.addEventListener('pause', function () {
     playPauseBtn.classList.add('paused');
+    stopHeartbeat();
   });
   video.addEventListener('play', function () {
     playPauseBtn.classList.remove('paused');

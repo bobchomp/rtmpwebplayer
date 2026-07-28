@@ -213,6 +213,7 @@
   var detailDeleteBtn = document.getElementById('detail-delete-btn');
 
   var detailOfflineBadge = document.getElementById('detail-offline-badge');
+  var detailViewerBadge = document.getElementById('detail-viewer-badge');
   var detailOfflineInfo = document.getElementById('detail-offline-info');
   var detailPreviewIframe = document.getElementById('detail-preview-iframe');
   var detailRtmpUrl = document.getElementById('detail-rtmp-url');
@@ -282,7 +283,22 @@
       }
     } else if (detailPreviewIframe.getAttribute('src')) {
       detailPreviewIframe.removeAttribute('src');
+      detailViewerBadge.classList.add('hidden');
     }
+  }
+
+  // Admin-only, dashboard-only - fetched from a separate authenticated route
+  // (never folded into the public /status endpoint above) so a viewer count
+  // can never end up reachable from anything public.
+  function pollViewerCount() {
+    fetch('/api/channels/' + currentChannelId + '/viewers', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !currentChannelId) return;
+        detailViewerBadge.textContent = data.count + ' watching';
+        detailViewerBadge.classList.remove('hidden');
+      })
+      .catch(function () {});
   }
 
   // Polled on an interval - only touches live/offline state, never the rest
@@ -295,6 +311,7 @@
       .then(function (data) {
         if (!data) return;
         updatePreviewState(data.isLive, currentChannelId);
+        if (data.isLive) pollViewerCount();
       })
       .catch(function () {});
   }

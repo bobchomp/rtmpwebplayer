@@ -140,6 +140,7 @@ button.danger:hover { background: #fbe9e7; }
 }
 .preview-status-badge.live-badge { background: #e11d2e; color: #fff; }
 #detail-offline-badge { background: rgba(255, 255, 255, .15); color: #fff; }
+#detail-viewer-badge { top: 12px; right: 12px; left: auto; background: rgba(0, 0, 0, .55); color: #fff; }
 
 #detail-offline-info { width: 100%; max-width: 380px; padding: 24px; }
 #detail-offline-info h3 { color: #fff; font-size: 17px; text-align: center; margin: 0 0 6px; }

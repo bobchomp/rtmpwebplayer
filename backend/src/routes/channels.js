@@ -6,6 +6,7 @@ const fs = require('fs');
 
 const { readDb, writeDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
+const plays = require('../plays');
 
 const router = express.Router();
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
@@ -411,6 +412,18 @@ router.get('/:id/status', (req, res) => {
     coverUrl: channel.activeCoverImage ? `/uploads/${channel.activeCoverImage}` : null,
     liveThumbnailUrl: channel.activeLiveThumbnail ? `/uploads/${channel.activeLiveThumbnail}` : null,
   });
+});
+
+// Admin-only - deliberately a separate route from the public /status above,
+// never folded into it, so a live viewer count can never end up reachable
+// from anything public.
+router.get('/:id/viewers', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  res.set('Cache-Control', 'no-store');
+  res.json({ count: plays.countActiveViewers(channel.id) });
 });
 
 module.exports = router;

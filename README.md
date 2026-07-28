@@ -281,6 +281,12 @@ Country, Region, City, and First Play. Filter by channel and/or date range,
 and export the currently-filtered rows as a CSV via the **Export CSV**
 button.
 
+While a channel is live, its detail page also shows a "N watching" badge in
+the top-right corner of the preview, based on who's pinged in the last 90
+seconds - dashboard-only, never shown or reachable on the public embed,
+watch page, or any public route. Checking your own stream from the
+dashboard doesn't count as a viewer or show up in the Stats history either.
+
 Country/Region/City need an IP-to-location lookup, which is optional:
 
 1. Sign up for a free account at
