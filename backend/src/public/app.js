@@ -8,6 +8,7 @@
   var listView = document.getElementById('channel-list-view');
   var detailView = document.getElementById('channel-detail-view');
   var statsView = document.getElementById('stats-view');
+  var recordingsView = document.getElementById('recordings-view');
 
   var createForm = document.getElementById('create-form');
   var channelsList = document.getElementById('channels-list');
@@ -72,6 +73,7 @@
     var match = hash.match(/^#\/channel\/([^/]+)/);
     if (match) return { view: 'detail', channelId: decodeURIComponent(match[1]) };
     if (hash === '#/stats') return { view: 'stats' };
+    if (hash === '#/recordings') return { view: 'recordings' };
     return { view: 'list' };
   }
 
@@ -83,6 +85,7 @@
     listView.classList.add('hidden');
     detailView.classList.add('hidden');
     statsView.classList.add('hidden');
+    recordingsView.classList.add('hidden');
 
     if (r.view === 'detail') {
       detailView.classList.remove('hidden');
@@ -91,6 +94,9 @@
     } else if (r.view === 'stats') {
       statsView.classList.remove('hidden');
       loadStats();
+    } else if (r.view === 'recordings') {
+      recordingsView.classList.remove('hidden');
+      loadRecordingsPage();
     } else {
       listView.classList.remove('hidden');
       loadChannelList();
@@ -255,8 +261,6 @@
   var detailThumbUploadInput = document.getElementById('detail-thumb-upload-input');
 
   var detailRecordingToggle = document.getElementById('detail-recording-toggle');
-  var detailRecordingsList = document.getElementById('detail-recordings-list');
-  var detailRecordingsEmpty = document.getElementById('detail-recordings-empty');
   var recordingRowTemplate = document.getElementById('recording-row-template');
 
   function loadChannelDetail(channelId) {
@@ -411,7 +415,6 @@
     detailDisablePauseToggle.checked = !!channel.disablePauseButton;
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
-    loadRecordings(channel.id);
 
     var outputs = channel.outputs || [];
     detailOutputsList.innerHTML = '';
@@ -499,34 +502,84 @@
     return h > 0 ? h + ':' + mm + ':' + ss : mm + ':' + ss;
   }
 
-  function loadRecordings(channelId) {
-    return api('/api/channels/' + channelId + '/recordings').then(function (rows) {
-      detailRecordingsList.innerHTML = '';
-      detailRecordingsEmpty.classList.toggle('hidden', rows.length > 0);
-      rows.forEach(function (recording) {
-        var node = recordingRowTemplate.content.firstElementChild.cloneNode(true);
-        var when = new Date(recording.startedAt);
-        node.querySelector('.recording-date').textContent = when.toLocaleString();
-        var metaParts = [];
-        if (recording.durationSeconds) metaParts.push(formatDuration(recording.durationSeconds));
-        metaParts.push(formatBytes(recording.sizeBytes));
-        node.querySelector('.recording-meta').textContent = metaParts.join(' · ');
+  // ===================== Recordings page =====================
 
-        node.querySelector('.recording-play-btn').addEventListener('click', function () {
-          api('/api/channels/' + channelId + '/recordings/' + recording.id + '/url')
-            .then(function (data) { window.open(data.url, '_blank'); })
-            .catch(function (err) { alert(err.message); });
-        });
+  var recordingsChannelSelect = document.getElementById('recordings-channel-select');
+  var recordingsPageList = document.getElementById('recordings-page-list');
+  var recordingsPageEmpty = document.getElementById('recordings-page-empty');
+  var recordingsListenersWired = false;
 
-        node.querySelector('.recording-delete-btn').addEventListener('click', function () {
-          if (!confirm('Delete this recording? This cannot be undone.')) return;
-          api('/api/channels/' + channelId + '/recordings/' + recording.id, { method: 'DELETE' })
-            .then(function () { loadRecordings(channelId); })
-            .catch(function (err) { alert(err.message); });
-        });
+  function renderRecordingRows(channelId, rows) {
+    recordingsPageList.innerHTML = '';
+    recordingsPageEmpty.classList.toggle('hidden', rows.length > 0);
+    if (rows.length === 0 && channelId) {
+      recordingsPageEmpty.textContent = 'No recordings yet for this channel.';
+    } else if (!channelId) {
+      recordingsPageEmpty.textContent = 'Select a channel above to see its recordings.';
+    }
 
-        detailRecordingsList.appendChild(node);
+    rows.forEach(function (recording) {
+      var node = recordingRowTemplate.content.firstElementChild.cloneNode(true);
+      var when = new Date(recording.startedAt);
+      node.querySelector('.recording-date').textContent = when.toLocaleString();
+      var metaParts = [];
+      if (recording.durationSeconds) metaParts.push(formatDuration(recording.durationSeconds));
+      metaParts.push(formatBytes(recording.sizeBytes));
+      node.querySelector('.recording-meta').textContent = metaParts.join(' · ');
+
+      node.querySelector('.recording-play-btn').addEventListener('click', function () {
+        api('/api/channels/' + channelId + '/recordings/' + recording.id + '/url')
+          .then(function (data) { window.open(data.url, '_blank'); })
+          .catch(function (err) { alert(err.message); });
       });
+
+      node.querySelector('.recording-delete-btn').addEventListener('click', function () {
+        if (!confirm('Delete this recording? This cannot be undone.')) return;
+        api('/api/channels/' + channelId + '/recordings/' + recording.id, { method: 'DELETE' })
+          .then(function () { loadRecordingsForChannel(channelId); })
+          .catch(function (err) { alert(err.message); });
+      });
+
+      recordingsPageList.appendChild(node);
+    });
+  }
+
+  function loadRecordingsForChannel(channelId) {
+    if (!channelId) {
+      renderRecordingRows('', []);
+      return Promise.resolve();
+    }
+    return api('/api/channels/' + channelId + '/recordings').then(function (rows) {
+      renderRecordingRows(channelId, rows);
+    });
+  }
+
+  function loadRecordingsPage() {
+    return api('/api/channels').then(function (channels) {
+      var selected = recordingsChannelSelect.value;
+      recordingsChannelSelect.innerHTML = '';
+      var placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Select a channel…';
+      recordingsChannelSelect.appendChild(placeholder);
+      channels.forEach(function (channel) {
+        var opt = document.createElement('option');
+        opt.value = channel.id;
+        opt.textContent = channel.name;
+        recordingsChannelSelect.appendChild(opt);
+      });
+      recordingsChannelSelect.value = selected;
+
+      wireRecordingsEventListeners();
+      return loadRecordingsForChannel(recordingsChannelSelect.value);
+    });
+  }
+
+  function wireRecordingsEventListeners() {
+    if (recordingsListenersWired) return;
+    recordingsListenersWired = true;
+    recordingsChannelSelect.addEventListener('change', function () {
+      loadRecordingsForChannel(recordingsChannelSelect.value);
     });
   }
 

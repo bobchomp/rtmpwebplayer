@@ -304,14 +304,15 @@ columns just stay blank; everything else on the Stats page works either way.
 
 ## Recording streams
 
-Turn on **Record streams** in a channel's **Recordings** panel and every
-future broadcast on that channel gets saved automatically - admin-only,
-never a public feature. Recordings are uploaded to a private Cloudflare R2
-bucket (not a public one - nobody can reach them by URL, only through the
-dashboard), and show up in the same panel with their date, duration, and
-size, each with **Play** (opens the video in a new tab via a short-lived,
-10-minute signed link - your browser fetches it straight from R2, not
-through your droplet) and **Delete**.
+Turn on **Record streams** in a channel's detail page and every future
+broadcast on that channel gets saved automatically - admin-only, never a
+public feature. To actually watch/manage what's been recorded, click
+**Recordings** next to Log out: pick a channel from the dropdown there and
+see everything recorded for it, each with its date, duration, and size, plus
+**Play** (opens the video in a new tab via a short-lived, 10-minute signed
+link - your browser fetches it straight from R2, not through your droplet)
+and **Delete**. Recordings are uploaded to a private Cloudflare R2 bucket -
+not a public one, nobody can reach them by URL, only through this page.
 
 ### One-time Cloudflare R2 setup
 

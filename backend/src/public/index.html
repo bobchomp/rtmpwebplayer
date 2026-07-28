@@ -26,10 +26,30 @@
   <header>
     <h1>Stream Dashboard</h1>
     <div class="header-actions">
+      <a href="#/recordings" id="recordings-btn" class="secondary">Recordings</a>
       <a href="#/stats" id="stats-btn" class="secondary">Stats</a>
       <button id="logout-btn" class="secondary">Log out</button>
     </div>
   </header>
+
+  <div id="recordings-view" class="hidden">
+    <div class="detail-header">
+      <a href="#/" class="back-link">&larr; All channels</a>
+    </div>
+
+    <section class="panel">
+      <label>Channel
+        <select id="recordings-channel-select">
+          <option value="">Select a channel&hellip;</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="panel recordings-panel">
+      <div id="recordings-page-list"></div>
+      <p class="hint hidden" id="recordings-page-empty">Select a channel above to see its recordings.</p>
+    </section>
+  </div>
 
   <div id="stats-view" class="hidden">
     <div class="detail-header">
@@ -198,20 +218,17 @@
           <input type="file" id="detail-thumb-upload-input" accept=".png,.jpg,.jpeg,.webp">
         </div>
 
-        <div class="panel recordings-panel">
-          <h3>Recordings</h3>
+        <div class="panel recording-toggle-panel">
           <div class="output-row">
             <div class="output-info">
               <span class="output-name">Record streams</span>
-              <span class="hint">Saves each stream to private cloud storage - admin-only, never public</span>
+              <span class="hint">Saves each stream to private cloud storage - admin-only, never public. See past recordings under the <b>Recordings</b> button up top.</span>
             </div>
             <label class="switch">
               <input type="checkbox" id="detail-recording-toggle">
               <span class="switch-track"></span>
             </label>
           </div>
-          <div id="detail-recordings-list"></div>
-          <p class="hint hidden" id="detail-recordings-empty">No recordings yet.</p>
         </div>
 
       </div>
