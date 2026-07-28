@@ -67,6 +67,14 @@ app.use('/live', hlsProxy);
 app.use('/embed', embed);
 app.use('/watch', watch);
 
+// The admin dashboard lives at its own path (not '/') so the site's actual
+// homepage can be a genuine public page describing the app - required by
+// Google's OAuth branding verification, which flags a homepage that's
+// nothing but a login form.
+app.get(['/dashboard', '/dashboard/'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 geoip.ensureDatabase();

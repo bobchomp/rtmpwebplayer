@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>rtmpwebplayer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div id="login-view" class="view hidden">
+  <form id="login-form" class="login-box">
+    <h1>rtmpwebplayer</h1>
+    <label>Username
+      <input type="text" id="login-username" autocomplete="username" required>
+    </label>
+    <label>Password
+      <input type="password" id="login-password" autocomplete="current-password" required>
+    </label>
+    <div id="login-error" class="error hidden"></div>
+    <button type="submit">Log in</button>
+  </form>
+</div>
+
+<div id="dashboard-view" class="view hidden">
+  <header>
+    <h1>rtmpwebplayer</h1>
+    <div class="header-actions">
+      <a href="#/" id="channels-btn" class="secondary">Channels</a>
+      <a href="#/recordings" id="recordings-btn" class="secondary">Recordings</a>
+      <a href="#/stats" id="stats-btn" class="secondary">Stats</a>
+      <button id="logout-btn" class="secondary">Log out</button>
+    </div>
+  </header>
+
+  <div id="recordings-view" class="hidden">
+    <div class="detail-header">
+      <a href="#/" class="back-link">&larr; All channels</a>
+    </div>
+
+    <p class="info-banner">A recording can take 5&ndash;30 minutes to appear here after the stream ends, while it's uploaded and processed.</p>
+
+    <section class="panel">
+      <label>Channel
+        <select id="recordings-channel-select">
+          <option value="">Select a channel&hellip;</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="panel recordings-panel">
+      <div id="recordings-page-list"></div>
+      <p class="hint hidden" id="recordings-page-empty">Select a channel above to see its recordings.</p>
+    </section>
+  </div>
+
+  <div id="stats-view" class="hidden">
+    <div class="detail-header">
+      <a href="#/" class="back-link">&larr; All channels</a>
+    </div>
+
+    <section class="panel">
+      <div class="stats-filters">
+        <label>Channel
+          <select id="stats-channel-filter">
+            <option value="">All channels</option>
+          </select>
+        </label>
+        <label>From
+          <input type="date" id="stats-from-filter">
+        </label>
+        <label>To
+          <input type="date" id="stats-to-filter">
+        </label>
+        <a id="stats-export-btn" class="secondary" href="/api/stats/export.csv" download>Export CSV</a>
+      </div>
+    </section>
+
+    <section class="panel stats-table-panel">
+      <div class="stats-table-scroll">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>Latest Play</th>
+              <th>Channel</th>
+              <th>Title</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>IP Address</th>
+              <th>Country</th>
+              <th>Region</th>
+              <th>City</th>
+              <th>First Play</th>
+            </tr>
+          </thead>
+          <tbody id="stats-table-body"></tbody>
+        </table>
+      </div>
+      <p id="stats-empty" class="hint hidden">No plays recorded yet for this filter.</p>
+    </section>
+  </div>
+
+  <div id="channel-list-view">
+    <section class="panel">
+      <h2>Create a channel</h2>
+      <form id="create-form" class="inline-form">
+        <input type="text" id="new-channel-name" placeholder="Channel name (e.g. Main Camera)" required maxlength="100">
+        <button type="submit">Create channel</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Channels</h2>
+      <div id="channels-list"></div>
+      <p id="empty-state" class="hint hidden">No channels yet - create one above to get a stream key.</p>
+    </section>
+  </div>
+
+  <div id="channel-detail-view" class="hidden">
+    <div class="detail-header">
+      <a href="#/" class="back-link">&larr; All channels</a>
+      <span class="channel-name" id="detail-name"></span>
+      <input type="text" class="channel-name-input hidden" id="detail-name-input" maxlength="100">
+      <button class="secondary" id="detail-rename-btn">Rename</button>
+      <button class="hidden" id="detail-save-name-btn">Save</button>
+      <button class="secondary hidden" id="detail-cancel-name-btn">Cancel</button>
+      <button class="secondary danger" id="detail-delete-btn">Delete channel</button>
+    </div>
+
+    <div class="detail-columns">
+
+      <div class="detail-col-left">
+
+        <div class="panel preview-panel">
+          <div class="preview-frame">
+            <div class="preview-status-badge offline-badge" id="detail-offline-badge">OFFLINE</div>
+            <div class="preview-status-badge viewer-count-badge hidden" id="detail-viewer-badge"></div>
+
+            <div id="detail-offline-info">
+              <h3>Connect your encoder</h3>
+              <p class="hint">Copy &amp; paste into your streaming software (OBS, vMix, etc).</p>
+
+              <div class="field-row">
+                <label>RTMP URL</label>
+                <div class="copy-row">
+                  <input type="text" class="rtmp-url" id="detail-rtmp-url" readonly>
+                  <button class="copy-btn" data-target="detail-rtmp-url">Copy</button>
+                </div>
+              </div>
+
+              <div class="field-row">
+                <label>Stream key</label>
+                <div class="copy-row">
+                  <input type="password" class="stream-key" id="detail-stream-key" readonly>
+                  <button class="secondary" id="detail-reveal-btn">Show</button>
+                  <button class="copy-btn" data-target="detail-stream-key">Copy</button>
+                  <button class="secondary" id="detail-regen-btn">Regenerate</button>
+                </div>
+              </div>
+            </div>
+
+            <iframe id="detail-preview-iframe" class="preview-iframe hidden" allow="autoplay; fullscreen" loading="lazy"></iframe>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="detail-col-right">
+
+        <div class="panel outputs-panel">
+          <div class="outputs-panel-header">
+            <h3>Outputs</h3>
+            <div class="outputs-panel-header-buttons">
+              <button class="secondary" id="edit-metadata-btn">Edit title &amp; description</button>
+              <button class="secondary" id="add-output-btn">+ Add output</button>
+            </div>
+          </div>
+
+          <div class="output-row">
+            <div class="output-info">
+              <span class="output-name">Your Website</span>
+              <span class="hint" id="detail-website-hint">This is the embed player itself</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="detail-website-toggle">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <div class="field-row">
+            <label>Embed code (paste into your website)</label>
+            <div class="copy-row">
+              <textarea class="embed-code" id="detail-embed-code" readonly rows="3"></textarea>
+              <button class="copy-btn" data-target="detail-embed-code">Copy</button>
+            </div>
+          </div>
+
+          <div class="output-row">
+            <div class="output-info">
+              <span class="output-name">Disable pause/play button</span>
+              <span class="hint">Viewers can't pause playback - the button stays visible, just greyed out and unclickable</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="detail-disable-pause-toggle">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+
+          <hr class="output-divider">
+
+          <div id="detail-outputs-list"></div>
+          <p class="hint hidden" id="detail-outputs-empty">No other outputs yet - click "+ Add output" above to relay to YouTube or a custom RTMP destination.</p>
+        </div>
+
+        <div class="panel detail-extras">
+          <h3>Offline cover images (shown when not streaming) - click one to make it active</h3>
+          <div class="gallery" id="detail-cover-gallery"></div>
+          <input type="file" id="detail-cover-upload-input" accept=".png,.jpg,.jpeg,.webp">
+
+          <h3>Live thumbnails (shown once live, before play is pressed) - click one to make it active</h3>
+          <div class="gallery" id="detail-thumb-gallery"></div>
+          <input type="file" id="detail-thumb-upload-input" accept=".png,.jpg,.jpeg,.webp">
+        </div>
+
+        <div class="panel recording-toggle-panel">
+          <div class="output-row">
+            <div class="output-info">
+              <span class="output-name">Record streams</span>
+              <span class="hint">Saves each stream to private cloud storage - admin-only, never public. See past recordings under the <b>Recordings</b> button up top.</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="detail-recording-toggle">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<template id="channel-row-template">
+  <a class="channel-row">
+    <span class="channel-row-name"></span>
+    <span class="live-badge hidden">LIVE</span>
+    <span class="channel-row-arrow">&rarr;</span>
+  </a>
+</template>
+
+<template id="recording-row-template">
+  <div class="output-row recording-row">
+    <div class="output-info">
+      <span class="output-name recording-date"></span>
+      <span class="hint recording-meta"></span>
+    </div>
+    <button class="secondary recording-play-btn">Play</button>
+    <button class="secondary recording-download-btn">Download</button>
+    <button class="secondary danger recording-delete-btn">Delete</button>
+  </div>
+</template>
+
+<template id="stats-row-template">
+  <tr>
+    <td class="stats-col-latest"></td>
+    <td class="stats-col-channel"></td>
+    <td class="stats-col-title"></td>
+    <td class="stats-col-description"></td>
+    <td class="stats-col-type"></td>
+    <td class="stats-col-ip"></td>
+    <td class="stats-col-country"></td>
+    <td class="stats-col-region"></td>
+    <td class="stats-col-city"></td>
+    <td class="stats-col-first"></td>
+  </tr>
+</template>
+
+<template id="output-row-template">
+  <div class="output-row custom-output-row">
+    <div class="output-info">
+      <span class="output-name"></span>
+      <span class="hint output-url"></span>
+    </div>
+    <label class="switch">
+      <input type="checkbox" class="output-toggle">
+      <span class="switch-track"></span>
+    </label>
+    <button class="secondary copy-btn output-copy-btn hidden">Copy link</button>
+    <button class="secondary danger output-delete-btn">Delete</button>
+  </div>
+</template>
+
+<div id="metadata-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Title &amp; description</h3>
+    <p class="hint">Used on the embed page (title, link previews) and as the YouTube broadcast's title/description.</p>
+    <label>Title
+      <input type="text" id="metadata-title-input" maxlength="100" placeholder="Defaults to the channel name">
+    </label>
+    <label>Description
+      <textarea class="prose-textarea" id="metadata-description-input" maxlength="300" rows="3" placeholder="Optional"></textarea>
+    </label>
+    <div class="modal-actions">
+      <button class="secondary" id="metadata-cancel-btn">Cancel</button>
+      <button id="metadata-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="add-output-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Add output</h3>
+    <p class="hint">Choose what to send this stream to.</p>
+    <div class="add-output-type-row" id="add-output-type-row">
+      <button class="secondary" id="add-output-type-youtube">YouTube</button>
+      <button class="secondary" id="add-output-type-facebook">Facebook</button>
+      <button class="secondary" id="add-output-type-rtmp">Custom RTMP</button>
+      <button class="secondary" id="add-output-type-public-link">Public Link</button>
+    </div>
+    <form id="add-output-rtmp-form" class="hidden add-output-form">
+      <input type="text" id="new-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>
+      <input type="text" id="new-output-rtmp-url" placeholder="RTMP URL (e.g. rtmp://live.twitch.tv/app)" required>
+      <input type="text" id="new-output-stream-key" placeholder="Stream key" required>
+      <button type="submit">Add output</button>
+    </form>
+    <div class="modal-actions">
+      <button class="secondary" id="add-output-cancel-btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

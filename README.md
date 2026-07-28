@@ -77,8 +77,8 @@ docker compose up -d --build
 
 First build compiles nginx from source (a couple of minutes). After that:
 
-- Dashboard: `http://<server-ip>:4000` (or `https://<PUBLIC_HOST>` once DNS
-  + Caddy are working)
+- Dashboard: `http://<server-ip>:4000/dashboard` (or `https://<PUBLIC_HOST>/dashboard`
+  once DNS + Caddy are working)
 - RTMP ingest: `rtmp://<server-ip-or-domain>:1935/live`
 
 Log in, click **Create channel**, give it a name. You'll get:

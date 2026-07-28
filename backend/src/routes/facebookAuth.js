@@ -40,7 +40,7 @@ router.get('/callback', requireAuth, async (req, res) => {
 
   try {
     await facebook.handleOAuthCallback(code, channelId);
-    res.redirect('/#/channel/' + encodeURIComponent(channelId));
+    res.redirect('/dashboard#/channel/' + encodeURIComponent(channelId));
   } catch (err) {
     res.status(500).send(`Failed to connect Facebook: ${err.message}`);
   }
