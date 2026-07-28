@@ -30,6 +30,22 @@ while kill -0 "$PID" 2>/dev/null && [ "$i" -lt 20 ]; do
   i=$((i + 1))
 done
 
+# Surfaces ffmpeg's own output in `docker compose logs rtmp` - it otherwise
+# only exists as a file inside this container, invisible unless someone
+# execs in and goes looking for it by hand.
+LOGFILE="${PIDDIR}/${STREAM_KEY}.log"
+if [ -f "$LOGFILE" ]; then
+  echo "record-stop.sh: ffmpeg output for ${STREAM_KEY} (${OUTFILE}):"
+  cat "$LOGFILE"
+  rm -f "$LOGFILE"
+fi
+
 [ -n "$OUTFILE" ] || exit 0
+
+if [ ! -s "$OUTFILE" ]; then
+  echo "record-stop.sh: ${OUTFILE} is missing or empty - ffmpeg likely failed to start (see log above); not notifying the backend"
+  exit 0
+fi
+
 curl -s --max-time 10 -X POST "http://backend:4000/api/rtmp/recording-done?secret=${WEBHOOK_SECRET}" \
   -d "streamKey=${STREAM_KEY}" --data-urlencode "file=${OUTFILE}" > /dev/null 2>&1 &
