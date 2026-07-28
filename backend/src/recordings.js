@@ -135,10 +135,16 @@ async function processFinishedRecording({ channel, rawFilePath }) {
       r2Key,
     });
     writeAll(rows);
-  } catch (err) {
-    console.error(`Failed to process recording for channel ${channel.id} (${rawFilePath}):`, err.message);
-  } finally {
+    // Only delete the local copies once everything above has actually
+    // succeeded - deleting them unconditionally (e.g. in a `finally`) would
+    // silently destroy the only copy of the recording if the upload failed
+    // for any reason (bad credentials, wrong bucket, network blip).
     await cleanupLocalFiles(rawFilePath, mp4Path);
+  } catch (err) {
+    console.error(
+      `Failed to process recording for channel ${channel.id} - raw file kept for retry: ${rawFilePath}`,
+      err.message
+    );
   }
 }
 
