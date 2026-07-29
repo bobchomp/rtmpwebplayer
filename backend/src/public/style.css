@@ -166,8 +166,10 @@ button.danger:hover { background: #fbe9e7; }
 .outputs-panel-header h3 { margin: 0; }
 .outputs-panel-header-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.add-output-type-row { display: flex; gap: 8px; }
+.add-output-type-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .add-output-type-row button { flex: 1; }
+
+.brand-connect-btn { display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
 
 .outputs-panel .output-row, .recordings-panel .output-row, .recording-toggle-panel .output-row {
   display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
