@@ -171,6 +171,8 @@ button.danger:hover { background: #fbe9e7; }
 
 .brand-connect-btn { display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
 
+.privacy-notice { margin-top: 10px; }
+
 .outputs-panel .output-row, .recordings-panel .output-row, .recording-toggle-panel .output-row {
   display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
 }
