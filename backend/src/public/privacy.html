@@ -52,8 +52,16 @@
 </ul>
 <p>We do not sell personal information to anyone.</p>
 
-<h2>Google API Services User Data Policy</h2>
-<p>Our use and transfer of information received from Google APIs to any other app will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. Information obtained through the YouTube Data API is used solely to let an administrator publish their own live stream to their own YouTube channel, and is not used for any other purpose.</p>
+<h2>How we use Google user data</h2>
+<p>When an administrator connects their YouTube channel, we request the <code>https://www.googleapis.com/auth/youtube</code> scope from their Google Account. Specifically, we use this access to:</p>
+<ul>
+  <li>Create a live broadcast on the administrator's YouTube channel, and a live stream resource bound to it.</li>
+  <li>Set that broadcast's title, description, and privacy status to match the channel's settings in our dashboard.</li>
+  <li>Transition the broadcast between "ready", "live", and "complete" states in step with the administrator's own stream starting and stopping.</li>
+</ul>
+<p>This is the only use we make of this access. We do not read, view, or otherwise access the administrator's existing videos, comments, subscribers, analytics, or any other data on their YouTube channel. We never transfer this data to any third party, and no human at our organisation reads or reviews it - it is used exclusively, automatically, by our server to perform the actions listed above.</p>
+<p>The OAuth access and refresh tokens Google issues to us are stored encrypted on our own server, are never exposed to any browser (including the administrator's own), and are retained only until the administrator disconnects YouTube from a channel, at which point they are deleted. An administrator can also revoke this access at any time directly from their <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account's third-party access settings</a>, independently of our dashboard.</p>
+<p>Our use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
 
 <h2>Data retention</h2>
 <ul>
