@@ -3,6 +3,7 @@ const crypto = require('crypto');
 
 const { readDb } = require('../db');
 const { buildPlayerHtml } = require('../playerPage');
+const { withDevBanner } = require('../devBanner');
 
 const router = express.Router();
 
@@ -43,7 +44,7 @@ router.get('/:channelId/:token', (req, res) => {
   res.set('X-Frame-Options', 'DENY');
   res.set('Content-Security-Policy', "frame-ancestors 'none'");
   res.set('Cache-Control', 'no-store');
-  res.type('html').send(buildPlayerHtml(channel));
+  res.type('html').send(withDevBanner(buildPlayerHtml(channel), { overlay: true }));
 });
 
 module.exports = router;

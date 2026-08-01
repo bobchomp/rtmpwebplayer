@@ -14,6 +14,7 @@ const watch = require('./routes/watch');
 const youtubeAuth = require('./routes/youtubeAuth');
 const statsRoutes = require('./routes/stats');
 const geoip = require('./geoip');
+const { withDevBanner } = require('./devBanner');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -65,15 +66,29 @@ app.use('/live', hlsProxy);
 app.use('/embed', embed);
 app.use('/watch', watch);
 
+const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// Loaded (and, on the dev stack, banner-injected) once at startup rather than
+// per-request - none of this changes while the process is running.
+function loadHtmlPage(filename) {
+  return withDevBanner(fs.readFileSync(path.join(PUBLIC_DIR, filename), 'utf8'));
+}
+
+const homepageHtml = loadHtmlPage('index.html');
+const dashboardHtml = loadHtmlPage('dashboard.html');
+const privacyHtml = loadHtmlPage('privacy.html');
+
+app.get('/', (req, res) => res.type('html').send(homepageHtml));
+
 // The admin dashboard lives at its own path (not '/') so the site's actual
 // homepage can be a genuine public page describing the app - required by
 // Google's OAuth branding verification, which flags a homepage that's
 // nothing but a login form.
-app.get(['/dashboard', '/dashboard/'], (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
+app.get(['/dashboard', '/dashboard/'], (req, res) => res.type('html').send(dashboardHtml));
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.get('/privacy.html', (req, res) => res.type('html').send(privacyHtml));
+
+app.use(express.static(PUBLIC_DIR));
 
 geoip.ensureDatabase();
 

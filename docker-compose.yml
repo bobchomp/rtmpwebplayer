@@ -69,6 +69,7 @@ services:
     build: ./backend
     restart: unless-stopped
     environment:
+      IS_DEV_SITE: "true"
       ADMIN_USERNAME: ${DEV_ADMIN_USERNAME:-}
       ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:-}
       SESSION_SECRET: ${DEV_SESSION_SECRET:-}
