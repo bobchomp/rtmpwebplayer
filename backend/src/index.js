@@ -54,6 +54,11 @@ app.get('/api/config', (req, res) => {
     // (or an unproxied hostname) so the dashboard shows a working RTMP URL.
     rtmpHost: process.env.RTMP_PUBLIC_HOST || process.env.PUBLIC_HOST || req.hostname,
     rtmpPort: process.env.RTMP_PORT || 1935,
+    // Lets the dashboard hide the "Connect to YouTube" button rather than
+    // showing one that just errors when clicked - temporarily unset on
+    // production (see docker-compose.yml) while YouTube's OAuth scope is
+    // only exercised on the dev stack.
+    youtubeEnabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
   });
 });
 

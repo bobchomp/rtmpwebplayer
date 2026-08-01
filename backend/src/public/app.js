@@ -774,6 +774,8 @@
     show('dashboard');
     api('/api/config').then(function (cfg) {
       config = cfg;
+      addOutputTypeYoutubeBtn.classList.toggle('hidden', !cfg.youtubeEnabled);
+      document.getElementById('add-output-youtube-privacy-notice').classList.toggle('hidden', !cfg.youtubeEnabled);
       route();
     });
   }

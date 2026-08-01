@@ -27,9 +27,13 @@ services:
       RTMP_PORT: "1935"
       HLS_INTERNAL_URL: "http://rtmp:8080"
       PORT: "4000"
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      # YouTube deliberately left unconfigured on production for now - its
+      # OAuth scope is only being exercised on the dev stack below, per
+      # Google's own guidance not to run an unverified scope against real
+      # production traffic. Re-add these three once verification is done.
+      # GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       ALLOWED_EMBED_DOMAINS: ${ALLOWED_EMBED_DOMAINS:-}
       GEOIP_LICENSE_KEY: ${GEOIP_LICENSE_KEY:-}
       LIVE_DELAY_MS: ${LIVE_DELAY_MS:-}
