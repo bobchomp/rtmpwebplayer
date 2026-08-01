@@ -14,7 +14,7 @@ const watch = require('./routes/watch');
 const youtubeAuth = require('./routes/youtubeAuth');
 const statsRoutes = require('./routes/stats');
 const geoip = require('./geoip');
-const { withDevBanner } = require('./devBanner');
+const { withDevBanner, stripDevSiteLinkOnDevSite } = require('./devBanner');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -79,7 +79,7 @@ function loadHtmlPage(filename) {
   return withDevBanner(fs.readFileSync(path.join(PUBLIC_DIR, filename), 'utf8'));
 }
 
-const homepageHtml = loadHtmlPage('index.html');
+const homepageHtml = stripDevSiteLinkOnDevSite(loadHtmlPage('index.html'));
 const dashboardHtml = loadHtmlPage('dashboard.html');
 const privacyHtml = loadHtmlPage('privacy.html');
 

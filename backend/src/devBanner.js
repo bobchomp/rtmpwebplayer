@@ -29,4 +29,15 @@ function withDevBanner(html, { overlay } = {}) {
   return html.replace('<body>', `<body>\n${bannerHtml(overlay ? 'fixed' : 'sticky')}`);
 }
 
-module.exports = { IS_DEV_SITE, withDevBanner };
+const DEV_SITE_LINK_PATTERN = /<!-- dev-site-link:start -->[\s\S]*?<!-- dev-site-link:end -->/;
+
+// The homepage has a "Development site" button wrapped in these markers,
+// pointing the other way (production -> dev) from withDevBanner's "Go to
+// main site" link - only useful on production, since dev already shows that
+// link in its own banner and pointing it at itself would be pointless.
+function stripDevSiteLinkOnDevSite(html) {
+  if (!IS_DEV_SITE) return html.replace(/<!-- dev-site-link:(start|end) -->/g, '');
+  return html.replace(DEV_SITE_LINK_PATTERN, '');
+}
+
+module.exports = { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite };
