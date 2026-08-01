@@ -402,6 +402,37 @@ whenever a channel goes live, and spawn/kill the `ffmpeg` relay accordingly.
 The backend creates the actual YouTube broadcast+stream via the YouTube
 Data API the moment a YouTube-enabled channel starts publishing.
 
+## Dev/staging environment
+
+`docker-compose.yml` includes a second, fully isolated copy of the `rtmp`
+and `backend` services (`dev-rtmp`/`dev-backend`) - own admin login, own RTMP
+port, own data/recordings volumes, nothing shared with production - served
+at `dev.stream.rossmackenzie.co.uk` on this same droplet via a second Caddy
+site block. Use it to test changes (including anything that needs a real
+OAuth grant, like recording a demo video for Google's verification) without
+touching the live site.
+
+To turn it on:
+
+1. In Cloudflare DNS, add an **A record** for `dev.stream.rossmackenzie.co.uk`
+   pointing at the same droplet IP as `stream.rossmackenzie.co.uk`.
+2. Uncomment and fill in the `DEV_*` variables in `.env` (see
+   `.env.example`) - use different secrets/admin credentials than
+   production. `DEV_GOOGLE_REDIRECT_URI` reuses the same
+   `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` as production, just with the
+   dev domain's callback path - add that exact URL as an additional
+   **Authorized redirect URI** on the same OAuth Client in Google Cloud
+   Console (Credentials page, not Branding).
+3. `docker compose up -d --build dev-rtmp dev-backend caddy`
+4. Point your encoder at `rtmp://<droplet-ip>:1936/live` (note the different
+   port from production's 1935) and visit
+   `https://dev.stream.rossmackenzie.co.uk/dashboard` to manage it.
+
+Once something's tested and ready, deploy the same commit to production the
+normal way (`git pull origin main && docker compose up -d --build`) - the
+dev stack is just for trying things first, not a place things get promoted
+*from* automatically.
+
 ## Production security checklist
 
 - `docker-compose.yml` publishes the backend directly on port **4000** for

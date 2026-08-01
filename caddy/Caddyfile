@@ -1,3 +1,7 @@
 {$PUBLIC_HOST} {
 	reverse_proxy backend:4000
 }
+
+dev.stream.rossmackenzie.co.uk {
+	reverse_proxy dev-backend:4000
+}
