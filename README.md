@@ -240,26 +240,21 @@ stream goes:
   pause/play control for viewers, so once playback starts there's no way to
   stop it from there - volume and fullscreen are unaffected, and the
   initial "click to watch" button still works as normal either way.
-- Everything else - YouTube, Facebook, and custom RTMP destinations - is
-  added via the **+ Add output** button and shows up in the same list below
-  "Your Website", each with its own on/off toggle and a Delete button.
-  There's no limit on how many of each type a channel can have (up to 10
-  outputs total), so you can relay to several YouTube channels and/or
-  several custom RTMP destinations at once.
+- Everything else - YouTube and custom RTMP destinations - is added via the
+  **+ Add output** button and shows up in the same list below "Your
+  Website", each with its own on/off toggle and a Delete button. There's no
+  limit on how many of each type a channel can have (up to 10 outputs
+  total), so you can relay to several YouTube channels and/or several
+  custom RTMP destinations at once.
   - **Custom RTMP**: picking this in the popup asks for a name, RTMP URL,
     and stream key (the same fields Restream or any platform gives you for
-    a "custom RTMP" destination - Twitch, another server, etc). This also
-    works for Facebook without any of the setup below - Facebook's Live
-    Producer gives you a persistent RTMPS URL + stream key you can paste in
-    here directly, if you'd rather skip the App Review process entirely.
+    a "custom RTMP" destination - Twitch, Facebook, another server, etc).
   - **YouTube**: see the dedicated section below - picking this in the
     popup takes you straight to Google's sign-in.
-  - **Facebook**: see the dedicated section below - picking this in the
-    popup takes you straight to Facebook's sign-in.
   - **Public Link**: adds a direct, shareable watch link for this channel
     (`/watch/<channel-id>/<random-token>`) - the same player as the embed,
     just full-page instead of in an iframe, for pasting into WhatsApp,
-    Facebook, email, etc. It's added instantly (no form to fill in) and
+    email, etc. It's added instantly (no form to fill in) and
     there's only ever one per channel; the link itself is never shown on
     screen (it's a real access-control secret, not just a page address) -
     click **Copy link** on its row any time to grab it. Independent of the
@@ -335,7 +330,7 @@ not a public one, nobody can reach them by URL, only through this page.
 ### How it works, if you're curious
 
 nginx-rtmp records the raw incoming stream (via the same `exec_publish`
-mechanism the YouTube/Facebook relays use) to a shared volume as MPEG-TS,
+mechanism the YouTube relay uses) to a shared volume as MPEG-TS,
 stream-copied - no re-encoding, so it costs almost nothing in CPU. Once the
 stream ends, the backend remuxes that into a proper, seekable MP4 (again a
 stream copy, not a re-encode - fast and cheap either way), uploads it to R2,
@@ -406,77 +401,6 @@ custom RTMP destination and a YouTube one simultaneously) - just click
 whenever a channel goes live, and spawn/kill the `ffmpeg` relay accordingly.
 The backend creates the actual YouTube broadcast+stream via the YouTube
 Data API the moment a YouTube-enabled channel starts publishing.
-
-## Relaying to Facebook
-
-Same idea as YouTube: connect a Facebook Page once via OAuth, and every time
-you go live the app creates a new Facebook Live Video on that Page
-automatically with your channel's title/description - no pasting a stream
-key by hand. If you'd rather skip all of the setup below, Facebook also
-works today with zero code changes as a plain **Custom RTMP** output (see
-above) - the one-click version below is only worth it if you don't want to
-copy Facebook's stream key over by hand.
-
-**Heads up before you start**: every Facebook permission has a "Standard
-Access" tier that works immediately - no review, no waiting - for anyone
-added as an Admin, Developer, or Tester on the app itself. Since you're both
-the one creating this app and the one managing your church's Page, that's
-almost certainly all you need. Facebook's formal **App Review** process
-(and sometimes business verification on top) is only required to unlock
-these permissions for people outside the app's own team - skip it entirely
-unless you actually hit a permission error. If you'd rather not deal with
-any of this, the Custom RTMP route above gets you the exact same stream on
-Facebook today, with no Facebook app at all.
-
-### One-time Meta developer setup
-
-1. Create an app at [developers.facebook.com/apps](https://developers.facebook.com/apps)
-   (choose the "Business" app type) - log in with the Facebook account that
-   manages your church's Page.
-2. Add the **Facebook Login** product (left sidebar → **Add Product** →
-   **Facebook Login** → **Set Up**), then under its **Settings**, add a
-   valid OAuth Redirect URI:
-   ```
-   https://<PUBLIC_HOST>/api/facebook/callback
-   ```
-3. Left sidebar → **App roles → Roles** → add yourself (the same Facebook
-   account from step 1) as an **Administrator**. This is what unlocks
-   Standard Access to `pages_show_list`, `pages_read_engagement`, and
-   `pages_manage_posts` for your own account immediately, without needing
-   App Review at all. You may get a notification/request to accept - do
-   that from your own Facebook account.
-4. Copy the **App ID** and **App Secret** from **App settings → Basic**,
-   and add them to `.env`:
-   ```
-   FACEBOOK_APP_ID=...
-   FACEBOOK_APP_SECRET=...
-   FACEBOOK_REDIRECT_URI=https://<PUBLIC_HOST>/api/facebook/callback
-   ```
-   then `docker compose up -d --build`.
-5. Try connecting from the dashboard (see "Using it" below). If it works,
-   you're done - no App Review needed. If Facebook specifically rejects a
-   permission as needing Advanced Access, that's when you'd go to **App
-   Review → Permissions and Features** and request it, explaining it's for
-   broadcasting your own organization's services to your own Page.
-
-### Using it
-
-- On a channel's detail page, click **+ Add output**, then **Facebook** in
-  the popup - this takes you to Facebook's sign-in, and connects whichever
-  Page you approve access to (if your account manages more than one Page,
-  it connects the first one Facebook returns - there's no picker yet).
-- The new output shows up as "Facebook - Connected as <your Page name>",
-  with its own on/off toggle. Title and description come from that
-  channel's shared **Edit title & description** popup, same as YouTube.
-- When the channel goes live, the app creates a new Facebook Live Video on
-  that Page (one per enabled Facebook output) and relays the incoming
-  stream to it. Facebook detects the incoming stream automatically and ends
-  the live video on its own once the stream stops - no manual steps in
-  Facebook's Live Producer either way.
-- Deleting a Facebook output (same Delete button as any other output) only
-  removes it from this app - it doesn't revoke the app's access on
-  Facebook's side. To fully revoke it, remove the app under your Facebook
-  account's Settings → Apps and Websites.
 
 ## Production security checklist
 

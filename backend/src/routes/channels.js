@@ -37,11 +37,10 @@ function generateStreamKey() {
   return crypto.randomBytes(20).toString('hex');
 }
 
-// A YouTube output carries an OAuth refresh token, and a Facebook output a
-// Page access token - both are server-to-platform credentials with no
-// legitimate reason to reach the browser. Every route that serializes a
-// channel goes through this first to strip whichever of these is present.
-const SECRET_OUTPUT_FIELDS = ['refreshToken', 'pageAccessToken'];
+// A YouTube output carries an OAuth refresh token - a server-to-platform
+// credential with no legitimate reason to reach the browser. Every route
+// that serializes a channel goes through this first to strip it if present.
+const SECRET_OUTPUT_FIELDS = ['refreshToken'];
 
 function redactChannel(channel) {
   const hasSecret = channel.outputs && channel.outputs.some(
@@ -211,8 +210,8 @@ function validateOutputInput(body, { partial } = {}) {
 }
 
 // Admin: add an output. Most fields depend on type:
-// - 'rtmp': a custom RTMP destination (e.g. Twitch, Facebook, another
-//   server) - relayed to automatically while live, name/URL/key required.
+// - 'rtmp': a custom RTMP destination (e.g. Twitch, another server) -
+//   relayed to automatically while live, name/URL/key required.
 // - 'public-link': a direct, non-embeddable watch link for this channel (see
 //   routes/watch.js) - no fields needed beyond the type itself, and a
 //   channel can only have one (there's nothing to differentiate a second
@@ -265,8 +264,8 @@ router.post('/:id/outputs', requireAuth, (req, res) => {
 });
 
 // Admin: update an output. RTMP outputs can have their name/URL/key edited;
-// a YouTube, Facebook, or public-link output can only be switched on/off
-// here (there's nothing else about any of those a form could meaningfully edit).
+// a YouTube or public-link output can only be switched on/off here (there's
+// nothing else about either of those a form could meaningfully edit).
 router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
@@ -275,7 +274,7 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const output = (channel.outputs || []).find((o) => o.id === req.params.outputId);
   if (!output) return res.status(404).json({ error: 'Output not found' });
 
-  if (output.type === 'youtube' || output.type === 'facebook' || output.type === 'public-link') {
+  if (output.type === 'youtube' || output.type === 'public-link') {
     if (typeof req.body.enabled === 'boolean') output.enabled = req.body.enabled;
     writeDb(db);
     return res.json(redactChannel(channel));
