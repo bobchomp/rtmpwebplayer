@@ -6,13 +6,13 @@ const IS_DEV_SITE = process.env.IS_DEV_SITE === 'true';
 
 function bannerHtml(position) {
   return `
-<div style="position:${position};top:0;left:0;right:0;z-index:99999;background:#facc15;color:#1a1a1a;
+<div style="position:${position};top:0;left:0;right:0;z-index:99999;background:#F5C55B;color:#22262B;
 display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
-padding:10px 16px;font:600 14px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif;
-box-shadow:0 1px 4px rgba(0,0,0,.2);">
+padding:11px 16px;font:600 14px/1.4 'Poppins',-apple-system,'Segoe UI',Roboto,sans-serif;
+box-shadow:0 1px 4px rgba(34,38,43,.2);">
   <span>&#9888;&#65039; This is the <strong>development</strong> site &mdash; not for real streams or production use.</span>
-  <a href="https://stream.rossmackenzie.co.uk" style="background:#1a1a1a;color:#fff;
-  padding:6px 14px;border-radius:4px;text-decoration:none;font-weight:600;white-space:nowrap;">Go to main site</a>
+  <a href="https://stream.rossmackenzie.co.uk" style="background:#22262B;color:#fff;
+  padding:7px 14px;border-radius:7px;text-decoration:none;font-weight:600;white-space:nowrap;">Go to main site</a>
 </div>`.trim();
 }
 

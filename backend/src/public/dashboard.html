@@ -4,13 +4,23 @@
 <meta charset="utf-8">
 <title>RTMP Web Player</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
 <div id="login-view" class="view hidden">
   <form id="login-form" class="login-box">
-    <h1>RTMP Web Player</h1>
+    <h1 class="wordmark">
+      <svg class="wordmark-icon" viewBox="0 0 32 32" aria-hidden="true">
+        <path class="wm-arc wm-arc-1" d="M9 9 A16 16 0 0 1 25 25"/>
+        <path class="wm-arc wm-arc-2" d="M9 14 A11 11 0 0 1 20 25"/>
+        <path class="wm-arc wm-arc-3" d="M9 19 A6 6 0 0 1 15 25"/>
+        <circle class="wm-dot" cx="9" cy="25" r="2.6"/>
+      </svg>
+      <span class="wordmark-text">RTMP <b>Web Player</b></span>
+    </h1>
     <label>Username
       <input type="text" id="login-username" autocomplete="username" required>
     </label>
@@ -24,7 +34,15 @@
 
 <div id="dashboard-view" class="view hidden">
   <header>
-    <h1>RTMP Web Player</h1>
+    <h1 class="wordmark">
+      <svg class="wordmark-icon" viewBox="0 0 32 32" aria-hidden="true">
+        <path class="wm-arc wm-arc-1" d="M9 9 A16 16 0 0 1 25 25"/>
+        <path class="wm-arc wm-arc-2" d="M9 14 A11 11 0 0 1 20 25"/>
+        <path class="wm-arc wm-arc-3" d="M9 19 A6 6 0 0 1 15 25"/>
+        <circle class="wm-dot" cx="9" cy="25" r="2.6"/>
+      </svg>
+      <span class="wordmark-text">RTMP <b>Web Player</b></span>
+    </h1>
     <div class="header-actions">
       <a href="#/" id="channels-btn" class="secondary">Channels</a>
       <a href="#/recordings" id="recordings-btn" class="secondary">Recordings</a>
