@@ -154,6 +154,23 @@ function countActiveViewers(channelId) {
   ).length;
 }
 
+// Admin-only bulk delete from the Stats page. Flushed immediately (rather
+// than waiting for the usual timer) since this is a deliberate, infrequent
+// action where the admin expects it to actually be gone, not just removed
+// from the in-memory view until the next periodic flush happens to run.
+function deletePlays(ids) {
+  ensureLoaded();
+  const idSet = new Set(ids);
+  const before = plays.length;
+  plays = plays.filter((p) => !idSet.has(p.id));
+  const deletedCount = before - plays.length;
+  if (deletedCount > 0) {
+    dirty = true;
+    flush();
+  }
+  return deletedCount;
+}
+
 setInterval(flush, FLUSH_INTERVAL_MS).unref();
 
 // Best-effort durability for whatever's still only in memory when the
@@ -167,4 +184,4 @@ setInterval(flush, FLUSH_INTERVAL_MS).unref();
   });
 });
 
-module.exports = { recordPlay, listPlays, countActiveViewers };
+module.exports = { recordPlay, listPlays, countActiveViewers, deletePlays };

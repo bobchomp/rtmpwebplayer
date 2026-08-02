@@ -73,6 +73,7 @@
           <input type="date" id="stats-to-filter">
         </label>
         <a id="stats-export-btn" class="secondary" href="/api/stats/export.csv" download>Export CSV</a>
+        <button class="secondary danger hidden" id="stats-delete-selected-btn">Delete selected (<span id="stats-selected-count">0</span>)</button>
       </div>
     </section>
 
@@ -81,6 +82,7 @@
         <table class="stats-table">
           <thead>
             <tr>
+              <th><input type="checkbox" id="stats-select-all" aria-label="Select all"></th>
               <th>Latest Play</th>
               <th>Channel</th>
               <th>Title</th>
@@ -262,6 +264,7 @@
 
 <template id="stats-row-template">
   <tr>
+    <td><input type="checkbox" class="stats-row-checkbox" aria-label="Select row"></td>
     <td class="stats-col-latest"></td>
     <td class="stats-col-channel"></td>
     <td class="stats-col-title"></td>

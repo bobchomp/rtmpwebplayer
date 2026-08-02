@@ -144,7 +144,15 @@
   var statsTableBody = document.getElementById('stats-table-body');
   var statsEmpty = document.getElementById('stats-empty');
   var statsRowTemplate = document.getElementById('stats-row-template');
+  var statsSelectAllCheckbox = document.getElementById('stats-select-all');
+  var statsDeleteSelectedBtn = document.getElementById('stats-delete-selected-btn');
+  var statsSelectedCount = document.getElementById('stats-selected-count');
   var statsListenersWired = false;
+  // Row ids currently checked - cleared on every reload (filter change,
+  // delete, etc.) rather than persisted across them, since the underlying
+  // row set can change out from under a stale selection.
+  var statsSelectedIds = {};
+  var statsCurrentPlayIds = [];
 
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 
@@ -183,8 +191,19 @@
 
       statsTableBody.innerHTML = '';
       statsEmpty.classList.toggle('hidden', data.plays.length > 0);
+      statsSelectedIds = {};
+      statsCurrentPlayIds = data.plays.map(function (p) { return p.id; });
       data.plays.forEach(function (p) {
         var row = statsRowTemplate.content.firstElementChild.cloneNode(true);
+        var checkbox = row.querySelector('.stats-row-checkbox');
+        checkbox.addEventListener('change', function () {
+          if (checkbox.checked) {
+            statsSelectedIds[p.id] = true;
+          } else {
+            delete statsSelectedIds[p.id];
+          }
+          updateStatsSelectionUi();
+        });
         row.querySelector('.stats-col-latest').textContent = formatPlayDate(p.latestPlayAt);
         row.querySelector('.stats-col-channel').textContent = p.channelName;
         row.querySelector('.stats-col-title').textContent = p.title;
@@ -197,7 +216,16 @@
         row.querySelector('.stats-col-first').textContent = formatPlayDate(p.firstPlayAt);
         statsTableBody.appendChild(row);
       });
+      updateStatsSelectionUi();
     });
+  }
+
+  function updateStatsSelectionUi() {
+    var selectedCount = Object.keys(statsSelectedIds).length;
+    statsDeleteSelectedBtn.classList.toggle('hidden', selectedCount === 0);
+    statsSelectedCount.textContent = String(selectedCount);
+    statsSelectAllCheckbox.checked = statsCurrentPlayIds.length > 0 && selectedCount === statsCurrentPlayIds.length;
+    statsSelectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < statsCurrentPlayIds.length;
   }
 
   function wireStatsEventListeners() {
@@ -206,6 +234,24 @@
     statsChannelFilter.addEventListener('change', loadStats);
     statsFromFilter.addEventListener('change', loadStats);
     statsToFilter.addEventListener('change', loadStats);
+    statsSelectAllCheckbox.addEventListener('change', function () {
+      var checked = statsSelectAllCheckbox.checked;
+      statsSelectedIds = {};
+      if (checked) {
+        statsCurrentPlayIds.forEach(function (id) { statsSelectedIds[id] = true; });
+      }
+      var rowCheckboxes = statsTableBody.querySelectorAll('.stats-row-checkbox');
+      for (var i = 0; i < rowCheckboxes.length; i++) rowCheckboxes[i].checked = checked;
+      updateStatsSelectionUi();
+    });
+    statsDeleteSelectedBtn.addEventListener('click', function () {
+      var ids = Object.keys(statsSelectedIds);
+      if (!ids.length) return;
+      if (!confirm('Delete ' + ids.length + ' selected play record' + (ids.length === 1 ? '' : 's') + '? This cannot be undone.')) return;
+      api('/api/stats', { method: 'DELETE', body: JSON.stringify({ ids: ids }) })
+        .then(loadStats)
+        .catch(function (err) { alert(err.message); });
+    });
   }
   wireStatsEventListeners();
 

@@ -52,6 +52,19 @@ function csvField(value) {
   return str;
 }
 
+// Admin-only bulk delete, driven by the Stats page's row checkboxes/"Delete
+// selected" button. Body is { ids: [...] } rather than a query string, since
+// this can legitimately be a large batch (e.g. selecting hundreds of rows).
+router.delete('/', requireAuth, (req, res) => {
+  const ids = Array.isArray(req.body && req.body.ids)
+    ? req.body.ids.filter((id) => typeof id === 'string')
+    : [];
+  if (!ids.length) return res.status(400).json({ error: 'ids is required' });
+
+  const deletedCount = plays.deletePlays(ids);
+  res.json({ deletedCount });
+});
+
 router.get('/export.csv', requireAuth, (req, res) => {
   const rows = plays.listPlays({
     channelId: req.query.channelId || undefined,
