@@ -554,36 +554,36 @@
   function renderRecordingRows(channelId, rows) {
     recordingsPageList.innerHTML = '';
     recordingsPageEmpty.classList.toggle('hidden', rows.length > 0);
-    if (rows.length === 0 && channelId) {
-      recordingsPageEmpty.textContent = 'No recordings yet for this channel.';
-    } else if (!channelId) {
-      recordingsPageEmpty.textContent = 'Select a channel above to see its recordings.';
+    if (rows.length === 0) {
+      recordingsPageEmpty.textContent = channelId ? 'No recordings yet for this channel.' : 'No recordings yet.';
     }
 
     rows.forEach(function (recording) {
+      var recordingChannelId = recording.channelId || channelId;
       var node = recordingRowTemplate.content.firstElementChild.cloneNode(true);
       var when = new Date(recording.startedAt);
       node.querySelector('.recording-date').textContent = when.toLocaleString();
       var metaParts = [];
+      if (!channelId && recording.channelName) metaParts.push(recording.channelName);
       if (recording.durationSeconds) metaParts.push(formatDuration(recording.durationSeconds));
       metaParts.push(formatBytes(recording.sizeBytes));
       node.querySelector('.recording-meta').textContent = metaParts.join(' · ');
 
       node.querySelector('.recording-play-btn').addEventListener('click', function () {
-        api('/api/channels/' + channelId + '/recordings/' + recording.id + '/url')
+        api('/api/channels/' + recordingChannelId + '/recordings/' + recording.id + '/url')
           .then(function (data) { window.open(data.url, '_blank'); })
           .catch(function (err) { alert(err.message); });
       });
 
       node.querySelector('.recording-download-btn').addEventListener('click', function () {
-        api('/api/channels/' + channelId + '/recordings/' + recording.id + '/url?download=1')
+        api('/api/channels/' + recordingChannelId + '/recordings/' + recording.id + '/url?download=1')
           .then(function (data) { window.open(data.url, '_blank'); })
           .catch(function (err) { alert(err.message); });
       });
 
       node.querySelector('.recording-delete-btn').addEventListener('click', function () {
         if (!confirm('Delete this recording? This cannot be undone.')) return;
-        api('/api/channels/' + channelId + '/recordings/' + recording.id, { method: 'DELETE' })
+        api('/api/channels/' + recordingChannelId + '/recordings/' + recording.id, { method: 'DELETE' })
           .then(function () { loadRecordingsForChannel(channelId); })
           .catch(function (err) { alert(err.message); });
       });
@@ -593,11 +593,8 @@
   }
 
   function loadRecordingsForChannel(channelId) {
-    if (!channelId) {
-      renderRecordingRows('', []);
-      return Promise.resolve();
-    }
-    return api('/api/channels/' + channelId + '/recordings').then(function (rows) {
+    var url = channelId ? '/api/channels/' + channelId + '/recordings' : '/api/channels/recordings/all';
+    return api(url).then(function (rows) {
       renderRecordingRows(channelId, rows);
     });
   }
@@ -608,7 +605,7 @@
       recordingsChannelSelect.innerHTML = '';
       var placeholder = document.createElement('option');
       placeholder.value = '';
-      placeholder.textContent = 'Select a channel…';
+      placeholder.textContent = 'All channels';
       recordingsChannelSelect.appendChild(placeholder);
       channels.forEach(function (channel) {
         var opt = document.createElement('option');

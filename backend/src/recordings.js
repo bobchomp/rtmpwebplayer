@@ -52,9 +52,11 @@ function getR2Client() {
   });
 }
 
+// Passing no channelId returns recordings for every channel, newest first -
+// used by the dashboard's "All channels" recordings view.
 function listRecordings(channelId) {
   return readAll()
-    .filter((r) => r.channelId === channelId)
+    .filter((r) => !channelId || r.channelId === channelId)
     .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
 }
 

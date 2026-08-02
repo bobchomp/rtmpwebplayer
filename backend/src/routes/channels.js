@@ -437,6 +437,18 @@ router.get('/:id/viewers', requireAuth, (req, res) => {
   res.json({ count: plays.countActiveViewers(channel.id) });
 });
 
+// Admin-only - past recordings across every channel, newest first, each
+// tagged with its channel name for display. Backs the "All channels" option
+// in the dashboard's recordings view.
+router.get('/recordings/all', requireAuth, (req, res) => {
+  const db = readDb();
+  const rows = recordings.listRecordings().map((r) => ({
+    ...r,
+    channelName: (db.channels[r.channelId] && db.channels[r.channelId].name) || 'Deleted channel',
+  }));
+  res.json(rows);
+});
+
 // Admin-only - past recordings for this channel. Never public: recordings
 // live in a private R2 bucket, so this is the only way to get at them.
 router.get('/:id/recordings', requireAuth, (req, res) => {
