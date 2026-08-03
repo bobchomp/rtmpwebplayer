@@ -165,6 +165,16 @@ button.danger:hover { background: var(--ember-tint); }
   margin-bottom: 18px;
 }
 
+.warning-banner {
+  background: var(--amber-tint);
+  border: 1px solid #EAD9AE;
+  color: #6B4E14;
+  font: 400 13.5px/1.5 var(--font-body);
+  padding: 14px 16px;
+}
+.warning-banner p { margin: 0 0 12px; }
+.warning-banner-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
 .field-row { margin-bottom: 14px; }
 .field-row label { margin-bottom: 5px; }
 

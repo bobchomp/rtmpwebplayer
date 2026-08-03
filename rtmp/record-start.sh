@@ -22,31 +22,50 @@ if ! mkdir -p "$OUTDIR" 2>&1; then
 fi
 OUTFILE="${OUTDIR}/$(date +%s).ts"
 LOGFILE="${PIDDIR}/${STREAM_KEY}.log"
-MAX_SECONDS=$(( ${MAX_RECORDING_HOURS:-4} * 3600 ))
-echo "record-start.sh: recording ${STREAM_KEY} to ${OUTFILE} (auto-cuts off after ${MAX_RECORDING_HOURS:-4}h if not stopped first)"
+# A last-resort backstop only - the real cap is enforced by the backend (see
+# RECORDING_WARN_HOURS/RECORDING_GRACE_MINUTES and the poller loop below),
+# which prompts the dashboard rather than just cutting recording off. This
+# just guarantees ffmpeg can't run truly forever even if the backend/network
+# is unreachable for the entire recording.
+SAFETY_SECONDS=$((48 * 3600))
+echo "record-start.sh: recording ${STREAM_KEY} to ${OUTFILE}"
 
 # Everything from here runs in one backgrounded subshell so it can `wait` on
-# ffmpeg's own PID directly (a separate script invocation, like the old
-# record-stop.sh, can't - it can only poll). -t caps a single recording at
-# MAX_SECONDS regardless of whether the stream itself keeps going - a stream
-# accidentally left running for days no longer means an unbounded local
-# file; ffmpeg just stops writing on its own and this finalizes/uploads
-# whatever was captured, the same way a normal, deliberate stop does. If the
-# stream is still live at that point, recording simply doesn't resume until
-# it's toggled off and on again - the admin has to notice, which is the
-# point (this is a safety net for "forgot to stop it", not a resumable
-# rotation scheme).
+# ffmpeg's own PID directly (a separate script invocation, like
+# record-stop.sh, can't - it can only poll).
 (
-  ffmpeg -i "rtmp://127.0.0.1/live/${STREAM_KEY}" -c copy -t "$MAX_SECONDS" -f mpegts "$OUTFILE" \
+  ffmpeg -i "rtmp://127.0.0.1/live/${STREAM_KEY}" -c copy -t "$SAFETY_SECONDS" -f mpegts "$OUTFILE" \
     > "$LOGFILE" 2>&1 &
   FFMPEG_PID=$!
   echo "$FFMPEG_PID" > "${PIDDIR}/${STREAM_KEY}.pid"
   echo "$OUTFILE" > "${PIDDIR}/${STREAM_KEY}.file"
-  wait "$FFMPEG_PID"
 
-  # ffmpeg has now exited - hit the -t cap, was sent SIGINT by
-  # record-stop.sh, or errored. Finalize exactly once, here, regardless of
-  # which it was.
+  # Polls the backend every 30s for as long as ffmpeg is running, asking
+  # whether this recording should keep going. Past RECORDING_WARN_HOURS the
+  # backend starts prompting the dashboard for a yes/no, and answers "stop"
+  # itself if nobody responds within RECORDING_GRACE_MINUTES - either way,
+  # this is what actually acts on that answer. Exits on its own the moment
+  # ffmpeg does (via the kill -0 check), so it never outlives the recording
+  # it's watching, and is killed explicitly below as a backstop in case
+  # ffmpeg exits between one check and the next.
+  (
+    while kill -0 "$FFMPEG_PID" 2>/dev/null; do
+      sleep 30
+      DECISION=$(curl -s --max-time 5 "http://backend:4000/api/rtmp/recording-should-continue?streamKey=${STREAM_KEY}&secret=${WEBHOOK_SECRET}")
+      if [ "$DECISION" = "stop" ]; then
+        kill -INT "$FFMPEG_PID" 2>/dev/null
+        break
+      fi
+    done
+  ) &
+  POLLER_PID=$!
+
+  wait "$FFMPEG_PID"
+  kill "$POLLER_PID" 2>/dev/null
+
+  # ffmpeg has now exited - hit the safety cap, was sent SIGINT (by the
+  # poller above or record-stop.sh), or errored. Finalize exactly once,
+  # here, regardless of which it was.
   rm -f "${PIDDIR}/${STREAM_KEY}.pid" "${PIDDIR}/${STREAM_KEY}.file"
 
   # Surfaces ffmpeg's own output in `docker compose logs rtmp` - it

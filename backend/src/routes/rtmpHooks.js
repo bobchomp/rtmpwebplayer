@@ -3,6 +3,7 @@ const fs = require('fs');
 const { readDb, writeDb } = require('../db');
 const youtube = require('../youtube');
 const recordings = require('../recordings');
+const recordingSessions = require('../recordingSessions');
 
 const router = express.Router();
 
@@ -108,6 +109,7 @@ router.post('/on_publish_done', (req, res) => {
   if (!checkSecret(req, res)) return;
 
   const streamKey = req.body.name;
+  recordingSessions.endSession(streamKey);
   const db = readDb();
   const channel = findChannelByKey(db, streamKey);
   if (channel) {
@@ -167,7 +169,22 @@ router.get('/recording-enabled', (req, res) => {
   const streamKey = req.query.streamKey;
   const db = readDb();
   const channel = findChannelByKey(db, streamKey);
-  res.type('text/plain').send(channel && channel.recordingEnabled ? 'yes' : 'no');
+  const enabled = !!(channel && channel.recordingEnabled);
+  if (enabled) recordingSessions.startSession(streamKey, channel.id);
+  res.type('text/plain').send(enabled ? 'yes' : 'no');
+});
+
+// Internal only (protected by WEBHOOK_SECRET) - polled every ~30s by
+// record-start.sh's own background watcher for as long as ffmpeg is
+// running. Past RECORDING_WARN_HOURS this is what actually decides whether
+// the recording keeps going - see recordingSessions.js for the warn/grace/
+// auto-stop logic, and the "Continue recording?" prompt on the channel
+// detail page for how an admin answers it.
+router.get('/recording-should-continue', (req, res) => {
+  if (!checkSecret(req, res)) return;
+
+  const streamKey = req.query.streamKey;
+  res.type('text/plain').send(recordingSessions.checkShouldContinue(streamKey));
 });
 
 // Internal only (protected by WEBHOOK_SECRET) - called by record-stop.sh
@@ -182,6 +199,7 @@ router.post('/recording-done', (req, res) => {
   const rawFilePath = req.body.file;
   res.status(200).send('OK');
 
+  if (streamKey) recordingSessions.endSession(streamKey);
   if (!streamKey || !rawFilePath) return;
 
   const db = readDb();

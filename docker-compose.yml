@@ -6,7 +6,6 @@ services:
       - "1935:1935" # RTMP ingest - point Restream's Custom RTMP destination here
     environment:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
-      MAX_RECORDING_HOURS: ${MAX_RECORDING_HOURS:-4}
     volumes:
       - hls_data:/tmp/hls
       - recordings_data:/recordings
@@ -43,6 +42,8 @@ services:
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
       RECORDING_RETENTION_DAYS: ${RECORDING_RETENTION_DAYS:-}
+      RECORDING_WARN_HOURS: ${RECORDING_WARN_HOURS:-}
+      RECORDING_GRACE_MINUTES: ${RECORDING_GRACE_MINUTES:-}
     volumes:
       - backend_data:/app/data
       - backend_uploads:/app/uploads
@@ -64,7 +65,6 @@ services:
       - "1936:1935" # separate from production's 1935 - point a *second* OBS profile here
     environment:
       WEBHOOK_SECRET: ${DEV_WEBHOOK_SECRET:-}
-      MAX_RECORDING_HOURS: ${MAX_RECORDING_HOURS:-4}
     volumes:
       - dev_hls_data:/tmp/hls
       - dev_recordings_data:/recordings
@@ -96,6 +96,8 @@ services:
       R2_SECRET_ACCESS_KEY: ${DEV_R2_SECRET_ACCESS_KEY:-}
       R2_BUCKET_NAME: ${DEV_R2_BUCKET_NAME:-}
       RECORDING_RETENTION_DAYS: ${RECORDING_RETENTION_DAYS:-}
+      RECORDING_WARN_HOURS: ${RECORDING_WARN_HOURS:-}
+      RECORDING_GRACE_MINUTES: ${RECORDING_GRACE_MINUTES:-}
     volumes:
       - dev_backend_data:/app/data
       - dev_backend_uploads:/app/uploads

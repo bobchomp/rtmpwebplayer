@@ -308,6 +308,10 @@
   var detailRecordingToggle = document.getElementById('detail-recording-toggle');
   var recordingRowTemplate = document.getElementById('recording-row-template');
 
+  var recordingContinueBanner = document.getElementById('recording-continue-banner');
+  var recordingContinueBtn = document.getElementById('recording-continue-btn');
+  var recordingStopBtn = document.getElementById('recording-stop-btn');
+
   function loadChannelDetail(channelId) {
     currentChannelId = channelId;
     wireDetailEventListeners();
@@ -342,6 +346,27 @@
     }
   }
 
+  // Admin-only, dashboard-only - polled while a recording is in progress so
+  // the "still recording - keep going?" prompt shows up without needing a
+  // page refresh, and disappears again the moment an answer is given.
+  function pollRecordingSession() {
+    fetch('/api/channels/' + currentChannelId + '/recording-session', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (session) {
+        if (!currentChannelId) return;
+        recordingContinueBanner.classList.toggle('hidden', !(session && session.awaitingConfirmation));
+      })
+      .catch(function () {});
+  }
+
+  function answerRecordingPrompt(shouldContinue) {
+    recordingContinueBanner.classList.add('hidden');
+    api('/api/channels/' + currentChannelId + '/recording-session/decision', {
+      method: 'POST',
+      body: JSON.stringify({ continue: shouldContinue }),
+    }).catch(function (err) { alert(err.message); });
+  }
+
   // Admin-only, dashboard-only - fetched from a separate authenticated route
   // (never folded into the public /status endpoint above) so a viewer count
   // can never end up reachable from anything public.
@@ -366,7 +391,12 @@
       .then(function (data) {
         if (!data) return;
         updatePreviewState(data.isLive, currentChannelId);
-        if (data.isLive) pollViewerCount();
+        if (data.isLive) {
+          pollViewerCount();
+          pollRecordingSession();
+        } else {
+          recordingContinueBanner.classList.add('hidden');
+        }
       })
       .catch(function () {});
   }
@@ -460,6 +490,7 @@
     detailDisablePauseToggle.checked = !!channel.disablePauseButton;
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
+    recordingContinueBanner.classList.add('hidden'); // reset on nav - pollLiveStatus re-shows it if still warranted
 
     var outputs = channel.outputs || [];
     detailOutputsList.innerHTML = '';
@@ -727,6 +758,9 @@
           detailRecordingToggle.checked = !detailRecordingToggle.checked;
         });
     });
+
+    recordingContinueBtn.addEventListener('click', function () { answerRecordingPrompt(true); });
+    recordingStopBtn.addEventListener('click', function () { answerRecordingPrompt(false); });
 
     editMetadataBtn.addEventListener('click', function () {
       metadataTitleInput.value = currentChannelMetadata.title;

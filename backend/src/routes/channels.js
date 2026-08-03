@@ -8,6 +8,7 @@ const { readDb, writeDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
 const recordings = require('../recordings');
+const recordingSessions = require('../recordingSessions');
 
 const router = express.Router();
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
@@ -447,6 +448,30 @@ router.get('/recordings/all', requireAuth, (req, res) => {
     channelName: (db.channels[r.channelId] && db.channels[r.channelId].name) || 'Deleted channel',
   }));
   res.json(rows);
+});
+
+// Admin-only - polled by the channel detail page while a recording is
+// active, to show the "still recording after N hours - keep going?" banner.
+// Returns null when there's no in-progress recording to report on (nothing
+// currently recording, or it already finished) - see recordingSessions.js.
+router.get('/:id/recording-session', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  res.json(recordingSessions.getStatus(channel.streamKey));
+});
+
+// Admin-only - the answer to that banner's "Keep recording" / "Stop
+// recording" buttons. Body: { continue: boolean }.
+router.post('/:id/recording-session/decision', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = db.channels[req.params.id];
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  const shouldContinue = !!(req.body && req.body.continue);
+  recordingSessions.recordDecision(channel.streamKey, shouldContinue ? 'continue' : 'stop');
+  res.json({ ok: true });
 });
 
 // Admin-only - past recordings for this channel. Never public: recordings
