@@ -315,6 +315,7 @@
       <span class="switch-track"></span>
     </label>
     <button class="secondary copy-btn output-copy-btn hidden">Copy link</button>
+    <button class="secondary output-edit-btn hidden">Edit</button>
     <button class="secondary danger output-delete-btn">Delete</button>
   </div>
 </template>
@@ -362,6 +363,21 @@
     <div class="modal-actions">
       <button class="secondary" id="add-output-cancel-btn">Cancel</button>
     </div>
+  </div>
+</div>
+
+<div id="edit-output-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Edit output</h3>
+    <form id="edit-output-form" class="add-output-form">
+      <input type="text" id="edit-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>
+      <input type="text" id="edit-output-rtmp-url" placeholder="RTMP URL (e.g. rtmp://live.twitch.tv/app)" required>
+      <input type="text" id="edit-output-stream-key" placeholder="Stream key" required>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="edit-output-cancel-btn">Cancel</button>
+        <button type="submit">Save</button>
+      </div>
+    </form>
   </div>
 </div>
 

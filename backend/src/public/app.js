@@ -300,6 +300,14 @@
   var newOutputRtmpUrl = document.getElementById('new-output-rtmp-url');
   var newOutputStreamKey = document.getElementById('new-output-stream-key');
 
+  var editOutputModalBackdrop = document.getElementById('edit-output-modal-backdrop');
+  var editOutputForm = document.getElementById('edit-output-form');
+  var editOutputCancelBtn = document.getElementById('edit-output-cancel-btn');
+  var editOutputName = document.getElementById('edit-output-name');
+  var editOutputRtmpUrl = document.getElementById('edit-output-rtmp-url');
+  var editOutputStreamKey = document.getElementById('edit-output-stream-key');
+  var editingOutputId = null;
+
   var detailCoverGallery = document.getElementById('detail-cover-gallery');
   var detailCoverUploadInput = document.getElementById('detail-cover-upload-input');
   var detailThumbGallery = document.getElementById('detail-thumb-gallery');
@@ -522,6 +530,18 @@
             toggle.checked = !toggle.checked;
           });
       });
+
+      var editBtn = node.querySelector('.output-edit-btn');
+      if (!isYoutube && !isPublicLink) {
+        editBtn.classList.remove('hidden');
+        editBtn.addEventListener('click', function () {
+          editingOutputId = output.id;
+          editOutputName.value = output.name;
+          editOutputRtmpUrl.value = output.rtmpUrl;
+          editOutputStreamKey.value = output.streamKey;
+          editOutputModalBackdrop.classList.remove('hidden');
+        });
+      }
 
       var copyBtn = node.querySelector('.output-copy-btn');
       if (isPublicLink) {
@@ -772,6 +792,32 @@
     });
     metadataModalBackdrop.addEventListener('click', function (e) {
       if (e.target === metadataModalBackdrop) metadataModalBackdrop.classList.add('hidden');
+    });
+
+    function closeEditOutputModal() {
+      editOutputModalBackdrop.classList.add('hidden');
+      editOutputForm.reset();
+      editingOutputId = null;
+    }
+    editOutputCancelBtn.addEventListener('click', closeEditOutputModal);
+    editOutputModalBackdrop.addEventListener('click', function (e) {
+      if (e.target === editOutputModalBackdrop) closeEditOutputModal();
+    });
+    editOutputForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      api('/api/channels/' + currentChannelId + '/outputs/' + editingOutputId, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: editOutputName.value,
+          rtmpUrl: editOutputRtmpUrl.value,
+          streamKey: editOutputStreamKey.value,
+        }),
+      })
+        .then(function () {
+          closeEditOutputModal();
+          return refreshChannelDetail();
+        })
+        .catch(function (err) { alert(err.message); });
     });
     metadataSaveBtn.addEventListener('click', function () {
       api('/api/channels/' + currentChannelId + '/metadata', {
