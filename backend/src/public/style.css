@@ -171,9 +171,18 @@ button.danger:hover { background: var(--ember-tint); }
   color: #6B4E14;
   font: 400 13.5px/1.5 var(--font-body);
   padding: 14px 16px;
+  animation: warning-banner-pulse 2.2s ease-in-out infinite;
 }
 .warning-banner p { margin: 0 0 12px; }
 .warning-banner-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+@keyframes warning-banner-pulse {
+  0%, 100% { background: var(--amber-tint); }
+  50% { background: #F3DCA0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .warning-banner { animation: none; }
+}
 
 .field-row { margin-bottom: 14px; }
 .field-row label { margin-bottom: 5px; }
