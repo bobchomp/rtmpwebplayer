@@ -341,3 +341,6 @@ button.danger:hover { background: var(--ember-tint); }
 }
 .modal-box h3 { margin: 0; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+.recording-player-box { max-width: 860px; }
+#recording-player-video { width: 100%; max-height: 70vh; border-radius: var(--radius-sm); background: #000; display: block; }
