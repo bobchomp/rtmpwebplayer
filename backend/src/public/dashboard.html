@@ -249,7 +249,7 @@
           <hr class="output-divider">
 
           <div id="detail-outputs-list"></div>
-          <p class="hint hidden" id="detail-outputs-empty">No other outputs yet - click "+ Add output" above to relay to YouTube or a custom RTMP destination.</p>
+          <p class="hint hidden" id="detail-outputs-empty">No other outputs yet - click "+ Add output" above to relay to another destination.</p>
         </div>
 
         <div class="panel detail-extras">
@@ -322,7 +322,7 @@
 <div id="metadata-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal-box">
     <h3>Title &amp; description</h3>
-    <p class="hint">Used on the embed page (title, link previews) and as the YouTube broadcast's title/description.</p>
+    <p class="hint">Used on the embed page (title, link previews)<!-- youtube:start --> and as the YouTube broadcast's title/description<!-- youtube:end -->.</p>
     <label>Title
       <input type="text" id="metadata-title-input" maxlength="100" placeholder="Defaults to the channel name">
     </label>
@@ -341,14 +341,18 @@
     <h3>Add output</h3>
     <p class="hint">Choose what to send this stream to.</p>
     <div class="add-output-type-row" id="add-output-type-row">
+      <!-- youtube:start -->
       <button class="secondary brand-connect-btn" id="add-output-type-youtube">
         <svg viewBox="0 0 28 20" width="22" height="16" aria-hidden="true"><path fill="#FF0000" d="M27.4 3.1C27.1 1.9 26.1.9 24.9.6 22.7 0 14 0 14 0S5.3 0 3.1.6C1.9.9.9 1.9.6 3.1 0 5.3 0 10 0 10s0 4.7.6 6.9c.3 1.2 1.3 2.1 2.5 2.4C5.3 20 14 20 14 20s8.7 0 10.9-.6c1.2-.3 2.1-1.3 2.4-2.5.6-2.1.6-6.8.6-6.8s0-4.7-.6-6.9z"/><path fill="#fff" d="M11 14.3 18.5 10 11 5.7z"/></svg>
         <span>Connect to YouTube</span>
       </button>
+      <!-- youtube:end -->
       <button class="secondary" id="add-output-type-rtmp">Custom RTMP</button>
       <button class="secondary" id="add-output-type-public-link">Public Link</button>
     </div>
+    <!-- youtube:start -->
     <p class="hint privacy-notice" id="add-output-youtube-privacy-notice">Connecting YouTube only requests access to create and manage a live broadcast on your behalf - see our <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a> for details on how this data is used.</p>
+    <!-- youtube:end -->
     <form id="add-output-rtmp-form" class="hidden add-output-form">
       <input type="text" id="new-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>
       <input type="text" id="new-output-rtmp-url" placeholder="RTMP URL (e.g. rtmp://live.twitch.tv/app)" required>

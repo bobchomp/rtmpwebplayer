@@ -14,7 +14,7 @@ const watch = require('./routes/watch');
 const youtubeAuth = require('./routes/youtubeAuth');
 const statsRoutes = require('./routes/stats');
 const geoip = require('./geoip');
-const { withDevBanner, stripDevSiteLinkOnDevSite } = require('./devBanner');
+const { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripYoutubeOnProduction } = require('./devBanner');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -54,18 +54,21 @@ app.get('/api/config', (req, res) => {
     // (or an unproxied hostname) so the dashboard shows a working RTMP URL.
     rtmpHost: process.env.RTMP_PUBLIC_HOST || process.env.PUBLIC_HOST || req.hostname,
     rtmpPort: process.env.RTMP_PORT || 1935,
-    // Lets the dashboard hide the "Connect to YouTube" button rather than
-    // showing one that just errors when clicked - temporarily unset on
-    // production (see docker-compose.yml) while YouTube's OAuth scope is
-    // only exercised on the dev stack.
-    youtubeEnabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    // YouTube relaying is a dev-site-only feature by design (see
+    // /api/youtube below, only mounted here too) - gated on IS_DEV_SITE
+    // itself, not just credential presence, so it stays off on production
+    // even if GOOGLE_CLIENT_ID/SECRET were ever accidentally set there.
+    youtubeEnabled: IS_DEV_SITE && !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
   });
 });
 
 app.use('/api', authRoutes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/rtmp', rtmpHooks);
-app.use('/api/youtube', youtubeAuth);
+// Dev-site-only (see stripYoutubeOnProduction below and rtmpHooks.js) - not
+// mounted at all on production, so a request to any /api/youtube/* route
+// there gets a plain 404 rather than revealing the route exists.
+if (IS_DEV_SITE) app.use('/api/youtube', youtubeAuth);
 app.use('/api/stats', statsRoutes);
 app.use('/live', hlsProxy);
 app.use('/embed', embed);
@@ -76,7 +79,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 // Loaded (and, on the dev stack, banner-injected) once at startup rather than
 // per-request - none of this changes while the process is running.
 function loadHtmlPage(filename) {
-  return withDevBanner(fs.readFileSync(path.join(PUBLIC_DIR, filename), 'utf8'));
+  return stripYoutubeOnProduction(withDevBanner(fs.readFileSync(path.join(PUBLIC_DIR, filename), 'utf8')));
 }
 
 const homepageHtml = stripDevSiteLinkOnDevSite(loadHtmlPage('index.html'));

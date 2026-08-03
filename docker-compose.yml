@@ -27,10 +27,10 @@ services:
       RTMP_PORT: "1935"
       HLS_INTERNAL_URL: "http://rtmp:8080"
       PORT: "4000"
-      # YouTube deliberately left unconfigured on production for now - its
-      # OAuth scope is only being exercised on the dev stack below, per
-      # Google's own guidance not to run an unverified scope against real
-      # production traffic. Re-add these three once verification is done.
+      # YouTube relaying is a dev-site-only feature by design - not something
+      # to re-add here. Even setting these would do nothing on production:
+      # index.js only mounts /api/youtube, and rtmpHooks.js only acts on
+      # 'youtube' outputs, when IS_DEV_SITE is true.
       # GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       # GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       # GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}

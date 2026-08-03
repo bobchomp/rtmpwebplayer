@@ -4,6 +4,7 @@ const { readDb, writeDb } = require('../db');
 const youtube = require('../youtube');
 const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
+const { IS_DEV_SITE } = require('../devBanner');
 
 const router = express.Router();
 
@@ -76,7 +77,12 @@ router.post('/on_publish', (req, res) => {
     writeDb(freshDb);
   }, LIVE_DELAY_MS);
 
-  (channel.outputs || [])
+  // YouTube relaying is dev-site-only (see /api/config's youtubeEnabled and
+  // index.js, which doesn't even mount /api/youtube on production) - this
+  // guard means that stays true even for a leftover 'youtube' output from
+  // before that gate existed, rather than relying solely on none being
+  // creatable going forward.
+  (IS_DEV_SITE ? channel.outputs || [] : [])
     .filter((output) => output.type === 'youtube' && output.enabled && output.refreshToken)
     .forEach((output) => {
       youtube
@@ -148,7 +154,8 @@ router.get('/relay-targets', (req, res) => {
 
   (channel.outputs || []).forEach((output) => {
     if (!output.enabled) return;
-    if (output.type === 'youtube' && output.ingestAddress && output.streamName) {
+    // Same dev-site-only guard as on_publish above.
+    if (IS_DEV_SITE && output.type === 'youtube' && output.ingestAddress && output.streamName) {
       lines.push(`${output.id}\t${output.ingestAddress}/${output.streamName}`);
     } else if (output.type === 'rtmp' && output.rtmpUrl && output.streamKey) {
       lines.push(`${output.id}\t${output.rtmpUrl}/${output.streamKey}`);

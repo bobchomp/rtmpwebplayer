@@ -343,6 +343,14 @@ until you delete it yourself.
 
 ## Relaying to YouTube
 
+**Dev-site-only by design.** YouTube relaying only ever runs on the
+dev/staging stack (see "Dev/staging environment" below) - the production
+site mounts none of its routes and shows none of its UI, regardless of
+whether `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are set anywhere. This
+isn't a temporary state pending Google verification - it's the intended
+setup, since the church's actual use case never needed a public-facing
+YouTube relay on the main site.
+
 Unlike a plain RTMP destination, YouTube needs an account connected via
 OAuth - after that it creates a live broadcast with your channel's title
 automatically every time you go live, no need to touch YouTube Studio or
@@ -364,15 +372,12 @@ custom RTMP destination and a YouTube one simultaneously) - just click
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**,
    application type **Web application**, with an authorized redirect URI of:
    ```
-   https://<PUBLIC_HOST>/api/youtube/callback
+   https://dev.<PUBLIC_HOST>/api/youtube/callback
    ```
-5. Add the resulting Client ID/Secret to `.env`:
-   ```
-   GOOGLE_CLIENT_ID=...
-   GOOGLE_CLIENT_SECRET=...
-   GOOGLE_REDIRECT_URI=https://<PUBLIC_HOST>/api/youtube/callback
-   ```
-   then `docker compose up -d --build`.
+5. Add the resulting Client ID/Secret to `.env` as the `GOOGLE_CLIENT_ID` /
+   `GOOGLE_CLIENT_SECRET` / `DEV_GOOGLE_REDIRECT_URI` variables described in
+   "Dev/staging environment" below, then
+   `docker compose up -d --build dev-rtmp dev-backend`.
 
 ### Using it
 
@@ -418,11 +423,12 @@ To turn it on:
    pointing at the same droplet IP as `stream.rossmackenzie.co.uk`.
 2. Uncomment and fill in the `DEV_*` variables in `.env` (see
    `.env.example`) - use different secrets/admin credentials than
-   production. `DEV_GOOGLE_REDIRECT_URI` reuses the same
-   `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` as production, just with the
-   dev domain's callback path - add that exact URL as an additional
-   **Authorized redirect URI** on the same OAuth Client in Google Cloud
-   Console (Credentials page, not Branding).
+   production. `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (not `DEV_`-prefixed
+   - they're dev-only, so there's no production copy to distinguish them
+   from) plus `DEV_GOOGLE_REDIRECT_URI` are what actually enable YouTube
+   relaying here - add that redirect URL as an **Authorized redirect URI**
+   on the OAuth Client in Google Cloud Console (Credentials page, not
+   Branding).
 3. `docker compose up -d --build dev-rtmp dev-backend caddy`
 4. Point your encoder at `rtmp://<droplet-ip>:1936/live` (note the different
    port from production's 1935) and visit

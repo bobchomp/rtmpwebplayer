@@ -802,9 +802,13 @@
     addOutputModalBackdrop.addEventListener('click', function (e) {
       if (e.target === addOutputModalBackdrop) closeAddOutputModal();
     });
-    addOutputTypeYoutubeBtn.addEventListener('click', function () {
-      window.location.href = '/api/youtube/connect?channelId=' + encodeURIComponent(currentChannelId);
-    });
+    // Absent from the DOM entirely on production (see stripYoutubeOnProduction
+    // in devBanner.js) - this is a dev-site-only feature there.
+    if (addOutputTypeYoutubeBtn) {
+      addOutputTypeYoutubeBtn.addEventListener('click', function () {
+        window.location.href = '/api/youtube/connect?channelId=' + encodeURIComponent(currentChannelId);
+      });
+    }
     addOutputTypeRtmpBtn.addEventListener('click', function () {
       addOutputTypeRow.classList.add('hidden');
       addOutputRtmpForm.classList.remove('hidden');
@@ -851,8 +855,11 @@
     show('dashboard');
     api('/api/config').then(function (cfg) {
       config = cfg;
-      addOutputTypeYoutubeBtn.classList.toggle('hidden', !cfg.youtubeEnabled);
-      document.getElementById('add-output-youtube-privacy-notice').classList.toggle('hidden', !cfg.youtubeEnabled);
+      // Both absent from the DOM entirely on production - only present (and
+      // possibly still hidden pending real credentials) on the dev site.
+      if (addOutputTypeYoutubeBtn) addOutputTypeYoutubeBtn.classList.toggle('hidden', !cfg.youtubeEnabled);
+      var youtubePrivacyNotice = document.getElementById('add-output-youtube-privacy-notice');
+      if (youtubePrivacyNotice) youtubePrivacyNotice.classList.toggle('hidden', !cfg.youtubeEnabled);
       route();
     });
   }

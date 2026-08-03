@@ -40,4 +40,17 @@ function stripDevSiteLinkOnDevSite(html) {
   return html.replace(DEV_SITE_LINK_PATTERN, '');
 }
 
-module.exports = { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite };
+const YOUTUBE_SECTION_PATTERN = /<!-- youtube:start -->[\s\S]*?<!-- youtube:end -->/g;
+
+// The YouTube relay is a dev-site-only feature (see index.js, which also
+// only mounts /api/youtube there) - this is the opposite of
+// stripDevSiteLinkOnDevSite above: content wrapped in these markers is kept
+// on the dev site and removed everywhere else, including production, so a
+// visitor there sees zero mention of YouTube in the page source at all, not
+// just a hidden button.
+function stripYoutubeOnProduction(html) {
+  if (IS_DEV_SITE) return html.replace(/<!-- youtube:(start|end) -->/g, '');
+  return html.replace(YOUTUBE_SECTION_PATTERN, '');
+}
+
+module.exports = { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripYoutubeOnProduction };
