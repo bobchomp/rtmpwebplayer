@@ -67,10 +67,19 @@ function ensureLoaded() {
   }
 }
 
+// A write failure here (e.g. a full disk) must never crash the whole
+// process - stats are non-critical compared to the live stream itself still
+// working. Leaving `dirty` set means the next tick just retries the same
+// write, so a transient failure self-heals once the underlying problem
+// (e.g. disk space) is resolved, with no data lost from the in-memory copy.
 function flush() {
   if (!dirty) return;
-  writePlaysFile(plays);
-  dirty = false;
+  try {
+    writePlaysFile(plays);
+    dirty = false;
+  } catch (err) {
+    console.error('Failed to flush plays.json - will retry next interval:', err.message);
+  }
 }
 
 function detectDeviceType(userAgent) {

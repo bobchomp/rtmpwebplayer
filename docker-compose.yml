@@ -6,6 +6,7 @@ services:
       - "1935:1935" # RTMP ingest - point Restream's Custom RTMP destination here
     environment:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      MAX_RECORDING_HOURS: ${MAX_RECORDING_HOURS:-4}
     volumes:
       - hls_data:/tmp/hls
       - recordings_data:/recordings
@@ -63,6 +64,7 @@ services:
       - "1936:1935" # separate from production's 1935 - point a *second* OBS profile here
     environment:
       WEBHOOK_SECRET: ${DEV_WEBHOOK_SECRET:-}
+      MAX_RECORDING_HOURS: ${MAX_RECORDING_HOURS:-4}
     volumes:
       - dev_hls_data:/tmp/hls
       - dev_recordings_data:/recordings

@@ -5,7 +5,7 @@
 # shared volume as it comes in. Recorded as MPEG-TS (not MP4) deliberately -
 # TS has no upfront index to finalize, so it's safe to write indefinitely and
 # survives being killed mid-stream; the backend remuxes it into a proper,
-# seekable MP4 once recording stops (see record-stop.sh / recording-done).
+# seekable MP4 once recording stops (see recording-done).
 set -u
 
 STREAM_KEY="$1"
@@ -21,15 +21,48 @@ if ! mkdir -p "$OUTDIR" 2>&1; then
   exit 0
 fi
 OUTFILE="${OUTDIR}/$(date +%s).ts"
-echo "record-start.sh: recording ${STREAM_KEY} to ${OUTFILE}"
+LOGFILE="${PIDDIR}/${STREAM_KEY}.log"
+MAX_SECONDS=$(( ${MAX_RECORDING_HOURS:-4} * 3600 ))
+echo "record-start.sh: recording ${STREAM_KEY} to ${OUTFILE} (auto-cuts off after ${MAX_RECORDING_HOURS:-4}h if not stopped first)"
 
-# Redirected to a plain file (not piped through tee) - piping would back-
-# ground the *pipeline*, so $! would capture the pipe's last command
-# instead of ffmpeg itself, breaking record-stop.sh's ability to signal the
-# right process. record-stop.sh prints this file's content to stdout once
-# the stream ends, so it still shows up in `docker compose logs rtmp`
-# without needing to exec into the container to find it.
-ffmpeg -i "rtmp://127.0.0.1/live/${STREAM_KEY}" -c copy -f mpegts "$OUTFILE" \
-  > "${PIDDIR}/${STREAM_KEY}.log" 2>&1 &
-echo $! > "${PIDDIR}/${STREAM_KEY}.pid"
-echo "$OUTFILE" > "${PIDDIR}/${STREAM_KEY}.file"
+# Everything from here runs in one backgrounded subshell so it can `wait` on
+# ffmpeg's own PID directly (a separate script invocation, like the old
+# record-stop.sh, can't - it can only poll). -t caps a single recording at
+# MAX_SECONDS regardless of whether the stream itself keeps going - a stream
+# accidentally left running for days no longer means an unbounded local
+# file; ffmpeg just stops writing on its own and this finalizes/uploads
+# whatever was captured, the same way a normal, deliberate stop does. If the
+# stream is still live at that point, recording simply doesn't resume until
+# it's toggled off and on again - the admin has to notice, which is the
+# point (this is a safety net for "forgot to stop it", not a resumable
+# rotation scheme).
+(
+  ffmpeg -i "rtmp://127.0.0.1/live/${STREAM_KEY}" -c copy -t "$MAX_SECONDS" -f mpegts "$OUTFILE" \
+    > "$LOGFILE" 2>&1 &
+  FFMPEG_PID=$!
+  echo "$FFMPEG_PID" > "${PIDDIR}/${STREAM_KEY}.pid"
+  echo "$OUTFILE" > "${PIDDIR}/${STREAM_KEY}.file"
+  wait "$FFMPEG_PID"
+
+  # ffmpeg has now exited - hit the -t cap, was sent SIGINT by
+  # record-stop.sh, or errored. Finalize exactly once, here, regardless of
+  # which it was.
+  rm -f "${PIDDIR}/${STREAM_KEY}.pid" "${PIDDIR}/${STREAM_KEY}.file"
+
+  # Surfaces ffmpeg's own output in `docker compose logs rtmp` - it
+  # otherwise only exists as a file inside this container, invisible unless
+  # someone execs in and goes looking for it by hand.
+  if [ -f "$LOGFILE" ]; then
+    echo "record-start.sh: ffmpeg output for ${STREAM_KEY} (${OUTFILE}):"
+    cat "$LOGFILE"
+    rm -f "$LOGFILE"
+  fi
+
+  if [ ! -s "$OUTFILE" ]; then
+    echo "record-start.sh: ${OUTFILE} is missing or empty - ffmpeg likely failed to start; not notifying the backend"
+    exit 0
+  fi
+
+  curl -s --max-time 10 -X POST "http://backend:4000/api/rtmp/recording-done?secret=${WEBHOOK_SECRET}" \
+    -d "streamKey=${STREAM_KEY}" --data-urlencode "file=${OUTFILE}" > /dev/null 2>&1
+) &
