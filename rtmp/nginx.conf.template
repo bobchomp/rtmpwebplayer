@@ -19,6 +19,16 @@ rtmp {
             live on;
             record off;
 
+            # Detects a publisher whose connection didn't close cleanly (a
+            # dropped network, an encoder that crashed or lost power, a
+            # laptop put to sleep mid-stream) rather than one that properly
+            # sent an unpublish - without this, nginx has no way to tell the
+            # two apart, so a broadcaster who vanishes without clicking
+            # "Stop Streaming" would otherwise leave the channel "live"
+            # forever, along with the recording/relay ffmpeg processes tied
+            # to it, which just keep running indefinitely too.
+            drop_idle_publisher 10s;
+
             # Only this container may play RTMP directly; public playback goes
             # through HLS via the backend proxy, never raw RTMP.
             allow play 127.0.0.1;
