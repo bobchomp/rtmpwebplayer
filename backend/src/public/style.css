@@ -345,24 +345,41 @@ button.danger:hover { background: var(--ember-tint); }
 .recording-player-box { max-width: 860px; }
 #recording-player-video { width: 100%; max-height: 70vh; border-radius: var(--radius-sm); background: #000; display: block; }
 
-.how-it-works-panel { max-width: 720px; padding: 32px 30px 36px; }
+.how-it-works-panel { max-width: 1040px; padding: 36px 40px 40px; }
 .how-it-works-intro {
-  font: 400 15.5px/1.6 var(--font-body); color: var(--slate); max-width: 54ch; margin: 0 0 34px;
+  font: 400 15.5px/1.6 var(--font-body); color: var(--slate); max-width: 60ch; margin: 0 0 40px;
 }
 
 .how-it-works-steps { list-style: none; margin: 0; padding: 0; position: relative; }
 /* One continuous line spanning from the first step's circle to the last -
    drawn once on the list itself rather than per-item, so it's unaffected by
-   how tall any individual step's text runs. */
+   how tall any individual step's text runs. Centered for the desktop
+   zigzag layout; media query below moves it back to the left edge for the
+   single-column mobile layout. */
 .how-it-works-steps::before {
-  content: ""; position: absolute; left: 17px; top: 18px; bottom: 18px; width: 2px;
+  content: ""; position: absolute; left: 50%; margin-left: -1px; top: 18px; bottom: 18px; width: 2px;
   background: var(--border); z-index: 0;
 }
-.how-it-works-steps li { display: flex; gap: 18px; margin-bottom: 30px; }
-.how-it-works-steps li:last-child { margin-bottom: 0; }
+
+.step {
+  display: grid; grid-template-columns: 1fr 44px 1fr; column-gap: 32px; align-items: start;
+  margin-bottom: 8px;
+}
+.step:last-child { margin-bottom: 0; }
+/* Every child pinned to the same explicit row - without this, auto-
+   placement order depends on DOM order vs. each item's explicit column,
+   which (for "left" steps, where content precedes the circle in the
+   markup) pushes the circle onto its own row instead of alongside it. */
+.step-num, .step-content, .step-spacer { grid-row: 1; }
+.step-spacer { grid-column: 1; }
+.step-right .step-num { grid-column: 2; }
+.step-right .step-content { grid-column: 3; }
+.step-left .step-spacer { grid-column: 3; }
+.step-left .step-num { grid-column: 2; }
+.step-left .step-content { grid-column: 1; }
 
 .step-num {
-  position: relative; z-index: 1; flex-shrink: 0;
+  position: relative; z-index: 1; justify-self: center; flex-shrink: 0;
   width: 36px; height: 36px; border-radius: 50%;
   background: var(--accent); color: #fff;
   font: 600 14px/1 var(--font-display);
@@ -370,10 +387,17 @@ button.danger:hover { background: var(--ember-tint); }
   box-shadow: 0 0 0 4px var(--surface);
 }
 
-.step-content { padding-top: 6px; min-width: 0; }
+.step-content { padding-top: 6px; min-width: 0; padding-bottom: 30px; }
 .step-content h3 { font: 600 15.5px/1.3 var(--font-display); margin: 0 0 6px; letter-spacing: -.005em; }
-.step-content p { margin: 0; color: var(--slate); max-width: 58ch; }
+.step-content p { margin: 0; color: var(--slate); max-width: 42ch; }
+.step-left .step-content p { margin-left: auto; }
 
-@media (max-width: 560px) {
+@media (max-width: 760px) {
   .how-it-works-panel { padding: 24px 18px 28px; }
+  .how-it-works-steps::before { left: 17px; margin-left: 0; }
+  .step { grid-template-columns: 36px 1fr; column-gap: 18px; margin-bottom: 30px; }
+  .step-spacer { display: none; }
+  .step-right .step-num, .step-left .step-num { grid-column: 1; }
+  .step-right .step-content, .step-left .step-content { grid-column: 2; padding-bottom: 0; }
+  .step-content p, .step-left .step-content p { max-width: none; margin-left: 0; }
 }
