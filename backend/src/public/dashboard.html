@@ -177,18 +177,13 @@
   </div>
 
   <div id="channel-list-view">
-    <section class="panel">
-      <h2>Create a channel</h2>
-      <form id="create-form" class="inline-form">
-        <input type="text" id="new-channel-name" placeholder="Channel name (e.g. Main Camera)" required maxlength="100">
-        <button type="submit">Create channel</button>
-      </form>
-    </section>
-
     <section>
-      <h2>Channels</h2>
+      <div class="outputs-panel-header">
+        <h2>Channels</h2>
+        <button class="secondary" id="create-channel-btn">+ Create channel</button>
+      </div>
       <div id="channels-list"></div>
-      <p id="empty-state" class="hint hidden">No channels yet - create one above to get a stream key.</p>
+      <p id="empty-state" class="hint hidden">No channels yet - click "+ Create channel" to get a stream key.</p>
     </section>
   </div>
 
@@ -376,6 +371,21 @@
     <button class="secondary danger output-delete-btn">Delete</button>
   </div>
 </template>
+
+<div id="create-channel-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Create a channel</h3>
+    <form id="create-form">
+      <label>Channel name
+        <input type="text" id="new-channel-name" placeholder="e.g. Main Camera" required maxlength="100">
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="create-channel-cancel-btn">Cancel</button>
+        <button type="submit">Create channel</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <div id="metadata-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal-box">

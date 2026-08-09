@@ -9,6 +9,9 @@
   var howItWorksView = document.getElementById('how-it-works-view');
 
   var createForm = document.getElementById('create-form');
+  var createChannelBtn = document.getElementById('create-channel-btn');
+  var createChannelModalBackdrop = document.getElementById('create-channel-modal-backdrop');
+  var createChannelCancelBtn = document.getElementById('create-channel-cancel-btn');
   var channelsList = document.getElementById('channels-list');
   var emptyState = document.getElementById('empty-state');
   var channelRowTemplate = document.getElementById('channel-row-template');
@@ -123,6 +126,20 @@
     });
   }
 
+  function closeCreateChannelModal() {
+    createChannelModalBackdrop.classList.add('hidden');
+    createForm.reset();
+  }
+
+  createChannelBtn.addEventListener('click', function () {
+    createChannelModalBackdrop.classList.remove('hidden');
+    document.getElementById('new-channel-name').focus();
+  });
+  createChannelCancelBtn.addEventListener('click', closeCreateChannelModal);
+  createChannelModalBackdrop.addEventListener('click', function (e) {
+    if (e.target === createChannelModalBackdrop) closeCreateChannelModal();
+  });
+
   createForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var input = document.getElementById('new-channel-name');
@@ -130,7 +147,7 @@
     if (!name) return;
     api('/api/channels', { method: 'POST', body: JSON.stringify({ name: name }) })
       .then(function (channel) {
-        input.value = '';
+        closeCreateChannelModal();
         window.location.hash = '#/channel/' + encodeURIComponent(channel.id);
       })
       .catch(function (err) { alert(err.message); });

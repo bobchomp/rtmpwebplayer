@@ -283,7 +283,7 @@ button.danger:hover { background: var(--ember-tint); }
 .outputs-panel-header {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px;
 }
-.outputs-panel-header h3 { margin: 0; }
+.outputs-panel-header h2, .outputs-panel-header h3 { margin: 0; }
 .outputs-panel-header-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .add-output-type-row { display: flex; gap: 8px; flex-wrap: wrap; }
