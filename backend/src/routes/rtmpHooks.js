@@ -69,12 +69,19 @@ router.post('/on_publish', (req, res) => {
   cancelPendingLive(channel.id);
   pendingLiveTimers[channel.id] = setTimeout(() => {
     delete pendingLiveTimers[channel.id];
-    const freshDb = readDb();
-    const freshChannel = freshDb.channels[channel.id];
-    if (!freshChannel) return;
-    freshChannel.isLive = true;
-    freshChannel.lastLiveAt = new Date().toISOString();
-    writeDb(freshDb);
+    // This runs detached from any request/promise chain, so an uncaught
+    // throw here (e.g. ENOSPC from writeDb's fs.writeFileSync) would
+    // otherwise crash the whole process instead of just this one channel.
+    try {
+      const freshDb = readDb();
+      const freshChannel = freshDb.channels[channel.id];
+      if (!freshChannel) return;
+      freshChannel.isLive = true;
+      freshChannel.lastLiveAt = new Date().toISOString();
+      writeDb(freshDb);
+    } catch (err) {
+      console.error(`Failed to flip channel ${channel.id} live:`, err.message);
+    }
   }, LIVE_DELAY_MS);
 
   // YouTube relaying is dev-site-only (see /api/config's youtubeEnabled and

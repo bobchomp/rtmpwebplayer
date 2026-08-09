@@ -32,13 +32,18 @@ function buildPlayerHtml(channel) {
   const displayTitle = channel.title || channel.name;
   const description = channel.description || '';
 
+  // Replacement values are passed as functions, not strings - a string
+  // replacement is special-cased by String.replace() itself (`$&`, `$$`,
+  // `` $` ``, `$'` are interpreted as backreference tokens instead of
+  // literal text), which would silently corrupt the output for a channel
+  // name/title/description containing any of those sequences.
   return TEMPLATE
-    .replace(/__CHANNEL_ID__/g, channel.id)
-    .replace(/__CHANNEL_NAME__/g, escapeHtml(channel.name))
-    .replace(/__PAGE_TITLE__/g, escapeHtml(displayTitle))
-    .replace(/__META_DESCRIPTION__/g, escapeHtml(description))
-    .replace(/__TITLE_JSON__/g, escapeForInlineScript(channel.title || ''))
-    .replace(/__DESCRIPTION_JSON__/g, escapeForInlineScript(description));
+    .replace(/__CHANNEL_ID__/g, () => channel.id)
+    .replace(/__CHANNEL_NAME__/g, () => escapeHtml(channel.name))
+    .replace(/__PAGE_TITLE__/g, () => escapeHtml(displayTitle))
+    .replace(/__META_DESCRIPTION__/g, () => escapeHtml(description))
+    .replace(/__TITLE_JSON__/g, () => escapeForInlineScript(channel.title || ''))
+    .replace(/__DESCRIPTION_JSON__/g, () => escapeForInlineScript(description));
 }
 
 module.exports = { buildPlayerHtml };

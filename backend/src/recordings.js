@@ -176,8 +176,7 @@ async function getPlaybackUrl(recordingId, { download } = {}) {
 }
 
 async function deleteRecording(recordingId) {
-  const rows = readAll();
-  const recording = rows.find((r) => r.id === recordingId);
+  const recording = readAll().find((r) => r.id === recordingId);
   if (!recording) return false;
 
   const r2 = getR2Client();
@@ -189,7 +188,10 @@ async function deleteRecording(recordingId) {
     }
   }
 
-  writeAll(rows.filter((r) => r.id !== recordingId));
+  // Re-read rather than reusing the array captured before the R2 await -
+  // otherwise a recording written by a concurrent call while that await was
+  // in flight would get silently dropped by writing back the stale array.
+  writeAll(readAll().filter((r) => r.id !== recordingId));
   return true;
 }
 
