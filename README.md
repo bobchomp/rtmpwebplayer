@@ -435,9 +435,29 @@ To turn it on:
    `https://dev.stream.rossmackenzie.co.uk/dashboard` to manage it.
 
 Once something's tested and ready, deploy the same commit to production the
-normal way (`git pull origin main && docker compose up -d --build`) - the
-dev stack is just for trying things first, not a place things get promoted
-*from* automatically.
+normal way (`git pull origin main && ./deploy.sh`) - the dev stack is just
+for trying things first, not a place things get promoted *from*
+automatically.
+
+### Deploying safely while something's live
+
+`./deploy.sh` is a thin wrapper around `docker compose up -d --build` that
+checks first whether any channel (production or dev) is currently live,
+since rebuilding drops the RTMP connection and cuts the stream. If nothing's
+live it deploys immediately; if something is, it names the channel(s) and
+asks you to confirm before proceeding. Pass `--force` to skip the check
+(e.g. for a scripted/non-interactive deploy), or service names to rebuild
+only specific ones, same as `docker compose up -d --build` itself accepts:
+
+```bash
+./deploy.sh                      # rebuild everything
+./deploy.sh backend dev-backend  # rebuild specific services only
+./deploy.sh --force              # skip the live check
+```
+
+Running `docker compose up -d --build` directly still works exactly as
+before and bypasses this check entirely - `./deploy.sh` only helps if it's
+actually the command you reach for.
 
 ## Production security checklist
 
