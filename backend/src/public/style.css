@@ -157,9 +157,9 @@ button.danger:hover { background: var(--ember-tint); }
 .hint { color: var(--slate); font-size: 13px; }
 
 .info-banner {
-  background: var(--accent-tint);
-  border: 1px solid #CFE3DF;
-  color: var(--accent-strong);
+  background: var(--amber-tint);
+  border: 1px solid #EAD9AE;
+  color: #6B4E14;
   font: 400 13.5px/1.5 var(--font-body);
   padding: 11px 15px;
   border-radius: var(--radius-sm);
