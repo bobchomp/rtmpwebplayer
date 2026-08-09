@@ -96,10 +96,22 @@ h3 { font: 600 14px/1.3 var(--font-display); margin: 0 0 10px; }
 .wm-arc-1 { stroke-opacity: .3; }
 .wm-arc-2 { stroke-opacity: .62; }
 .wm-arc-3 { stroke-opacity: 1; }
-.wm-dot { fill: var(--accent-strong); }
+.wm-dot { fill: var(--accent-strong); transform-box: fill-box; transform-origin: center; }
 .wordmark-text { font: 600 19px/1 var(--font-display); letter-spacing: -.01em; color: var(--ink); }
 .wordmark-text b { font-weight: 600; color: var(--accent-strong); }
 h1.wordmark { display: inline-flex; }
+
+/* The wordmark icon is a broadcast glyph (arcs + a dot) - animating it
+   to ripple outward from the dot reads as "actively transmitting",
+   everywhere the wordmark appears. */
+@keyframes signal-ping { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+@keyframes dot-ping { 0%, 100% { opacity: .75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.2); } }
+@media (prefers-reduced-motion: no-preference) {
+  .wm-arc-1 { animation: signal-ping 2.6s ease-in-out infinite; animation-delay: .5s; }
+  .wm-arc-2 { animation: signal-ping 2.6s ease-in-out infinite; animation-delay: .25s; }
+  .wm-arc-3 { animation: signal-ping 2.6s ease-in-out infinite; }
+  .wm-dot { animation: dot-ping 2.6s ease-in-out infinite; }
+}
 
 header {
   display: flex; align-items: center; justify-content: space-between;
