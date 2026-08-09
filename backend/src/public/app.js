@@ -285,6 +285,7 @@
   var detailOfflineBadge = document.getElementById('detail-offline-badge');
   var detailViewerBadge = document.getElementById('detail-viewer-badge');
   var detailOfflineInfo = document.getElementById('detail-offline-info');
+  var detailStartupNotice = document.getElementById('detail-startup-notice');
   var detailPreviewIframe = document.getElementById('detail-preview-iframe');
   var detailRtmpUrl = document.getElementById('detail-rtmp-url');
   var detailStreamKey = document.getElementById('detail-stream-key');
@@ -359,6 +360,7 @@
     // dashboard level would just visually collide with it.
     detailOfflineBadge.classList.toggle('hidden', isLive);
     detailOfflineInfo.classList.toggle('hidden', isLive);
+    detailStartupNotice.classList.toggle('hidden', isLive);
     detailPreviewIframe.classList.toggle('hidden', !isLive);
 
     if (isLive) {

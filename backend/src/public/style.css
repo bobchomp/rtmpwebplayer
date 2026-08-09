@@ -189,8 +189,7 @@ button.danger:hover { background: var(--ember-tint); }
    heads-up rather than something needing a response. */
 .notice-banner {
   background: var(--amber-tint); border: 1px solid #EAD9AE; color: #6B4E14;
-  font: 400 12.5px/1.5 var(--font-body); padding: 10px 12px; border-radius: var(--radius-sm);
-  margin: 0 0 16px;
+  font: 400 13.5px/1.5 var(--font-body); padding: 14px 16px;
 }
 .notice-banner p { margin: 0; }
 
