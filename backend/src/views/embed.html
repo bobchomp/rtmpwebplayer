@@ -67,7 +67,13 @@
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
     display: none; align-items: center; gap: 10px; padding: 10px 12px;
     background: linear-gradient(to top, rgba(0, 0, 0, .75), rgba(0, 0, 0, 0));
+    opacity: 1; transition: opacity .3s ease;
   }
+  /* Auto-hidden after a few seconds of inactivity during playback - only
+     ever added/removed while #controls-bar is already display:flex, so it
+     never affects the offline/pre-play states, which set display directly. */
+  #controls-bar.idle { opacity: 0; pointer-events: none; }
+  #wrap.controls-idle, #wrap.controls-idle video { cursor: none; }
   #playpause-btn {
     position: relative; width: 22px; height: 22px; flex-shrink: 0;
     padding: 0; border: none; background: transparent; cursor: pointer;
@@ -223,6 +229,40 @@
     }
   }
 
+  // Auto-hides the controls bar (and the cursor) after a few seconds of no
+  // mouse/touch/keyboard activity, like any normal video player - but only
+  // while actually playing; every other state controls controlsBar's
+  // display itself and calls showControlsBar() to cancel any pending hide.
+  var CONTROLS_IDLE_MS = 2800;
+  var controlsIdleTimer = null;
+
+  function showControlsBar() {
+    clearTimeout(controlsIdleTimer);
+    controlsBar.classList.remove('idle');
+    wrap.classList.remove('controls-idle');
+  }
+
+  function scheduleControlsIdle() {
+    clearTimeout(controlsIdleTimer);
+    if (currentlyLive && !video.paused) {
+      controlsIdleTimer = setTimeout(function () {
+        controlsBar.classList.add('idle');
+        wrap.classList.add('controls-idle');
+      }, CONTROLS_IDLE_MS);
+    }
+  }
+
+  ['mousemove', 'touchstart', 'keydown'].forEach(function (evt) {
+    wrap.addEventListener(evt, function () {
+      showControlsBar();
+      scheduleControlsIdle();
+    });
+  });
+  // Never hide while the pointer is actually resting on the bar itself (a
+  // stationary mouse over it fires no further mousemove events).
+  controlsBar.addEventListener('mouseenter', showControlsBar);
+  controlsBar.addEventListener('mouseleave', scheduleControlsIdle);
+
   function showOffline() {
     currentlyLive = false;
     playRequested = false;
@@ -234,6 +274,7 @@
     // overlap the title/description card shown then) - just disable the
     // play control itself, since there's genuinely nothing to play yet.
     controlsBar.style.display = 'flex';
+    showControlsBar();
     playPauseBtn.disabled = true;
     playPauseBtn.classList.add('paused');
     elapsedLabel.textContent = '0:00';
@@ -357,6 +398,7 @@
     thumbOverlay.style.display = 'block';
     if (hasTitleOverlay) titleOverlay.style.display = 'block';
     controlsBar.style.display = 'none';
+    showControlsBar();
     playPauseBtn.classList.add('paused');
     updateElapsedLabel();
     startUiTimer();
@@ -428,6 +470,7 @@
     playPauseBtn.disabled = true;
     playPauseBtn.classList.remove('paused');
     startHeartbeat();
+    scheduleControlsIdle();
   });
   // If play was requested before media was actually ready (e.g. clicked
   // during the startup race, or during a quiet retry), start it the moment
