@@ -8,12 +8,65 @@
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="stylesheet" href="/style.css">
 <style>
-  .login-wrap { max-width: 900px; margin: 0 auto; padding: 28px 24px; }
+  .login-wrap { max-width: 900px; margin: 0 auto; padding: 28px 24px; position: relative; z-index: 1; }
   .login-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .login-nav .secondary { padding: 8px 14px; font-size: 13px; }
+
+  /* A faint band of light drifting across the page - evokes a signal
+     sweeping in and locking on, without being loud enough to distract
+     from the actual form. */
+  .signal-sweep {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: linear-gradient(115deg, transparent 42%, rgba(31, 111, 100, .07) 50%, transparent 58%);
+    background-size: 220% 220%;
+    background-position: 0% 0%;
+  }
+
+  /* The wordmark icon is a broadcast glyph (arcs + a dot) - animating it
+     to ripple outward from the dot reads as "actively transmitting". */
+  @keyframes signal-ping { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+  @keyframes dot-ping { 0%, 100% { opacity: .75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.2); } }
+  .login-nav .wm-dot { transform-box: fill-box; transform-origin: center; }
+
+  .login-status {
+    max-width: 340px; margin: 56px auto; padding: 32px; position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center;
+    color: var(--slate); font: 500 13px/1.4 var(--font-display);
+  }
+  .login-status-ring { width: 38px; height: 38px; border-radius: 50%; position: relative; }
+  .login-status-ring, .login-status-ring::before {
+    border: 2.5px solid var(--accent-tint); border-top-color: var(--accent); border-radius: 50%;
+  }
+  .login-status-ring::before { content: ""; position: absolute; inset: 0; opacity: .4; }
+
+  .login-box { position: relative; z-index: 1; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .signal-sweep { animation: signal-sweep-move 11s ease-in-out infinite; }
+    .login-nav .wm-arc-1 { animation: signal-ping 2.6s ease-in-out infinite; animation-delay: .5s; }
+    .login-nav .wm-arc-2 { animation: signal-ping 2.6s ease-in-out infinite; animation-delay: .25s; }
+    .login-nav .wm-arc-3 { animation: signal-ping 2.6s ease-in-out infinite; }
+    .login-nav .wm-dot { animation: dot-ping 2.6s ease-in-out infinite; }
+    .login-status-ring { animation: ring-spin 1s linear infinite; }
+    .login-status-ring::before { animation: ring-breathe 1.8s ease-out infinite; }
+    .login-box.reveal { animation: card-reveal .5s ease both; }
+  }
+  @keyframes signal-sweep-move {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
+  }
+  @keyframes ring-spin { to { transform: rotate(360deg); } }
+  @keyframes ring-breathe { 0% { transform: scale(.8); opacity: .5; } 100% { transform: scale(1.6); opacity: 0; } }
+  @keyframes card-reveal {
+    from { opacity: 0; transform: translateY(6px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
 </style>
 </head>
 <body>
+
+<div class="signal-sweep" aria-hidden="true"></div>
 
 <div class="login-wrap">
   <nav class="login-nav">
@@ -28,6 +81,11 @@
     </span>
     <a href="/" class="secondary">&larr; Back to site</a>
   </nav>
+</div>
+
+<div id="login-status" class="login-status">
+  <div class="login-status-ring"></div>
+  <span>Connecting to the stream server&hellip;</span>
 </div>
 
 <form id="login-form" class="login-box hidden">

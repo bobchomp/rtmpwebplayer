@@ -1,6 +1,7 @@
 (function () {
   var loginForm = document.getElementById('login-form');
   var loginError = document.getElementById('login-error');
+  var loginStatus = document.getElementById('login-status');
 
   function api(url, opts) {
     opts = opts || {};
@@ -34,7 +35,9 @@
     if (data.authenticated) {
       window.location.href = '/dashboard';
     } else {
+      loginStatus.classList.add('hidden');
       loginForm.classList.remove('hidden');
+      loginForm.classList.add('reveal');
     }
   });
 })();
