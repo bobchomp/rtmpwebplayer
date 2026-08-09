@@ -7,6 +7,7 @@
   var statsView = document.getElementById('stats-view');
   var recordingsView = document.getElementById('recordings-view');
   var howItWorksView = document.getElementById('how-it-works-view');
+  var howToUseView = document.getElementById('how-to-use-view');
 
   var createForm = document.getElementById('create-form');
   var createChannelBtn = document.getElementById('create-channel-btn');
@@ -71,6 +72,7 @@
     if (hash === '#/stats') return { view: 'stats' };
     if (hash === '#/recordings') return { view: 'recordings' };
     if (hash === '#/how-it-works') return { view: 'how-it-works' };
+    if (hash === '#/how-to-use') return { view: 'how-to-use' };
     return { view: 'list' };
   }
 
@@ -84,6 +86,7 @@
     statsView.classList.add('hidden');
     recordingsView.classList.add('hidden');
     howItWorksView.classList.add('hidden');
+    howToUseView.classList.add('hidden');
 
     if (r.view === 'detail') {
       detailView.classList.remove('hidden');
@@ -100,6 +103,9 @@
     } else if (r.view === 'how-it-works') {
       document.title = 'How It Works - RTMP Web Player';
       howItWorksView.classList.remove('hidden');
+    } else if (r.view === 'how-to-use') {
+      document.title = 'How To Use - RTMP Web Player';
+      howToUseView.classList.remove('hidden');
     } else {
       document.title = 'Channels - RTMP Web Player';
       listView.classList.remove('hidden');

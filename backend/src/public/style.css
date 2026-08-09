@@ -361,18 +361,20 @@ button.danger:hover { background: var(--ember-tint); }
 .recording-player-box { max-width: 860px; }
 #recording-player-video { width: 100%; max-height: 70vh; border-radius: var(--radius-sm); background: #000; display: block; }
 
-.how-it-works-panel { max-width: 1040px; padding: 36px 40px 40px; }
-.how-it-works-intro {
+/* Shared by any page presenting an ordered explanation as a zigzag
+   timeline - currently How It Works and How To Use. */
+.step-timeline-panel { max-width: 1040px; padding: 36px 40px 40px; }
+.step-timeline-intro {
   font: 400 15.5px/1.6 var(--font-body); color: var(--slate); max-width: 60ch; margin: 0 0 40px;
 }
 
-.how-it-works-steps { list-style: none; margin: 0; padding: 0; position: relative; }
+.step-timeline-steps { list-style: none; margin: 0; padding: 0; position: relative; }
 /* One continuous line spanning from the first step's circle to the last -
    drawn once on the list itself rather than per-item, so it's unaffected by
    how tall any individual step's text runs. Centered for the desktop
    zigzag layout; media query below moves it back to the left edge for the
    single-column mobile layout. */
-.how-it-works-steps::before {
+.step-timeline-steps::before {
   content: ""; position: absolute; left: 50%; margin-left: -1px; top: 18px; bottom: 18px; width: 2px;
   background: var(--border); z-index: 0;
 }
@@ -410,8 +412,8 @@ button.danger:hover { background: var(--ember-tint); }
 .step-left .step-content h3 { max-width: 42ch; margin-left: auto; }
 
 @media (max-width: 760px) {
-  .how-it-works-panel { padding: 24px 18px 28px; }
-  .how-it-works-steps::before { left: 17px; margin-left: 0; }
+  .step-timeline-panel { padding: 24px 18px 28px; }
+  .step-timeline-steps::before { left: 17px; margin-left: 0; }
   .step { grid-template-columns: 36px 1fr; column-gap: 18px; margin-bottom: 30px; }
   .step-spacer { display: none; }
   .step-right .step-num, .step-left .step-num { grid-column: 1; }

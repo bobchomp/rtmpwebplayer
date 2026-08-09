@@ -22,6 +22,7 @@
       <span class="wordmark-text">RTMP <b>Web Player</b></span>
     </h1>
     <div class="header-actions">
+      <a href="#/how-to-use" id="how-to-use-btn" class="secondary">How To Use</a>
       <a href="#/how-it-works" id="how-it-works-btn" class="secondary">How It Works</a>
       <a href="#/" id="channels-btn" class="secondary">Channels</a>
       <a href="#/recordings" id="recordings-btn" class="secondary">Recordings</a>
@@ -30,15 +31,92 @@
     </div>
   </header>
 
+  <div id="how-to-use-view" class="hidden">
+    <div class="detail-header">
+      <a href="#/" class="back-link">&larr; All channels</a>
+    </div>
+
+    <section class="panel step-timeline-panel">
+      <p class="step-timeline-intro">A practical walkthrough - what to actually click, in order, to get a stream on your website.</p>
+
+      <ol class="step-timeline-steps">
+        <li class="step step-right">
+          <div class="step-spacer" aria-hidden="true"></div>
+          <span class="step-num">1</span>
+          <div class="step-content">
+            <h3>Create a channel</h3>
+            <p>Click "+ Create channel" on the Channels page and give it a name - the room, service, or camera it's for. Each channel gets its own stream key, settings, and outputs, entirely separate from any others.</p>
+          </div>
+        </li>
+        <li class="step step-left">
+          <div class="step-content">
+            <h3>Connect your encoder</h3>
+            <p>Copy the channel's RTMP URL and Stream key into OBS, vMix, or whatever you're streaming from, then press "Start Streaming" there. There's no separate "go live" button here - the channel goes live automatically the moment your encoder connects.</p>
+          </div>
+          <span class="step-num">2</span>
+          <div class="step-spacer" aria-hidden="true"></div>
+        </li>
+        <li class="step step-right">
+          <div class="step-spacer" aria-hidden="true"></div>
+          <span class="step-num">3</span>
+          <div class="step-content">
+            <h3>Put the player on your website</h3>
+            <p>With "Your Website" switched on, copy the embed code shown and paste it into your site's HTML. It can sit there permanently, live or not - it only starts downloading video once a visitor actually presses play.</p>
+          </div>
+        </li>
+        <li class="step step-left">
+          <div class="step-content">
+            <h3>Relay to other platforms too</h3>
+            <p>Click "+ Add output" to also send the same stream to Facebook, a custom RTMP address<!-- youtube:start -->, or YouTube via its own connect button<!-- youtube:end -->, or generate a Public Link viewers can open directly. Turn any of them on or off whenever you like, independently of the others.</p>
+          </div>
+          <span class="step-num">4</span>
+          <div class="step-spacer" aria-hidden="true"></div>
+        </li>
+        <li class="step step-right">
+          <div class="step-spacer" aria-hidden="true"></div>
+          <span class="step-num">5</span>
+          <div class="step-content">
+            <h3>Turn on recording if you want a copy saved</h3>
+            <p>Flip the "Record streams" switch before you go live. Once you stop, the recording finishes processing and appears on the Recordings page - usually within 5-30 minutes - ready to play back or download. It's never public, admin-only.</p>
+          </div>
+        </li>
+        <li class="step step-left">
+          <div class="step-content">
+            <h3>Add cover and thumbnail images</h3>
+            <p>On a channel's page, upload an offline cover (shown before you're live) and a live thumbnail (shown once you're live, before someone presses play). Upload as many as you like to either gallery, then click one to make it the active image.</p>
+          </div>
+          <span class="step-num">6</span>
+          <div class="step-spacer" aria-hidden="true"></div>
+        </li>
+        <li class="step step-right">
+          <div class="step-spacer" aria-hidden="true"></div>
+          <span class="step-num">7</span>
+          <div class="step-content">
+            <h3>Check who's watching</h3>
+            <p>The Stats page shows anonymised, aggregate viewer numbers per channel - roughly where and how many, filterable by date and exportable as CSV. No accounts, no personal data, ever.</p>
+          </div>
+        </li>
+        <li class="step step-left">
+          <div class="step-content">
+            <h3>Rename or delete a channel any time</h3>
+            <p>Both live on the channel's own page. Deleting one is permanent - it revokes the stream key and switches off every output for that channel, so double-check before confirming.</p>
+          </div>
+          <span class="step-num">8</span>
+          <div class="step-spacer" aria-hidden="true"></div>
+        </li>
+      </ol>
+    </section>
+  </div>
+
   <div id="how-it-works-view" class="hidden">
     <div class="detail-header">
       <a href="#/" class="back-link">&larr; All channels</a>
     </div>
 
-    <section class="panel how-it-works-panel">
-      <p class="how-it-works-intro">The mechanics behind the site - what actually happens on the server, end to end.</p>
+    <section class="panel step-timeline-panel">
+      <p class="step-timeline-intro">The mechanics behind the site - what actually happens on the server, end to end.</p>
 
-      <ol class="how-it-works-steps">
+      <ol class="step-timeline-steps">
         <li class="step step-right">
           <div class="step-spacer" aria-hidden="true"></div>
           <span class="step-num">1</span>
