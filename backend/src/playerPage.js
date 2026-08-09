@@ -38,8 +38,7 @@ function buildPlayerHtml(channel) {
     .replace(/__PAGE_TITLE__/g, escapeHtml(displayTitle))
     .replace(/__META_DESCRIPTION__/g, escapeHtml(description))
     .replace(/__TITLE_JSON__/g, escapeForInlineScript(channel.title || ''))
-    .replace(/__DESCRIPTION_JSON__/g, escapeForInlineScript(description))
-    .replace(/__DISABLE_PAUSE__/g, channel.disablePauseButton ? 'true' : 'false');
+    .replace(/__DESCRIPTION_JSON__/g, escapeForInlineScript(description));
 }
 
 module.exports = { buildPlayerHtml };

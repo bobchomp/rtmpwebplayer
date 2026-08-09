@@ -295,7 +295,6 @@
 
   var detailWebsiteHint = document.getElementById('detail-website-hint');
   var detailWebsiteToggle = document.getElementById('detail-website-toggle');
-  var detailDisablePauseToggle = document.getElementById('detail-disable-pause-toggle');
 
   var editMetadataBtn = document.getElementById('edit-metadata-btn');
   var metadataModalBackdrop = document.getElementById('metadata-modal-backdrop');
@@ -514,8 +513,6 @@
     detailWebsiteHint.textContent = channel.websiteEnabled !== false
       ? 'This is the embed player itself'
       : 'Off - the embed and your website are not showing this stream';
-
-    detailDisablePauseToggle.checked = !!channel.disablePauseButton;
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
     recordingContinueBanner.classList.add('hidden'); // reset on nav - pollLiveStatus re-shows it if still warranted
@@ -793,18 +790,6 @@
         .catch(function (err) {
           alert(err.message);
           detailWebsiteToggle.checked = !detailWebsiteToggle.checked;
-        });
-    });
-
-    detailDisablePauseToggle.addEventListener('change', function () {
-      api('/api/channels/' + currentChannelId + '/website-settings', {
-        method: 'PATCH',
-        body: JSON.stringify({ disablePauseButton: detailDisablePauseToggle.checked }),
-      })
-        .then(refreshChannelDetail)
-        .catch(function (err) {
-          alert(err.message);
-          detailDisablePauseToggle.checked = !detailDisablePauseToggle.checked;
         });
     });
 

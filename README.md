@@ -235,11 +235,11 @@ stream goes:
   return "not found" to everyone except you (your own dashboard preview
   keeps working, since it's a genuinely useful way to confirm a stream is
   live even if you're not publishing it to your site) - handy if a channel
-  is only ever meant to go to YouTube or a custom output. Right below it,
-  **Disable pause/play button** greys out (never hides) the player's
-  pause/play control for viewers, so once playback starts there's no way to
-  stop it from there - volume and fullscreen are unaffected, and the
-  initial "click to watch" button still works as normal either way.
+  is only ever meant to go to YouTube or a custom output. The player's
+  pause/play control is always greyed out (never hidden) once playback
+  starts, so there's no way for a viewer to stop it from there - volume
+  and fullscreen are unaffected, and the initial "click to watch" button
+  still works as normal.
 - Everything else - YouTube and custom RTMP destinations - is added via the
   **+ Add output** button and shows up in the same list below "Your
   Website", each with its own on/off toggle and a Delete button. There's no

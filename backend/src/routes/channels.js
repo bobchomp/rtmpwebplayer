@@ -136,12 +136,6 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
   if (typeof req.body.websiteEnabled === 'boolean') {
     channel.websiteEnabled = req.body.websiteEnabled;
   }
-  // Grays out (never hides) the player's pause/play button for viewers - the
-  // button stays visible and playback still starts normally, it just can't
-  // be paused once going.
-  if (typeof req.body.disablePauseButton === 'boolean') {
-    channel.disablePauseButton = req.body.disablePauseButton;
-  }
   // Opt-in per channel - record-start.sh (in the rtmp container) checks this
   // via GET /api/rtmp/recording-enabled the moment a publish starts.
   if (typeof req.body.recordingEnabled === 'boolean') {

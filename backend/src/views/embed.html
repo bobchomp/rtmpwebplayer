@@ -163,7 +163,6 @@
 
   var pageTitle = __TITLE_JSON__;
   var pageDescription = __DESCRIPTION_JSON__;
-  var pauseButtonDisabled = __DISABLE_PAUSE__;
   var hasTitleOverlay = !!(pageTitle || pageDescription);
   titleOverlayTitle.textContent = pageTitle;
   titleOverlayDescription.textContent = pageDescription;
@@ -424,10 +423,9 @@
     thumbOverlay.style.display = 'none';
     titleOverlay.style.display = 'none';
     controlsBar.style.display = 'flex';
-    // Stays visible either way (never hidden) - just non-interactive when
-    // this channel has pausing disabled, so there's no way to stop playback
-    // via this control once it's going.
-    playPauseBtn.disabled = pauseButtonDisabled;
+    // Stays visible (never hidden) but non-interactive - there's no way to
+    // stop playback via this control once it's going.
+    playPauseBtn.disabled = true;
     playPauseBtn.classList.remove('paused');
     startHeartbeat();
   });
