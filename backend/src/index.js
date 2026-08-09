@@ -84,6 +84,7 @@ function loadHtmlPage(filename) {
 
 const homepageHtml = stripDevSiteLinkOnDevSite(loadHtmlPage('index.html'));
 const dashboardHtml = loadHtmlPage('dashboard.html');
+const loginHtml = loadHtmlPage('login.html');
 const privacyHtml = loadHtmlPage('privacy.html');
 
 app.get('/', (req, res) => res.type('html').send(homepageHtml));
@@ -91,8 +92,12 @@ app.get('/', (req, res) => res.type('html').send(homepageHtml));
 // The admin dashboard lives at its own path (not '/') so the site's actual
 // homepage can be a genuine public page describing the app - required by
 // Google's OAuth branding verification, which flags a homepage that's
-// nothing but a login form.
+// nothing but a login form. The login form itself lives at yet another path
+// (not folded into the dashboard) so it's a real page of its own rather than
+// a view swapped in by client-side JS.
 app.get(['/dashboard', '/dashboard/'], (req, res) => res.type('html').send(dashboardHtml));
+
+app.get(['/login', '/login/'], (req, res) => res.type('html').send(loginHtml));
 
 app.get('/privacy.html', (req, res) => res.type('html').send(privacyHtml));
 

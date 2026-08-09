@@ -1,8 +1,5 @@
 (function () {
-  var loginView = document.getElementById('login-view');
   var dashboardView = document.getElementById('dashboard-view');
-  var loginForm = document.getElementById('login-form');
-  var loginError = document.getElementById('login-error');
   var logoutBtn = document.getElementById('logout-btn');
 
   var listView = document.getElementById('channel-list-view');
@@ -35,11 +32,6 @@
       }
       return res.status === 204 ? null : res.json();
     });
-  }
-
-  function show(view) {
-    loginView.classList.toggle('hidden', view !== 'login');
-    dashboardView.classList.toggle('hidden', view !== 'dashboard');
   }
 
   function embedOrigin() {
@@ -924,7 +916,7 @@
   // ===================== Auth =====================
 
   function enterDashboard() {
-    show('dashboard');
+    dashboardView.classList.remove('hidden');
     api('/api/config').then(function (cfg) {
       config = cfg;
       // Both absent from the DOM entirely on production - only present (and
@@ -936,24 +928,11 @@
     });
   }
 
-  loginForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    loginError.classList.add('hidden');
-    var username = document.getElementById('login-username').value;
-    var password = document.getElementById('login-password').value;
-    api('/api/login', { method: 'POST', body: JSON.stringify({ username: username, password: password }) })
-      .then(enterDashboard)
-      .catch(function (err) {
-        loginError.textContent = err.message;
-        loginError.classList.remove('hidden');
-      });
-  });
-
   logoutBtn.addEventListener('click', function () {
     api('/api/logout', { method: 'POST' }).then(function () {
       if (listRefreshTimer) clearInterval(listRefreshTimer);
       if (detailPollTimer) clearInterval(detailPollTimer);
-      show('login');
+      window.location.href = '/login';
     });
   });
 
@@ -961,7 +940,7 @@
     if (data.authenticated) {
       enterDashboard();
     } else {
-      show('login');
+      window.location.href = '/login';
     }
   });
 })();
