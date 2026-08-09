@@ -114,6 +114,10 @@
         node.href = '#/channel/' + encodeURIComponent(channel.id);
         node.querySelector('.channel-row-name').textContent = channel.name;
         node.querySelector('.live-badge').classList.toggle('hidden', !channel.isLive);
+        var thumbFile = channel.activeLiveThumbnail || channel.activeCoverImage;
+        if (thumbFile) {
+          node.querySelector('.channel-row-thumb').style.backgroundImage = 'url(/uploads/' + thumbFile + ')';
+        }
         channelsList.appendChild(node);
       });
     });
