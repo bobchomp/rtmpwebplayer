@@ -58,41 +58,64 @@
     </div>
 
     <section class="panel how-it-works-panel">
-      <h2>How It Works</h2>
-      <p class="hint">The mechanics behind the site - what actually happens on the server, end to end.</p>
+      <p class="how-it-works-intro">The mechanics behind the site - what actually happens on the server, end to end.</p>
 
       <ol class="how-it-works-steps">
         <li>
-          <h3>1. Your encoder pushes video in over RTMP</h3>
-          <p>OBS, vMix, or whatever you're using sends a live video feed to this server using RTMP, a streaming protocol built for exactly this. Your channel's Stream key is checked on connection - it's the only thing standing between "this is really you" and anyone else, so it doubles as your password for that channel.</p>
+          <span class="step-num">1</span>
+          <div class="step-content">
+            <h3>Your encoder pushes video in over RTMP</h3>
+            <p>OBS, vMix, or whatever you're using sends a live video feed to this server using RTMP, a streaming protocol built for exactly this. Your channel's Stream key is checked on connection - it's the only thing standing between "this is really you" and anyone else, so it doubles as your password for that channel.</p>
+          </div>
         </li>
         <li>
-          <h3>2. The server converts it to HLS in real time</h3>
-          <p>The incoming feed is immediately re-packaged into HLS - a few seconds of video at a time, written out as small files plus a constantly-updated playlist pointing at the latest ones. It's the same technique YouTube, Netflix, and most of the web use, because it plays over plain HTTPS in any browser without a video plugin.</p>
+          <span class="step-num">2</span>
+          <div class="step-content">
+            <h3>The server converts it to HLS in real time</h3>
+            <p>The incoming feed is immediately re-packaged into HLS - a few seconds of video at a time, written out as small files plus a constantly-updated playlist pointing at the latest ones. It's the same technique YouTube, Netflix, and most of the web use, because it plays over plain HTTPS in any browser without a video plugin.</p>
+          </div>
         </li>
         <li>
-          <h3>3. Viewers never touch the ingest server directly</h3>
-          <p>The RTMP server itself isn't reachable from outside at all - the backend fetches those HLS files internally and serves them to viewers itself, over the same domain as everything else. There's nothing for a viewer's browser to connect to except this one website.</p>
+          <span class="step-num">3</span>
+          <div class="step-content">
+            <h3>Viewers never touch the ingest server directly</h3>
+            <p>The RTMP server itself isn't reachable from outside at all - the backend fetches those HLS files internally and serves them to viewers itself, over the same domain as everything else. There's nothing for a viewer's browser to connect to except this one website.</p>
+          </div>
         </li>
         <li>
-          <h3>4. The embed player checks in, then pulls video on demand</h3>
-          <p>The small player embedded on your website polls the backend every few seconds asking "is this channel live yet?" - it only starts actually downloading video once someone presses play, not the moment the page loads, so an embedded-but-unwatched player costs nothing in bandwidth.</p>
+          <span class="step-num">4</span>
+          <div class="step-content">
+            <h3>The embed player checks in, then pulls video on demand</h3>
+            <p>The small player embedded on your website polls the backend every few seconds asking "is this channel live yet?" - it only starts actually downloading video once someone presses play, not the moment the page loads, so an embedded-but-unwatched player costs nothing in bandwidth.</p>
+          </div>
         </li>
         <li>
-          <h3>5. Relaying is a live copy, made server-side</h3>
-          <p>If an output is turned on, the server spins up a separate process that reads the same incoming feed and forwards an exact copy of it, unmodified, to that destination (a custom RTMP address<!-- youtube:start -->, or YouTube via its API<!-- youtube:end -->) for as long as you're live. It's a straight copy, not a re-encode, so it costs the server very little CPU and your encoder never knows or cares how many places it's going to.</p>
+          <span class="step-num">5</span>
+          <div class="step-content">
+            <h3>Relaying is a live copy, made server-side</h3>
+            <p>If an output is turned on, the server spins up a separate process that reads the same incoming feed and forwards an exact copy of it, unmodified, to that destination (a custom RTMP address<!-- youtube:start -->, or YouTube via its API<!-- youtube:end -->) for as long as you're live. It's a straight copy, not a re-encode, so it costs the server very little CPU and your encoder never knows or cares how many places it's going to.</p>
+          </div>
         </li>
         <li>
-          <h3>6. Recording writes to local disk first, then uploads and self-deletes</h3>
-          <p>With recording on, the same incoming feed is also copied to a raw file on the server's own disk as it arrives. The moment you stop, that file is converted into a normal, seekable video file, uploaded to Cloudflare's cloud storage, and then deleted from the server itself - nothing from a finished recording is ever left sitting on the droplet.</p>
+          <span class="step-num">6</span>
+          <div class="step-content">
+            <h3>Recording writes to local disk first, then uploads and self-deletes</h3>
+            <p>With recording on, the same incoming feed is also copied to a raw file on the server's own disk as it arrives. The moment you stop, that file is converted into a normal, seekable video file, uploaded to Cloudflare's cloud storage, and then deleted from the server itself - nothing from a finished recording is ever left sitting on the droplet.</p>
+          </div>
         </li>
         <li>
-          <h3>7. Stats come from the player quietly pinging back</h3>
-          <p>While someone is actually watching, their player periodically pings the backend, which logs a rough, IP-based location and device type against that channel - never anything that identifies who they are, since nobody needs an account to watch. That's the raw material behind the Stats page.</p>
+          <span class="step-num">7</span>
+          <div class="step-content">
+            <h3>Stats come from the player quietly pinging back</h3>
+            <p>While someone is actually watching, their player periodically pings the backend, which logs a rough, IP-based location and device type against that channel - never anything that identifies who they are, since nobody needs an account to watch. That's the raw material behind the Stats page.</p>
+          </div>
         </li>
         <li>
-          <h3>8. Everything's kept on one small server, by design</h3>
-          <p>Channel settings, outputs, and admin logins all live in a lightweight data file on the same server, not a separate database - there's no infrastructure to manage beyond this one machine, sized for one organisation's traffic rather than a large public platform.</p>
+          <span class="step-num">8</span>
+          <div class="step-content">
+            <h3>Everything's kept on one small server, by design</h3>
+            <p>Channel settings, outputs, and admin logins all live in a lightweight data file on the same server, not a separate database - there's no infrastructure to manage beyond this one machine, sized for one organisation's traffic rather than a large public platform.</p>
+          </div>
         </li>
       </ol>
     </section>
