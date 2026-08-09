@@ -246,8 +246,9 @@ button.danger:hover { background: var(--ember-tint); }
 
 /* Channel detail view */
 .detail-header {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 22px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 22px; flex-wrap: wrap;
 }
+.detail-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .back-link { color: var(--accent-strong); text-decoration: none; font: 500 14px/1 var(--font-display); white-space: nowrap; }
 .back-link:hover { text-decoration: underline; }
 
