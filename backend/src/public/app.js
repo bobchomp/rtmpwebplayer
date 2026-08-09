@@ -79,6 +79,7 @@
     if (detailPollTimer) { clearInterval(detailPollTimer); detailPollTimer = null; }
 
     var r = parseRoute();
+    if (r.view !== 'detail') document.title = 'RTMP Web Player';
     listView.classList.add('hidden');
     detailView.classList.add('hidden');
     statsView.classList.add('hidden');
@@ -495,6 +496,7 @@
   function renderChannelDetail(channel) {
     var isEditingName = detailNameInput.classList.contains('hidden') === false;
     if (!isEditingName) detailName.textContent = channel.name;
+    document.title = channel.name + ' - RTMP Web Player';
 
     var rtmpUrl = 'rtmp://' + config.rtmpHost + ':' + config.rtmpPort + '/live';
     detailRtmpUrl.value = rtmpUrl;
