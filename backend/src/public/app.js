@@ -79,7 +79,6 @@
     if (detailPollTimer) { clearInterval(detailPollTimer); detailPollTimer = null; }
 
     var r = parseRoute();
-    if (r.view !== 'detail') document.title = 'RTMP Web Player';
     listView.classList.add('hidden');
     detailView.classList.add('hidden');
     statsView.classList.add('hidden');
@@ -91,14 +90,18 @@
       loadChannelDetail(r.channelId);
       detailPollTimer = setInterval(pollLiveStatus, 5000);
     } else if (r.view === 'stats') {
+      document.title = 'Stats - RTMP Web Player';
       statsView.classList.remove('hidden');
       loadStats();
     } else if (r.view === 'recordings') {
+      document.title = 'Recordings - RTMP Web Player';
       recordingsView.classList.remove('hidden');
       loadRecordingsPage();
     } else if (r.view === 'how-it-works') {
+      document.title = 'How It Works - RTMP Web Player';
       howItWorksView.classList.remove('hidden');
     } else {
+      document.title = 'Channels - RTMP Web Player';
       listView.classList.remove('hidden');
       loadChannelList();
       listRefreshTimer = setInterval(loadChannelList, 10000);
