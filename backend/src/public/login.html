@@ -7,19 +7,30 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="stylesheet" href="/style.css">
+<style>
+  .login-wrap { max-width: 900px; margin: 0 auto; padding: 28px 24px; }
+  .login-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .login-nav .secondary { padding: 8px 14px; font-size: 13px; }
+</style>
 </head>
 <body>
 
+<div class="login-wrap">
+  <nav class="login-nav">
+    <span class="wordmark">
+      <svg class="wordmark-icon" viewBox="0 0 32 32" aria-hidden="true">
+        <path class="wm-arc wm-arc-1" d="M9 9 A16 16 0 0 1 25 25"/>
+        <path class="wm-arc wm-arc-2" d="M9 14 A11 11 0 0 1 20 25"/>
+        <path class="wm-arc wm-arc-3" d="M9 19 A6 6 0 0 1 15 25"/>
+        <circle class="wm-dot" cx="9" cy="25" r="2.6"/>
+      </svg>
+      <span class="wordmark-text">RTMP <b>Web Player</b></span>
+    </span>
+    <a href="/" class="secondary">&larr; Back to site</a>
+  </nav>
+</div>
+
 <form id="login-form" class="login-box hidden">
-  <h1 class="wordmark">
-    <svg class="wordmark-icon" viewBox="0 0 32 32" aria-hidden="true">
-      <path class="wm-arc wm-arc-1" d="M9 9 A16 16 0 0 1 25 25"/>
-      <path class="wm-arc wm-arc-2" d="M9 14 A11 11 0 0 1 20 25"/>
-      <path class="wm-arc wm-arc-3" d="M9 19 A6 6 0 0 1 15 25"/>
-      <circle class="wm-dot" cx="9" cy="25" r="2.6"/>
-    </svg>
-    <span class="wordmark-text">RTMP <b>Web Player</b></span>
-  </h1>
   <label>Username
     <input type="text" id="login-username" autocomplete="username" required>
   </label>

@@ -121,11 +121,10 @@ a.secondary:hover { background: var(--border); }
 }
 
 .login-box {
-  max-width: 340px; margin: 88px auto; background: var(--surface);
+  max-width: 340px; margin: 56px auto; background: var(--surface);
   border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px;
   display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow-card);
 }
-.login-box .wordmark { margin-bottom: 6px; }
 
 label { display: flex; flex-direction: column; gap: 5px; font: 500 12.5px/1 var(--font-display); color: var(--slate); }
 
