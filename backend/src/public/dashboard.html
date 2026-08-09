@@ -59,40 +59,40 @@
 
     <section class="panel how-it-works-panel">
       <h2>How It Works</h2>
-      <p class="hint">This site is a self-hosted live streaming platform. Here's the whole process, start to finish.</p>
+      <p class="hint">The mechanics behind the site - what actually happens on the server, end to end.</p>
 
       <ol class="how-it-works-steps">
         <li>
-          <h3>1. Create a channel</h3>
-          <p>Each channel is one broadcast source - typically one camera or one service. Give it a name under <b>Channels</b> and it generates an <b>RTMP URL</b> and a private <b>Stream key</b>.</p>
+          <h3>1. Your encoder pushes video in over RTMP</h3>
+          <p>OBS, vMix, or whatever you're using sends a live video feed to this server using RTMP, a streaming protocol built for exactly this. Your channel's Stream key is checked on connection - it's the only thing standing between "this is really you" and anyone else, so it doubles as your password for that channel.</p>
         </li>
         <li>
-          <h3>2. Connect your streaming software</h3>
-          <p>Open your channel's page and copy the RTMP URL and Stream key into your encoder (OBS, vMix, or similar) under its stream settings. Keep the stream key private - anyone with it could broadcast as you.</p>
+          <h3>2. The server converts it to HLS in real time</h3>
+          <p>The incoming feed is immediately re-packaged into HLS - a few seconds of video at a time, written out as small files plus a constantly-updated playlist pointing at the latest ones. It's the same technique YouTube, Netflix, and most of the web use, because it plays over plain HTTPS in any browser without a video plugin.</p>
         </li>
         <li>
-          <h3>3. Go live</h3>
-          <p>Start streaming from your software. Within about 15 seconds the channel shows as <b>LIVE</b> on its dashboard page, with a live preview and a viewer count.</p>
+          <h3>3. Viewers never touch the ingest server directly</h3>
+          <p>The RTMP server itself isn't reachable from outside at all - the backend fetches those HLS files internally and serves them to viewers itself, over the same domain as everything else. There's nothing for a viewer's browser to connect to except this one website.</p>
         </li>
         <li>
-          <h3>4. Share it</h3>
-          <p>Copy the <b>embed code</b> from the channel page and paste it into your own website - the video plays right there, with no account needed to watch. If you'd rather share a direct link instead (WhatsApp, email, social media), add a <b>Public Link</b> output and copy that link.</p>
+          <h3>4. The embed player checks in, then pulls video on demand</h3>
+          <p>The small player embedded on your website polls the backend every few seconds asking "is this channel live yet?" - it only starts actually downloading video once someone presses play, not the moment the page loads, so an embedded-but-unwatched player costs nothing in bandwidth.</p>
         </li>
         <li>
-          <h3>5. Optional: send it elsewhere too</h3>
-          <p>Click <b>+ Add output</b> on a channel to relay the same live stream to another destination at the same time - a custom RTMP address (Restream, Facebook, etc.)<!-- youtube:start -->, or connect a YouTube account to relay there automatically<!-- youtube:end -->. Each output has its own on/off switch, so you can turn any of them off without affecting the others or the live embed itself.</p>
+          <h3>5. Relaying is a live copy, made server-side</h3>
+          <p>If an output is turned on, the server spins up a separate process that reads the same incoming feed and forwards an exact copy of it, unmodified, to that destination (a custom RTMP address<!-- youtube:start -->, or YouTube via its API<!-- youtube:end -->) for as long as you're live. It's a straight copy, not a re-encode, so it costs the server very little CPU and your encoder never knows or cares how many places it's going to.</p>
         </li>
         <li>
-          <h3>6. Optional: record it</h3>
-          <p>Turn on <b>Record streams</b> on a channel before you go live, and the broadcast is saved to private cloud storage automatically. It takes 5&ndash;30 minutes to appear after the stream ends while it's processed - find it under <b>Recordings</b>, where you can play it back, download it, or delete it. Recordings are never public.</p>
+          <h3>6. Recording writes to local disk first, then uploads and self-deletes</h3>
+          <p>With recording on, the same incoming feed is also copied to a raw file on the server's own disk as it arrives. The moment you stop, that file is converted into a normal, seekable video file, uploaded to Cloudflare's cloud storage, and then deleted from the server itself - nothing from a finished recording is ever left sitting on the droplet.</p>
         </li>
         <li>
-          <h3>7. See who watched</h3>
-          <p>The <b>Stats</b> page shows anonymised viewer analytics - roughly how many people watched, when, and their approximate location - for internal reporting only. It's never shown to viewers.</p>
+          <h3>7. Stats come from the player quietly pinging back</h3>
+          <p>While someone is actually watching, their player periodically pings the backend, which logs a rough, IP-based location and device type against that channel - never anything that identifies who they are, since nobody needs an account to watch. That's the raw material behind the Stats page.</p>
         </li>
         <li>
-          <h3>8. When you stop</h3>
-          <p>Stop streaming from your software (or just close it) and the channel automatically flips back to offline within a few seconds - the embed shows an offline state, any relays stop, and a recording (if it was on) finalizes and starts uploading.</p>
+          <h3>8. Everything's kept on one small server, by design</h3>
+          <p>Channel settings, outputs, and admin logins all live in a lightweight data file on the same server, not a separate database - there's no infrastructure to manage beyond this one machine, sized for one organisation's traffic rather than a large public platform.</p>
         </li>
       </ol>
     </section>
