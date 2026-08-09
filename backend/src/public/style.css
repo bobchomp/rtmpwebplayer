@@ -82,6 +82,8 @@ body {
   font: 400 12.5px/1.4 var(--font-body);
   color: var(--slate-soft);
 }
+.site-footer a { color: var(--slate-soft); text-decoration: underline; text-underline-offset: 2px; }
+.site-footer a:hover { color: var(--slate); }
 
 h1 { font: 600 20px/1.3 var(--font-display); margin: 0; letter-spacing: -.01em; }
 h2 { font: 600 16px/1.3 var(--font-display); margin: 0 0 12px; letter-spacing: -.005em; }
