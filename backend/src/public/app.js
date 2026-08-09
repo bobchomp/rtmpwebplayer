@@ -9,6 +9,7 @@
   var detailView = document.getElementById('channel-detail-view');
   var statsView = document.getElementById('stats-view');
   var recordingsView = document.getElementById('recordings-view');
+  var howItWorksView = document.getElementById('how-it-works-view');
 
   var createForm = document.getElementById('create-form');
   var channelsList = document.getElementById('channels-list');
@@ -74,6 +75,7 @@
     if (match) return { view: 'detail', channelId: decodeURIComponent(match[1]) };
     if (hash === '#/stats') return { view: 'stats' };
     if (hash === '#/recordings') return { view: 'recordings' };
+    if (hash === '#/how-it-works') return { view: 'how-it-works' };
     return { view: 'list' };
   }
 
@@ -86,6 +88,7 @@
     detailView.classList.add('hidden');
     statsView.classList.add('hidden');
     recordingsView.classList.add('hidden');
+    howItWorksView.classList.add('hidden');
 
     if (r.view === 'detail') {
       detailView.classList.remove('hidden');
@@ -97,6 +100,8 @@
     } else if (r.view === 'recordings') {
       recordingsView.classList.remove('hidden');
       loadRecordingsPage();
+    } else if (r.view === 'how-it-works') {
+      howItWorksView.classList.remove('hidden');
     } else {
       listView.classList.remove('hidden');
       loadChannelList();

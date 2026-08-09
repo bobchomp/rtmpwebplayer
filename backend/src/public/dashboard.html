@@ -44,12 +44,59 @@
       <span class="wordmark-text">RTMP <b>Web Player</b></span>
     </h1>
     <div class="header-actions">
+      <a href="#/how-it-works" id="how-it-works-btn" class="secondary">How It Works</a>
       <a href="#/" id="channels-btn" class="secondary">Channels</a>
       <a href="#/recordings" id="recordings-btn" class="secondary">Recordings</a>
       <a href="#/stats" id="stats-btn" class="secondary">Stats</a>
       <button id="logout-btn" class="secondary">Log out</button>
     </div>
   </header>
+
+  <div id="how-it-works-view" class="hidden">
+    <div class="detail-header">
+      <a href="#/" class="back-link">&larr; All channels</a>
+    </div>
+
+    <section class="panel how-it-works-panel">
+      <h2>How It Works</h2>
+      <p class="hint">This site is a self-hosted live streaming platform. Here's the whole process, start to finish.</p>
+
+      <ol class="how-it-works-steps">
+        <li>
+          <h3>1. Create a channel</h3>
+          <p>Each channel is one broadcast source - typically one camera or one service. Give it a name under <b>Channels</b> and it generates an <b>RTMP URL</b> and a private <b>Stream key</b>.</p>
+        </li>
+        <li>
+          <h3>2. Connect your streaming software</h3>
+          <p>Open your channel's page and copy the RTMP URL and Stream key into your encoder (OBS, vMix, or similar) under its stream settings. Keep the stream key private - anyone with it could broadcast as you.</p>
+        </li>
+        <li>
+          <h3>3. Go live</h3>
+          <p>Start streaming from your software. Within about 15 seconds the channel shows as <b>LIVE</b> on its dashboard page, with a live preview and a viewer count.</p>
+        </li>
+        <li>
+          <h3>4. Share it</h3>
+          <p>Copy the <b>embed code</b> from the channel page and paste it into your own website - the video plays right there, with no account needed to watch. If you'd rather share a direct link instead (WhatsApp, email, social media), add a <b>Public Link</b> output and copy that link.</p>
+        </li>
+        <li>
+          <h3>5. Optional: send it elsewhere too</h3>
+          <p>Click <b>+ Add output</b> on a channel to relay the same live stream to another destination at the same time - a custom RTMP address (Restream, Facebook, etc.)<!-- youtube:start -->, or connect a YouTube account to relay there automatically<!-- youtube:end -->. Each output has its own on/off switch, so you can turn any of them off without affecting the others or the live embed itself.</p>
+        </li>
+        <li>
+          <h3>6. Optional: record it</h3>
+          <p>Turn on <b>Record streams</b> on a channel before you go live, and the broadcast is saved to private cloud storage automatically. It takes 5&ndash;30 minutes to appear after the stream ends while it's processed - find it under <b>Recordings</b>, where you can play it back, download it, or delete it. Recordings are never public.</p>
+        </li>
+        <li>
+          <h3>7. See who watched</h3>
+          <p>The <b>Stats</b> page shows anonymised viewer analytics - roughly how many people watched, when, and their approximate location - for internal reporting only. It's never shown to viewers.</p>
+        </li>
+        <li>
+          <h3>8. When you stop</h3>
+          <p>Stop streaming from your software (or just close it) and the channel automatically flips back to offline within a few seconds - the embed shows an offline state, any relays stop, and a recording (if it was on) finalizes and starts uploading.</p>
+        </li>
+      </ol>
+    </section>
+  </div>
 
   <div id="recordings-view" class="hidden">
     <div class="detail-header">
