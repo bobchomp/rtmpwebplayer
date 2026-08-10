@@ -52,6 +52,13 @@ async function fetchDependency(dep) {
     const res = await fetch(dep.statusUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    // status.indicator reflects active scheduled maintenance as well as
+    // incidents - reading only `incidents` (as this used to) can show
+    // "Minor issues" with an empty-looking popup whenever the cause is
+    // maintenance rather than an incident.
+    const maintenances = (Array.isArray(data.scheduled_maintenances) ? data.scheduled_maintenances : []).filter(
+      (m) => m.status !== 'completed'
+    );
     return {
       key: dep.key,
       name: dep.name,
@@ -59,11 +66,12 @@ async function fetchDependency(dep) {
       indicator: data.status.indicator,
       description: data.status.description,
       incidents: Array.isArray(data.incidents) ? data.incidents : [],
+      maintenances,
     };
   } catch (err) {
     // Same "show unknown, don't break the page" approach as the main
     // component list - a third-party API hiccup shouldn't take /status down.
-    return { key: dep.key, name: dep.name, pageUrl: dep.pageUrl, indicator: null, description: null, incidents: [] };
+    return { key: dep.key, name: dep.name, pageUrl: dep.pageUrl, indicator: null, description: null, incidents: [], maintenances: [] };
   }
 }
 
@@ -113,22 +121,45 @@ function formatDate(iso) {
   }
 }
 
+// Statuspage.io statuses are snake_case (e.g. "in_progress") - CSS
+// text-transform: capitalize only handles the first letter of each word,
+// not the underscore itself, so this needs a space put back in manually.
+function humanizeStatus(status) {
+  return String(status).replace(/_/g, ' ');
+}
+
 function renderIncident(incident) {
   const latestUpdate = incident.incident_updates && incident.incident_updates[0];
   return `
     <div class="status-incident">
       <div class="status-incident-head">
         <span class="status-incident-name">${escapeHtml(incident.name)}</span>
-        <span class="status-incident-status">${escapeHtml(incident.status)}</span>
+        <span class="status-incident-status">${escapeHtml(humanizeStatus(incident.status))}</span>
       </div>
       ${latestUpdate ? `<p class="status-incident-body">${escapeHtml(latestUpdate.body)}</p>` : ''}
       <p class="status-incident-time">Updated ${escapeHtml(formatDate(incident.updated_at))}</p>
     </div>`;
 }
 
+function renderMaintenance(maintenance) {
+  const latestUpdate = maintenance.incident_updates && maintenance.incident_updates[0];
+  return `
+    <div class="status-incident">
+      <div class="status-incident-head">
+        <span class="status-incident-name">${escapeHtml(maintenance.name)}</span>
+        <span class="status-incident-status">${escapeHtml(humanizeStatus(maintenance.status))}</span>
+      </div>
+      <p class="status-incident-type">Scheduled maintenance</p>
+      ${latestUpdate ? `<p class="status-incident-body">${escapeHtml(latestUpdate.body)}</p>` : ''}
+      <p class="status-incident-time">${escapeHtml(formatDate(maintenance.scheduled_for))} &ndash; ${escapeHtml(formatDate(maintenance.scheduled_until))}</p>
+    </div>`;
+}
+
 function renderDependencyModalBody(dep) {
-  if (!dep.incidents.length) return '<p class="status-modal-empty">No active incidents.</p>';
-  return dep.incidents.map(renderIncident).join('');
+  const incidentsHtml = dep.incidents.map(renderIncident).join('');
+  const maintenancesHtml = dep.maintenances.map(renderMaintenance).join('');
+  if (!incidentsHtml && !maintenancesHtml) return '<p class="status-modal-empty">Nothing active - no incidents or scheduled maintenance.</p>';
+  return incidentsHtml + maintenancesHtml;
 }
 
 function renderDependencyRows(deps) {
@@ -263,6 +294,7 @@ async function renderStatusPage() {
   .status-incident-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
   .status-incident-name { font: 600 14px/1.3 var(--font-display); }
   .status-incident-status { font-size: 12px; color: var(--slate); text-transform: capitalize; }
+  .status-incident-type { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--accent); margin: 0 0 4px; }
   .status-incident-body { font-size: 13.5px; color: var(--ink); margin: 0 0 6px; }
   .status-incident-time { font-size: 12px; color: var(--slate-soft); margin: 0; }
   .status-modal-link { display: inline-block; margin-top: 14px; font-size: 13px; color: var(--accent); text-decoration: none; }

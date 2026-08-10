@@ -249,12 +249,14 @@ mid-outage - the real signal is the `status.indicator` field in the
 response body, which needs an app-level fetch to actually read. If either
 fetch fails, that row just shows "Unknown" rather than breaking the page.
 
-Clicking a dependency opens its current incidents in a popup on this page,
-rather than sending the visitor to DigitalOcean's or Cloudflare's own site -
-the incident data comes from the same `summary.json` fetch (it includes
-active incidents alongside the overall status), pre-rendered server-side and
-embedded as JSON for the popup script to read, so there's no extra request
-on click.
+Clicking a dependency opens its current incidents *and* active scheduled
+maintenance in a popup on this page, rather than sending the visitor to
+DigitalOcean's or Cloudflare's own site - both come from the same
+`summary.json` fetch alongside the overall status, pre-rendered
+server-side and embedded as JSON for the popup script to read, so there's
+no extra request on click. Maintenance matters here too: `status.indicator`
+reflects it as well as incidents, so a "Minor issues" pill can have an
+empty incidents list if the actual cause is maintenance in progress.
 
 ## Cost estimate
 
