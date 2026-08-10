@@ -452,6 +452,13 @@ To turn it on:
    port from production's 1935) and visit
    `https://dev.stream.rossmackenzie.co.uk/dashboard` to manage it.
 
+The dev stack runs continuously alongside production once it's up, which
+matters on a smaller droplet - it's a full second copy of the backend and
+nginx-rtmp, using memory whether or not anyone's actively using it. If
+you're not testing something on dev, `./stop-dev.sh` stops those two
+containers (checking first whether dev is currently live, same as
+`deploy.sh`'s check), and `./start-dev.sh` brings them back.
+
 Once something's tested and ready, deploy the same commit to production the
 normal way (`git pull origin main && ./deploy.sh`) - the dev stack is just
 for trying things first, not a place things get promoted *from*
