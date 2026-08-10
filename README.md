@@ -505,16 +505,18 @@ automatically.
 
 `./deploy.sh` is a thin wrapper around `docker compose up -d --build` that
 checks first whether any channel (production or dev) is currently live,
-since rebuilding drops the RTMP connection and cuts the stream. If nothing's
-live it deploys immediately; if something is, it names the channel(s) and
-asks you to confirm before proceeding. Pass `--force` to skip the check
-(e.g. for a scripted/non-interactive deploy), or service names to rebuild
-only specific ones, same as `docker compose up -d --build` itself accepts:
+since rebuilding drops the RTMP connection and cuts the stream. It always
+asks you to confirm before deploying - a plain "Would you like to deploy?"
+if nothing's live, or a more pointed "Deploy anyway?" naming the live
+channel(s) if something is. Pass `--force` to skip the confirmation
+entirely (e.g. for a scripted/non-interactive deploy), or service names to
+rebuild only specific ones, same as `docker compose up -d --build` itself
+accepts:
 
 ```bash
 ./deploy.sh                      # rebuild everything
 ./deploy.sh backend dev-backend  # rebuild specific services only
-./deploy.sh --force              # skip the live check
+./deploy.sh --force              # skip the confirmation (and live check)
 ```
 
 Running `docker compose up -d --build` directly still works exactly as

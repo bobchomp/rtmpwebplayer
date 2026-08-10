@@ -7,10 +7,14 @@
 # isn't running yet (e.g. the very first deploy) just fails the check
 # harmlessly, since nothing could be live through it anyway.
 #
+# Always asks for confirmation before deploying - a plain "Would you like to
+# deploy?" if nothing's live, or a more pointed "Deploy anyway?" warning if
+# something is.
+#
 # Usage:
 #   ./deploy.sh              # rebuild everything, same as `docker compose up -d --build`
 #   ./deploy.sh backend      # rebuild specific service(s) only
-#   ./deploy.sh --force      # skip the live check entirely
+#   ./deploy.sh --force      # skip the confirmation (and live check) entirely
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -61,11 +65,13 @@ if [ "$FORCE" = false ]; then
     echo
     echo "Rebuilding now will drop the RTMP connection and cut the stream(s) above."
     read -r -p "Deploy anyway? [y/N] " REPLY
-    case "$REPLY" in
-      y|Y|yes|YES) ;;
-      *) echo "Aborted - nothing was deployed."; exit 1 ;;
-    esac
+  else
+    read -r -p "Would you like to deploy? [y/N] " REPLY
   fi
+  case "$REPLY" in
+    y|Y|yes|YES) ;;
+    *) echo "Aborted - nothing was deployed."; exit 1 ;;
+  esac
 fi
 
 echo "Deploying..."

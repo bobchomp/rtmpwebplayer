@@ -91,7 +91,7 @@ function loadHtmlPage(filename) {
 }
 
 const homepageHtml = stripStatusLinkOnDevSite(stripDevSiteLinkOnDevSite(loadHtmlPage('index.html')));
-const dashboardHtml = loadHtmlPage('dashboard.html');
+const dashboardHtml = stripStatusLinkOnDevSite(loadHtmlPage('dashboard.html'));
 const loginHtml = loadHtmlPage('login.html');
 const privacyHtml = loadHtmlPage('privacy.html');
 
