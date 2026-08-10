@@ -30,6 +30,41 @@ async function getSites() {
   }
 }
 
+// DigitalOcean and Cloudflare (hosting + CDN) are both built on Atlassian
+// Statuspage.io, same as this project's own status page - which publishes a
+// free, public, unauthenticated summary at this exact path on every
+// Statuspage-powered domain. Deliberately NOT run through Upptime: its
+// checks are just an HTTP status code, and this endpoint always returns 200
+// even mid-outage (that's the point of it) - the real signal is the
+// `status.indicator` field in the body, which only this app's own fetch can
+// actually read.
+const DEPENDENCIES = [
+  { name: 'DigitalOcean', statusUrl: 'https://status.digitalocean.com/api/v2/status.json', pageUrl: 'https://status.digitalocean.com' },
+  { name: 'Cloudflare', statusUrl: 'https://www.cloudflarestatus.com/api/v2/status.json', pageUrl: 'https://www.cloudflarestatus.com' },
+];
+
+let depCache = null; // { results, fetchedAt }
+
+async function fetchDependency(dep) {
+  try {
+    const res = await fetch(dep.statusUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return { name: dep.name, pageUrl: dep.pageUrl, indicator: data.status.indicator, description: data.status.description };
+  } catch (err) {
+    // Same "show unknown, don't break the page" approach as the main
+    // component list - a third-party API hiccup shouldn't take /status down.
+    return { name: dep.name, pageUrl: dep.pageUrl, indicator: null, description: null };
+  }
+}
+
+async function getDependencies() {
+  if (depCache && Date.now() - depCache.fetchedAt < CACHE_MS) return depCache.results;
+  const results = await Promise.all(DEPENDENCIES.map(fetchDependency));
+  depCache = { results, fetchedAt: Date.now() };
+  return results;
+}
+
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -54,12 +89,38 @@ function renderRows(sites) {
     .join('');
 }
 
+function indicatorMeta(indicator) {
+  if (indicator === 'none') return { label: 'Operational', className: 'status-up' };
+  if (indicator === 'minor') return { label: 'Minor issues', className: 'status-degraded' };
+  if (indicator === 'major' || indicator === 'critical') return { label: 'Major issues', className: 'status-down' };
+  return { label: 'Unknown', className: 'status-unknown' };
+}
+
+function renderDependencyRows(deps) {
+  return deps
+    .map((dep) => {
+      const meta = indicatorMeta(dep.indicator);
+      return `
+      <li class="status-row">
+        <span class="status-row-name"><a href="${dep.pageUrl}" target="_blank" rel="noopener">${escapeHtml(dep.name)}</a></span>
+        <span class="status-pill ${meta.className}">${escapeHtml(meta.label)}</span>
+      </li>`;
+    })
+    .join('');
+}
+
 async function renderStatusPage() {
   let sites = null;
   let fetchFailed = false;
-  try {
-    sites = await getSites();
-  } catch (err) {
+  const [sitesResult, dependencies] = await Promise.all([
+    getSites()
+      .then((s) => ({ ok: true, sites: s }))
+      .catch(() => ({ ok: false })),
+    getDependencies(),
+  ]);
+  if (sitesResult.ok) {
+    sites = sitesResult.sites;
+  } else {
     fetchFailed = true;
   }
 
@@ -82,6 +143,10 @@ async function renderStatusPage() {
     : 'Some systems are degraded';
 
   const rowsHtml = sites ? `<ul class="status-list">${renderRows(sites)}</ul>` : '';
+  const dependenciesHtml = `
+<h2>Dependencies</h2>
+<p class="status-section-note">Third-party infrastructure this site relies on - reported directly by their own status pages, not tracked in this project's own uptime history.</p>
+<ul class="status-list">${renderDependencyRows(dependencies)}</ul>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -116,11 +181,17 @@ async function renderStatusPage() {
     padding: 16px 18px; box-shadow: var(--shadow-card);
   }
   .status-row-name { font: 600 15px/1.3 var(--font-display); }
+  .status-row-name a { color: inherit; text-decoration: none; }
+  .status-row-name a:hover { text-decoration: underline; }
   .status-row-uptime { font-size: 13px; color: var(--slate); margin-left: auto; }
   .status-pill { font: 600 12px/1 var(--font-display); padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
   .status-up { background: var(--grass-tint); color: #1D6B44; }
   .status-degraded { background: var(--amber-tint); color: #6B4E14; }
   .status-down { background: var(--ember-tint); color: #8A2E1C; }
+  .status-unknown { background: var(--surface-sunken); color: var(--slate); }
+
+  h2 { font: 600 18px/1.3 var(--font-display); margin: 40px 0 6px; }
+  .status-section-note { font-size: 13.5px; color: var(--slate); margin: 0 0 16px; }
 
   .status-footer-note { font-size: 13.5px; color: var(--slate); margin-top: 32px; }
   .status-footer-note a { color: var(--accent); }
@@ -153,6 +224,7 @@ async function renderStatusPage() {
 ${rowsHtml}
 
 <p class="status-footer-note">Checked automatically every 5 minutes. Past incidents are logged on <a href="${ISSUES_URL}">GitHub</a>.</p>
+${dependenciesHtml}
 
 </div>
 
