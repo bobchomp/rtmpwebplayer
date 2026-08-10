@@ -27,13 +27,16 @@ done
 # Prints "<label>|<channel name>|<minutes live>" for each currently-live
 # channel on the given backend service, or nothing if none are live (or the
 # container isn't running / db.json can't be read - fails open rather than
-# blocking a deploy over an unrelated problem).
+# blocking a deploy over an unrelated problem). Runs node *inside* the
+# container via `exec` rather than on the host - a bare Docker host (like
+# DigitalOcean's 1-Click Docker droplet) has no Node.js installed at all;
+# it only exists inside the app's own containers.
 check_live() {
-  local service="$1" label="$2" json
-  json=$(docker compose exec -T "$service" cat /app/data/db.json 2>/dev/null) || return 0
-  node -e '
+  local service="$1" label="$2"
+  docker compose exec -T "$service" node -e '
     try {
-      const db = JSON.parse(process.argv[2]);
+      const fs = require("fs");
+      const db = JSON.parse(fs.readFileSync("/app/data/db.json", "utf8"));
       Object.values(db.channels || {})
         .filter((c) => c.isLive)
         .forEach((c) => {
@@ -45,7 +48,7 @@ check_live() {
     } catch (e) {
       // Malformed/unreadable db.json - treat as "nothing live" rather than blocking.
     }
-  ' "$label" "$json"
+  ' "$label" 2>/dev/null || true
 }
 
 if [ "$FORCE" = false ]; then
