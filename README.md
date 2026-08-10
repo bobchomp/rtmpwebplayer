@@ -455,9 +455,12 @@ To turn it on:
 The dev stack runs continuously alongside production once it's up, which
 matters on a smaller droplet - it's a full second copy of the backend and
 nginx-rtmp, using memory whether or not anyone's actively using it. If
-you're not testing something on dev, `./stop-dev.sh` stops those two
-containers (checking first whether dev is currently live, same as
-`deploy.sh`'s check), and `./start-dev.sh` brings them back.
+you're not testing something on dev, `./toggle-dev.sh` stops those two
+containers if they're running, or starts them if they're stopped -
+whichever applies (checking first whether dev is currently live, same as
+`deploy.sh`'s check, if it's about to stop it). `./stop-dev.sh` and
+`./start-dev.sh` are also there directly if you want one specific
+direction rather than a toggle.
 
 Once something's tested and ready, deploy the same commit to production the
 normal way (`git pull origin main && ./deploy.sh`) - the dev stack is just
