@@ -196,7 +196,12 @@ running instance (production or dev) - not full video playback, but the
 same request pattern a real embed player makes (status polling, manifest +
 segment fetches, heartbeat pings), which is what actually stresses the
 backend and CDN. Run it from your own computer, not the droplet itself, and
-have a real (or looping test) stream live on the target channel first:
+have a real (or looping test) stream live on the target channel first.
+
+Don't want to clone the whole repo just for this? Log into the dashboard and
+open **Stream Test** in the nav - it has a download button for just this
+script plus the same instructions below, no repo needed. (Behind the admin
+login deliberately, since it's real traffic against the live site.)
 
 ```bash
 node scripts/load-test.js

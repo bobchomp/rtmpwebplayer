@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Kept identical to backend/src/downloads/load-test.js (the copy served by
-// the dashboard's Stream Test download button) - update both together.
+// Kept identical to scripts/load-test.js at the repo root (the copy you'd
+// run from a full clone) - update both together.
 //
 // Simulates N concurrent viewers hitting a real, running instance of this
 // app (production or dev) to see how it holds up - meant to be run from

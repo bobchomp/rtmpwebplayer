@@ -27,6 +27,7 @@
       <a href="#/" id="channels-btn" class="secondary">Channels</a>
       <a href="#/recordings" id="recordings-btn" class="secondary">Recordings</a>
       <a href="#/stats" id="stats-btn" class="secondary">Stats</a>
+      <a href="#/stream-test" id="stream-test-btn" class="secondary">Stream Test</a>
       <button id="logout-btn" class="secondary">Log out</button>
     </div>
   </header>
@@ -103,6 +104,66 @@
           </div>
           <span class="step-num">8</span>
           <div class="step-spacer" aria-hidden="true"></div>
+        </li>
+      </ol>
+    </section>
+  </div>
+
+  <div id="stream-test-view" class="hidden">
+    <div class="detail-header">
+      <a href="#/" class="back-link">&larr; All channels</a>
+    </div>
+
+    <p class="info-banner">This generates real traffic against the live site - hundreds of simulated viewers, indistinguishable from real ones. Only run it against a channel you're deliberately testing, and expect it to show up in that channel's Stats afterward (cleanup instructions below).</p>
+
+    <section class="panel">
+      <p>A script that simulates many concurrent viewers hitting the real site, to see how it holds up under load - the same request pattern a real embed player makes (status polling, manifest and segment fetches, heartbeat pings), without downloading full video. Runs from your own computer, not the droplet.</p>
+      <a class="secondary" href="/api/tools/load-test.js" download>Download load-test.js</a>
+    </section>
+
+    <section class="panel step-timeline-panel">
+      <p class="step-timeline-intro">How to run it, step by step.</p>
+
+      <ol class="step-timeline-steps">
+        <li class="step step-right">
+          <div class="step-spacer" aria-hidden="true"></div>
+          <span class="step-num">1</span>
+          <div class="step-content">
+            <h3>Download the script</h3>
+            <p>Click the download button above. You'll need Node.js installed on your computer (18 or newer) - grab it from nodejs.org if you don't already have it.</p>
+          </div>
+        </li>
+        <li class="step step-left">
+          <div class="step-content">
+            <h3>Start a test stream</h3>
+            <p>The channel you're testing against needs to actually be live - a real stream, or a looping video pushed in from OBS - so there's something real for the script to fetch.</p>
+          </div>
+          <span class="step-num">2</span>
+          <div class="step-spacer" aria-hidden="true"></div>
+        </li>
+        <li class="step step-right">
+          <div class="step-spacer" aria-hidden="true"></div>
+          <span class="step-num">3</span>
+          <div class="step-content">
+            <h3>Run it</h3>
+            <p>Open a terminal where you downloaded the file and run <code>node load-test.js</code>. It'll ask for the channel ID (the UUID in that channel's embed code), how many viewers to simulate, how long to run, and how many seconds to ramp them up over - press Enter on any of them to accept the suggested default.</p>
+          </div>
+        </li>
+        <li class="step step-left">
+          <div class="step-content">
+            <h3>Watch it run</h3>
+            <p>It prints a running request count as it goes, then a full summary per request type when it finishes - error rate, and average/typical/worst-case response times. A rising error rate or response time is the sign to watch for.</p>
+          </div>
+          <span class="step-num">4</span>
+          <div class="step-spacer" aria-hidden="true"></div>
+        </li>
+        <li class="step step-right">
+          <div class="step-spacer" aria-hidden="true"></div>
+          <span class="step-num">5</span>
+          <div class="step-content">
+            <h3>Clean up afterward</h3>
+            <p>Stop the test stream, then head to Stats, filter to today's date, select all, and delete - the simulated viewers' heartbeat pings are indistinguishable from real ones and will otherwise sit in that channel's real numbers.</p>
+          </div>
         </li>
       </ol>
     </section>

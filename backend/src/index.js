@@ -14,6 +14,7 @@ const watch = require('./routes/watch');
 const youtubeAuth = require('./routes/youtubeAuth');
 const statsRoutes = require('./routes/stats');
 const geoip = require('./geoip');
+const { requireAuth } = require('./authMiddleware');
 const { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripYoutubeOnProduction } = require('./devBanner');
 
 const app = express();
@@ -60,6 +61,12 @@ app.get('/api/config', (req, res) => {
     // even if GOOGLE_CLIENT_ID/SECRET were ever accidentally set there.
     youtubeEnabled: IS_DEV_SITE && !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
   });
+});
+
+// Admin-only download of scripts/load-test.js (see the Stream Test dashboard
+// page) - not under express.static, so it's never reachable without a login.
+app.get('/api/tools/load-test.js', requireAuth, (req, res) => {
+  res.download(path.join(__dirname, 'downloads', 'load-test.js'), 'load-test.js');
 });
 
 app.use('/api', authRoutes);
