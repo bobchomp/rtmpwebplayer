@@ -24,14 +24,16 @@
 //
 // Usage:
 //   node scripts/load-test.js
-// and answer the prompts (channel, viewers, duration, ramp) as they come up.
-// The site is always https://stream.rossmackenzie.co.uk - no need to type it.
+// and answer the prompts (password, channel, viewers, duration, ramp) as
+// they come up. The site is always https://stream.rossmackenzie.co.uk - no
+// need to type it.
 //
 // Prefer flags instead (e.g. for scripting)? Any of these skip their prompt:
-//   node scripts/load-test.js --yes --channel <channel-id> --viewers 400 --duration 180 --ramp 30
+//   node scripts/load-test.js --yes --password <password> --channel <channel-id> --viewers 400 --duration 180 --ramp 30
 // --yes skips the welcome banner/confirmation, the rest skip their own
-// prompt as before. Add --url <base-url> to point it at somewhere other
-// than production (e.g. dev).
+// prompt as before (a wrong --password still exits immediately rather than
+// falling back to asking). Add --url <base-url> to point it at somewhere
+// other than production (e.g. dev).
 //
 // Find <channel-id> in the embed code on that channel's dashboard page -
 // it's the UUID in the iframe's src, e.g. /embed/<channel-id>.
@@ -59,6 +61,21 @@ async function resolveConfig() {
     const answer = (await rl.question(`${question} [${defaultValue}]: `)).trim();
     return answer || String(defaultValue);
   };
+
+  const PASSWORD = 'smithton';
+  if (args.password !== undefined) {
+    if (args.password !== PASSWORD) {
+      console.error('Incorrect password.');
+      rl.close();
+      process.exit(1);
+    }
+  } else {
+    let attempt = '';
+    while (attempt !== PASSWORD) {
+      if (attempt) console.log('Incorrect password.\n');
+      attempt = (await rl.question('Password: ')).trim();
+    }
+  }
 
   BASE_URL = args.url || DEFAULT_BASE_URL;
 
