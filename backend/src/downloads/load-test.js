@@ -28,8 +28,10 @@
 // The site is always https://stream.rossmackenzie.co.uk - no need to type it.
 //
 // Prefer flags instead (e.g. for scripting)? Any of these skip their prompt:
-//   node scripts/load-test.js --channel <channel-id> --viewers 400 --duration 180 --ramp 30
-// Add --url <base-url> to point it at somewhere other than production (e.g. dev).
+//   node scripts/load-test.js --yes --channel <channel-id> --viewers 400 --duration 180 --ramp 30
+// --yes skips the welcome banner/confirmation, the rest skip their own
+// prompt as before. Add --url <base-url> to point it at somewhere other
+// than production (e.g. dev).
 //
 // Find <channel-id> in the embed code on that channel's dashboard page -
 // it's the UUID in the iframe's src, e.g. /embed/<channel-id>.
@@ -59,6 +61,28 @@ async function resolveConfig() {
   };
 
   BASE_URL = args.url || DEFAULT_BASE_URL;
+
+  if (!args.yes) {
+    console.log([
+      '**************************************************',
+      'WELCOME TO STREAM.ROSSMACKENZIE.CO.UK STREAM TEST',
+      '',
+      "This generates real traffic against the live site - hundreds of",
+      'simulated viewers, indistinguishable from real ones. Only run it against',
+      "a channel you're deliberately testing, and expect it to show up in that",
+      "channel's Stats afterward.",
+      '',
+      'PLEASE ENSURE THERE ARE NO PRODUCTION STREAMS ACTIVE NOW!',
+      '**************************************************',
+    ].join('\n'));
+    const proceed = (await rl.question('\nWould you like to continue? [y/N] ')).trim();
+    if (!/^y(es)?$/i.test(proceed)) {
+      console.log('Aborted.');
+      rl.close();
+      process.exit(1);
+    }
+    console.log('');
+  }
 
   CHANNEL_ID = args.channel;
   while (!CHANNEL_ID) {
