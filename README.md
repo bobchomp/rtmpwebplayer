@@ -189,6 +189,24 @@ requests through a CDN can take a little longer to settle) - see
 `LIVE_DELAY_MS` below for how the app avoids showing "live" during that
 window.
 
+### Load testing against the real server
+
+`scripts/load-test.js` simulates many concurrent viewers against a real,
+running instance (production or dev) - not full video playback, but the
+same request pattern a real embed player makes (status polling, manifest +
+segment fetches, heartbeat pings), which is what actually stresses the
+backend and CDN. Run it from your own computer, not the droplet itself, and
+have a real (or looping test) stream live on the target channel first:
+
+```bash
+node scripts/load-test.js --url https://stream.rossmackenzie.co.uk \
+  --channel <channel-id> --viewers 400 --duration 180 --ramp 30
+```
+
+See the comment at the top of the script for the full details, including
+why it deliberately doesn't download whole video segments, and a heads-up
+that the heartbeat pings will show up in that channel's real Stats page.
+
 ## Cost estimate
 
 | Item | Notes | Cost |
