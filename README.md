@@ -199,9 +199,18 @@ backend and CDN. Run it from your own computer, not the droplet itself, and
 have a real (or looping test) stream live on the target channel first:
 
 ```bash
-node scripts/load-test.js --url https://stream.rossmackenzie.co.uk \
-  --channel <channel-id> --viewers 400 --duration 180 --ramp 30
+node scripts/load-test.js
 ```
+
+It'll ask for the channel ID, viewer count, duration, and ramp-up one at a
+time (the site itself is hardcoded to production, no need to type it). To
+skip the prompts - e.g. for scripting - pass them as flags instead:
+
+```bash
+node scripts/load-test.js --channel <channel-id> --viewers 400 --duration 180 --ramp 30
+```
+
+Add `--url <base-url>` to point it at somewhere other than production (e.g. dev).
 
 See the comment at the top of the script for the full details, including
 why it deliberately doesn't download whole video segments, and a heads-up

@@ -17,8 +17,13 @@
 // connection long before it tells you anything about the server.
 //
 // Usage:
-//   node scripts/load-test.js --url https://stream.rossmackenzie.co.uk \
-//     --channel <channel-id> --viewers 400 --duration 180 --ramp 30
+//   node scripts/load-test.js
+// and answer the prompts (channel, viewers, duration, ramp) as they come up.
+// The site is always https://stream.rossmackenzie.co.uk - no need to type it.
+//
+// Prefer flags instead (e.g. for scripting)? Any of these skip their prompt:
+//   node scripts/load-test.js --channel <channel-id> --viewers 400 --duration 180 --ramp 30
+// Add --url <base-url> to point it at somewhere other than production (e.g. dev).
 //
 // Find <channel-id> in the embed code on that channel's dashboard page -
 // it's the UUID in the iframe's src, e.g. /embed/<channel-id>.
@@ -33,20 +38,32 @@
 // from your one IP). Clean them up afterward from Stats > select by date >
 // Delete selected, if you don't want test traffic mixed into real numbers.
 
-const args = parseArgs(process.argv.slice(2));
+const readline = require('node:readline/promises');
 
-const BASE_URL = required(args.url, '--url');
-const CHANNEL_ID = required(args.channel, '--channel');
-const VIEWERS = Number(args.viewers || 400);
-const DURATION_MS = Number(args.duration || 180) * 1000;
-const RAMP_MS = Number(args.ramp ?? 30) * 1000;
+const DEFAULT_BASE_URL = 'https://stream.rossmackenzie.co.uk';
 
-function required(value, flag) {
-  if (!value) {
-    console.error(`Missing required ${flag}\n\nUsage: node scripts/load-test.js --url <base-url> --channel <channel-id> [--viewers 400] [--duration 180] [--ramp 30]`);
-    process.exit(1);
+let BASE_URL, CHANNEL_ID, VIEWERS, DURATION_MS, RAMP_MS;
+
+async function resolveConfig() {
+  const args = parseArgs(process.argv.slice(2));
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const ask = async (question, defaultValue) => {
+    const answer = (await rl.question(`${question} [${defaultValue}]: `)).trim();
+    return answer || String(defaultValue);
+  };
+
+  BASE_URL = args.url || DEFAULT_BASE_URL;
+
+  CHANNEL_ID = args.channel;
+  while (!CHANNEL_ID) {
+    CHANNEL_ID = (await rl.question('Channel ID: ')).trim();
   }
-  return value;
+
+  VIEWERS = Number(args.viewers ?? await ask('Viewers to simulate', 400));
+  DURATION_MS = Number(args.duration ?? await ask('Duration (seconds)', 180)) * 1000;
+  RAMP_MS = Number(args.ramp ?? await ask('Ramp-up (seconds)', 30)) * 1000;
+
+  rl.close();
 }
 
 function parseArgs(argv) {
@@ -233,7 +250,9 @@ async function main() {
   printSummary();
 }
 
-main().catch((err) => {
-  console.error('Load test failed:', err);
-  process.exit(1);
-});
+resolveConfig()
+  .then(main)
+  .catch((err) => {
+    console.error('Load test failed:', err);
+    process.exit(1);
+  });
