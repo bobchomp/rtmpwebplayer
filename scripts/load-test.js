@@ -63,6 +63,9 @@ async function resolveConfig() {
   BASE_URL = args.url || DEFAULT_BASE_URL;
 
   if (!args.yes) {
+    const exampleChannelId = process.stdout.isTTY
+      ? '\x1b[33m468127c7-2fa6-44ef-b93a-d7d3b3aea613\x1b[0m'
+      : '468127c7-2fa6-44ef-b93a-d7d3b3aea613';
     console.log(`************************************************************************
 WELCOME TO STREAM.ROSSMACKENZIE.CO.UK STREAM TEST
 
@@ -73,8 +76,7 @@ channel's Stats afterward.
 
 Please have the following details ready before you continue:
 
-1. The Channel ID  - the string in the link when on the channel page. For example: https://stream.rossmackenzie.co.uk/dashboard#/channel/468127c7-2fa6-44ef-b93a-d7d3b3aea613
-
+1. The Channel ID  - the string in the link when on the channel page. For example: https://stream.rossmackenzie.co.uk/dashboard#/channel/${exampleChannelId}
 2. Numbers of Viewers to simulate - how many people you want to simulate joining in on the stream
 3. Duration - I recommend you set this to 180, only set it to something else if you know what you're doing!
 4. Ramp Up - I recommend you set this to 30, again, only set it to something else if you know what you're doing!
