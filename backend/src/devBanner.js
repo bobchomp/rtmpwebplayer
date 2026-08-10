@@ -40,6 +40,16 @@ function stripDevSiteLinkOnDevSite(html) {
   return html.replace(DEV_SITE_LINK_PATTERN, '');
 }
 
+const STATUS_LINK_PATTERN = /<!-- status-link:start -->[\s\S]*?<!-- status-link:end -->/;
+
+// Same idea as stripDevSiteLinkOnDevSite above - /status (see index.js) only
+// exists on production, so a footer link to it on the dev site would just
+// 404.
+function stripStatusLinkOnDevSite(html) {
+  if (!IS_DEV_SITE) return html.replace(/<!-- status-link:(start|end) -->/g, '');
+  return html.replace(STATUS_LINK_PATTERN, '');
+}
+
 const YOUTUBE_SECTION_PATTERN = /<!-- youtube:start -->[\s\S]*?<!-- youtube:end -->/g;
 
 // The YouTube relay is a dev-site-only feature (see index.js, which also
@@ -53,4 +63,4 @@ function stripYoutubeOnProduction(html) {
   return html.replace(YOUTUBE_SECTION_PATTERN, '');
 }
 
-module.exports = { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripYoutubeOnProduction };
+module.exports = { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripStatusLinkOnDevSite, stripYoutubeOnProduction };

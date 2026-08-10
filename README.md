@@ -221,6 +221,26 @@ See the comment at the top of the script for the full details, including
 why it deliberately doesn't download whole video segments, and a heads-up
 that the heartbeat pings will show up in that channel's real Stats page.
 
+## Status page
+
+`stream.rossmackenzie.co.uk/status` (production only, linked from the
+homepage footer) shows live up/down status and 30-day uptime for the site's
+core components - Website, Dashboard, and Live Streaming (RTMP ingest).
+
+The actual checking happens entirely outside this app, on
+[bobchomp/rtmpwebplayer-status](https://github.com/bobchomp/rtmpwebplayer-status)
+via [Upptime](https://upptime.js.org) - a GitHub Actions cron checks each
+endpoint every 5 minutes, commits the results as git history, and
+auto-opens/closes a GitHub Issue per incident. `backend/src/statusPage.js`
+just fetches that repo's `history/summary.json` (cached 60s) and renders it
+in this app's own style - no GitHub Pages, no separate hosting.
+
+To change what's monitored, edit `.upptimerc.yml` in that repo (a push to it
+re-triggers the Setup CI workflow automatically). Note the RTMP ingest check
+points at the droplet's raw IP, not the Cloudflare-proxied hostname -
+Cloudflare only forwards HTTP(S), so a TCP check against the proxied
+hostname on port 1935 would falsely report down.
+
 ## Cost estimate
 
 | Item | Notes | Cost |

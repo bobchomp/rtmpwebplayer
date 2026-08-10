@@ -14,8 +14,9 @@ const watch = require('./routes/watch');
 const youtubeAuth = require('./routes/youtubeAuth');
 const statsRoutes = require('./routes/stats');
 const geoip = require('./geoip');
+const { renderStatusPage } = require('./statusPage');
 const { requireAuth } = require('./authMiddleware');
-const { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripYoutubeOnProduction } = require('./devBanner');
+const { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripStatusLinkOnDevSite, stripYoutubeOnProduction } = require('./devBanner');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -89,7 +90,7 @@ function loadHtmlPage(filename) {
   return stripYoutubeOnProduction(withDevBanner(fs.readFileSync(path.join(PUBLIC_DIR, filename), 'utf8')));
 }
 
-const homepageHtml = stripDevSiteLinkOnDevSite(loadHtmlPage('index.html'));
+const homepageHtml = stripStatusLinkOnDevSite(stripDevSiteLinkOnDevSite(loadHtmlPage('index.html')));
 const dashboardHtml = loadHtmlPage('dashboard.html');
 const loginHtml = loadHtmlPage('login.html');
 const privacyHtml = loadHtmlPage('privacy.html');
@@ -107,6 +108,16 @@ app.get(['/dashboard', '/dashboard/'], (req, res) => res.type('html').send(dashb
 app.get(['/login', '/login/'], (req, res) => res.type('html').send(loginHtml));
 
 app.get('/privacy.html', (req, res) => res.type('html').send(privacyHtml));
+
+// Production-only - it reports on production's own endpoints specifically
+// (see bobchomp/rtmpwebplayer-status), so showing it on the dev site would
+// just be confusing (a dev visitor would see production's status, not
+// anything about the stack they're actually looking at).
+if (!IS_DEV_SITE) {
+  app.get('/status', async (req, res) => {
+    res.type('html').send(await renderStatusPage());
+  });
+}
 
 app.use(express.static(PUBLIC_DIR));
 
