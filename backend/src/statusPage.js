@@ -37,10 +37,12 @@ async function getSites() {
 // checks are just an HTTP status code, and this endpoint always returns 200
 // even mid-outage (that's the point of it) - the real signal is the
 // `status.indicator` field in the body, which only this app's own fetch can
-// actually read.
+// actually read. summary.json (rather than the smaller status.json) also
+// includes any active incidents in the same call, so a click can show them
+// in a popup here instead of sending the visitor away to check.
 const DEPENDENCIES = [
-  { name: 'DigitalOcean', statusUrl: 'https://status.digitalocean.com/api/v2/status.json', pageUrl: 'https://status.digitalocean.com' },
-  { name: 'Cloudflare', statusUrl: 'https://www.cloudflarestatus.com/api/v2/status.json', pageUrl: 'https://www.cloudflarestatus.com' },
+  { key: 'digitalocean', name: 'DigitalOcean', statusUrl: 'https://status.digitalocean.com/api/v2/summary.json', pageUrl: 'https://status.digitalocean.com' },
+  { key: 'cloudflare', name: 'Cloudflare', statusUrl: 'https://www.cloudflarestatus.com/api/v2/summary.json', pageUrl: 'https://www.cloudflarestatus.com' },
 ];
 
 let depCache = null; // { results, fetchedAt }
@@ -50,11 +52,18 @@ async function fetchDependency(dep) {
     const res = await fetch(dep.statusUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return { name: dep.name, pageUrl: dep.pageUrl, indicator: data.status.indicator, description: data.status.description };
+    return {
+      key: dep.key,
+      name: dep.name,
+      pageUrl: dep.pageUrl,
+      indicator: data.status.indicator,
+      description: data.status.description,
+      incidents: Array.isArray(data.incidents) ? data.incidents : [],
+    };
   } catch (err) {
     // Same "show unknown, don't break the page" approach as the main
     // component list - a third-party API hiccup shouldn't take /status down.
-    return { name: dep.name, pageUrl: dep.pageUrl, indicator: null, description: null };
+    return { key: dep.key, name: dep.name, pageUrl: dep.pageUrl, indicator: null, description: null, incidents: [] };
   }
 }
 
@@ -96,17 +105,56 @@ function indicatorMeta(indicator) {
   return { label: 'Unknown', className: 'status-unknown' };
 }
 
+function formatDate(iso) {
+  try {
+    return new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+  } catch (err) {
+    return iso;
+  }
+}
+
+function renderIncident(incident) {
+  const latestUpdate = incident.incident_updates && incident.incident_updates[0];
+  return `
+    <div class="status-incident">
+      <div class="status-incident-head">
+        <span class="status-incident-name">${escapeHtml(incident.name)}</span>
+        <span class="status-incident-status">${escapeHtml(incident.status)}</span>
+      </div>
+      ${latestUpdate ? `<p class="status-incident-body">${escapeHtml(latestUpdate.body)}</p>` : ''}
+      <p class="status-incident-time">Updated ${escapeHtml(formatDate(incident.updated_at))}</p>
+    </div>`;
+}
+
+function renderDependencyModalBody(dep) {
+  if (!dep.incidents.length) return '<p class="status-modal-empty">No active incidents.</p>';
+  return dep.incidents.map(renderIncident).join('');
+}
+
 function renderDependencyRows(deps) {
   return deps
     .map((dep) => {
       const meta = indicatorMeta(dep.indicator);
       return `
       <li class="status-row">
-        <span class="status-row-name"><a href="${dep.pageUrl}" target="_blank" rel="noopener">${escapeHtml(dep.name)}</a></span>
+        <button type="button" class="status-row-name status-dep-btn" data-dep="${escapeHtml(dep.key)}">${escapeHtml(dep.name)}</button>
         <span class="status-pill ${meta.className}">${escapeHtml(meta.label)}</span>
       </li>`;
     })
     .join('');
+}
+
+// Embedded as JSON for the click-to-open-popup script below, rather than a
+// separate API route - the data's already been fetched server-side for the
+// row pills, so there's nothing more to ask the server for on click.
+function buildDependencyDataJson(deps) {
+  const data = {};
+  deps.forEach((dep) => {
+    data[dep.key] = { name: dep.name, pageUrl: dep.pageUrl, bodyHtml: renderDependencyModalBody(dep) };
+  });
+  // A `</script` inside incident text (from either provider) would otherwise
+  // terminate this script block early when the browser parses the HTML.
+  return JSON.stringify(data).replace(/<\/script/gi, '<\\/script');
 }
 
 async function renderStatusPage() {
@@ -145,8 +193,9 @@ async function renderStatusPage() {
   const rowsHtml = sites ? `<ul class="status-list">${renderRows(sites)}</ul>` : '';
   const dependenciesHtml = `
 <h2>Dependencies</h2>
-<p class="status-section-note">Third-party infrastructure this site relies on - reported directly by their own status pages, not tracked in this project's own uptime history.</p>
+<p class="status-section-note">Third-party infrastructure this site relies on - reported directly by their own status pages, not tracked in this project's own uptime history. Click one for its current incidents.</p>
 <ul class="status-list">${renderDependencyRows(dependencies)}</ul>`;
+  const dependencyDataJson = buildDependencyDataJson(dependencies);
 
   return `<!doctype html>
 <html lang="en">
@@ -183,6 +232,8 @@ async function renderStatusPage() {
   .status-row-name { font: 600 15px/1.3 var(--font-display); }
   .status-row-name a { color: inherit; text-decoration: none; }
   .status-row-name a:hover { text-decoration: underline; }
+  .status-dep-btn { background: none; border: none; padding: 0; margin: 0; cursor: pointer; font: inherit; color: inherit; text-align: left; }
+  .status-dep-btn:hover { text-decoration: underline; }
   .status-row-uptime { font-size: 13px; color: var(--slate); margin-left: auto; }
   .status-pill { font: 600 12px/1 var(--font-display); padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
   .status-up { background: var(--grass-tint); color: #1D6B44; }
@@ -195,6 +246,27 @@ async function renderStatusPage() {
 
   .status-footer-note { font-size: 13.5px; color: var(--slate); margin-top: 32px; }
   .status-footer-note a { color: var(--accent); }
+
+  .status-modal-backdrop { position: fixed; inset: 0; background: rgba(34,38,43,.45); padding: 20px; z-index: 1000; }
+  .status-modal-backdrop:not([hidden]) { display: flex; align-items: center; justify-content: center; }
+  .status-modal {
+    background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+    max-width: 480px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 22px 24px;
+  }
+  .status-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .status-modal-header h3 { font: 600 17px/1.3 var(--font-display); margin: 0; }
+  .status-modal-close { background: none; border: none; font-size: 22px; line-height: 1; color: var(--slate); cursor: pointer; padding: 2px 6px; }
+  .status-modal-close:hover { color: var(--ink); }
+  .status-modal-empty { color: var(--slate); font-size: 14px; margin: 0; }
+  .status-incident { padding: 12px 0; border-top: 1px solid var(--border); }
+  .status-incident:first-child { border-top: none; padding-top: 0; }
+  .status-incident-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .status-incident-name { font: 600 14px/1.3 var(--font-display); }
+  .status-incident-status { font-size: 12px; color: var(--slate); text-transform: capitalize; }
+  .status-incident-body { font-size: 13.5px; color: var(--ink); margin: 0 0 6px; }
+  .status-incident-time { font-size: 12px; color: var(--slate-soft); margin: 0; }
+  .status-modal-link { display: inline-block; margin-top: 14px; font-size: 13px; color: var(--accent); text-decoration: none; }
+  .status-modal-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -228,12 +300,57 @@ ${dependenciesHtml}
 
 </div>
 
+<div class="status-modal-backdrop" id="dep-modal-backdrop" hidden>
+  <div class="status-modal" role="dialog" aria-modal="true" aria-labelledby="dep-modal-title">
+    <div class="status-modal-header">
+      <h3 id="dep-modal-title"></h3>
+      <button type="button" class="status-modal-close" id="dep-modal-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="status-modal-body" id="dep-modal-body"></div>
+    <a class="status-modal-link" id="dep-modal-link" href="#" target="_blank" rel="noopener">View full status page &rarr;</a>
+  </div>
+</div>
+
 <footer class="site-footer">
   &copy; <span id="copyright-year"></span> Ross Mackenzie
   &middot; <a href="/privacy.html">Privacy policy</a>
 </footer>
 
-<script>document.getElementById('copyright-year').textContent = new Date().getFullYear();</script>
+<script id="dep-data" type="application/json">${dependencyDataJson}</script>
+<script>
+document.getElementById('copyright-year').textContent = new Date().getFullYear();
+
+(function () {
+  var depData = JSON.parse(document.getElementById('dep-data').textContent);
+  var backdrop = document.getElementById('dep-modal-backdrop');
+  var titleEl = document.getElementById('dep-modal-title');
+  var bodyEl = document.getElementById('dep-modal-body');
+  var linkEl = document.getElementById('dep-modal-link');
+
+  function openModal(key) {
+    var dep = depData[key];
+    if (!dep) return;
+    titleEl.textContent = dep.name;
+    bodyEl.innerHTML = dep.bodyHtml;
+    linkEl.href = dep.pageUrl;
+    backdrop.hidden = false;
+  }
+  function closeModal() {
+    backdrop.hidden = true;
+  }
+
+  document.querySelectorAll('.status-dep-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { openModal(btn.dataset.dep); });
+  });
+  backdrop.addEventListener('click', function (e) {
+    if (e.target === backdrop) closeModal();
+  });
+  document.getElementById('dep-modal-close').addEventListener('click', closeModal);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !backdrop.hidden) closeModal();
+  });
+})();
+</script>
 </body>
 </html>`;
 }

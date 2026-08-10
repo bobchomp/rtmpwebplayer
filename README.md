@@ -243,11 +243,18 @@ hostname on port 1935 would falsely report down.
 
 The page also shows a **Dependencies** section for DigitalOcean and
 Cloudflare - fetched live from their own public Statuspage.io APIs
-(`/api/v2/status.json`), not tracked via Upptime. That's deliberate: Upptime
+(`/api/v2/summary.json`), not tracked via Upptime. That's deliberate: Upptime
 only checks HTTP status codes, and a status API always returns `200` even
 mid-outage - the real signal is the `status.indicator` field in the
 response body, which needs an app-level fetch to actually read. If either
 fetch fails, that row just shows "Unknown" rather than breaking the page.
+
+Clicking a dependency opens its current incidents in a popup on this page,
+rather than sending the visitor to DigitalOcean's or Cloudflare's own site -
+the incident data comes from the same `summary.json` fetch (it includes
+active incidents alongside the overall status), pre-rendered server-side and
+embedded as JSON for the popup script to read, so there's no extra request
+on click.
 
 ## Cost estimate
 
