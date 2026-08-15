@@ -5,7 +5,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-const { DATA_DIR } = require('./db');
+const { DATA_DIR, readDb } = require('./db');
 
 const execFileAsync = promisify(execFile);
 
@@ -210,4 +210,85 @@ setInterval(() => {
   sweepExpiredRecordings().catch((err) => console.error('Recording retention sweep failed:', err.message));
 }, RETENTION_SWEEP_MS).unref();
 
-module.exports = { listRecordings, processFinishedRecording, getPlaybackUrl, deleteRecording, sweepExpiredRecordings };
+// A raw recording's .ts file always survives whatever interrupts its
+// finalize-and-upload handoff - a killed rtmp container, a hung ffmpeg that
+// needed a manual kill, a dropped recording-done webhook - since it lives
+// on its own durable volume, untouched by any of that. The only thing that
+// can actually go missing is the notification that it's ready. This scans
+// for raw files nobody's actively writing to anymore and finishes
+// processing them automatically, so an interruption self-heals on its own
+// instead of needing someone to notice a gap in the Recordings tab and
+// manually reprocess it (see rtmpHooks.js's /recording-done for the normal,
+// non-orphaned path this mirrors).
+const RAW_DIR = '/recordings/raw';
+// Long enough that a file still being actively appended to every few
+// seconds by a live recording is never mistaken for an abandoned one -
+// short enough that a genuinely finished/stuck one doesn't sit around
+// unprocessed for long. Anything currently mid-recording will simply be
+// skipped this pass and picked up on a later one once it's actually done.
+const RECONCILE_STALE_MS = 5 * 60 * 1000;
+const RECONCILE_INTERVAL_MS = 30 * 60 * 1000;
+
+async function reconcileOrphanedRecordings() {
+  let streamKeys;
+  try {
+    streamKeys = await fs.promises.readdir(RAW_DIR);
+  } catch (err) {
+    return; // nothing's ever been recorded yet - RAW_DIR may not even exist
+  }
+
+  const db = readDb();
+
+  for (const streamKey of streamKeys) {
+    const dir = path.join(RAW_DIR, streamKey);
+    let files;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      files = await fs.promises.readdir(dir);
+    } catch (err) {
+      continue; // not actually a directory, or vanished - skip it
+    }
+
+    const channel = Object.values(db.channels || {}).find((c) => c.streamKey === streamKey);
+
+    for (const file of files) {
+      if (!file.endsWith('.ts')) continue;
+      const rawFilePath = path.join(dir, file);
+
+      let stat;
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        stat = await fs.promises.stat(rawFilePath);
+      } catch (err) {
+        continue; // disappeared between readdir and stat - already handled
+      }
+
+      if (Date.now() - stat.mtimeMs < RECONCILE_STALE_MS) continue;
+
+      if (!channel) {
+        // No channel to attribute this to (e.g. deleted since) - same
+        // cleanup rtmpHooks.js's /recording-done does for this case.
+        // eslint-disable-next-line no-await-in-loop
+        await fs.promises.rm(rawFilePath, { force: true }).catch(() => {});
+        continue;
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      await processFinishedRecording({ channel, rawFilePath });
+    }
+  }
+}
+
+reconcileOrphanedRecordings().catch((err) => console.error('Recording reconciliation sweep failed:', err.message));
+setInterval(() => {
+  reconcileOrphanedRecordings().catch((err) => console.error('Recording reconciliation sweep failed:', err.message));
+}, RECONCILE_INTERVAL_MS).unref();
+
+module.exports = {
+  listRecordings,
+  processFinishedRecording,
+  getPlaybackUrl,
+  deleteRecording,
+  sweepExpiredRecordings,
+  reconcileOrphanedRecordings,
+};
