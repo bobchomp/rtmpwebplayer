@@ -531,10 +531,22 @@ rebuild only specific ones, same as `docker compose up -d --build` itself
 accepts:
 
 ```bash
-./deploy.sh                      # rebuild everything
+./deploy.sh                      # rebuild everything - asks first whether to include RTMP
 ./deploy.sh backend dev-backend  # rebuild specific services only
-./deploy.sh --force              # skip the confirmation (and live check)
+./deploy.sh --force              # skip every prompt entirely
 ```
+
+A bare `./deploy.sh` (no service names) asks a second question before the
+live check: whether to rebuild the RTMP ingest server(s) (`rtmp`/
+`dev-rtmp`) too, defaulting to no. That's deliberate - rebuilding rtmp
+doesn't just drop the live connection, it also kills any in-progress
+recording's ffmpeg process outright, before it gets a chance to hand off to
+the backend for upload, stranding the raw file until someone notices and
+reprocesses it by hand. Most deploys only touch application code
+(`backend/`), so most of the time you want "no" here and only rebuild rtmp
+when you've actually changed something under `rtmp/`. Naming services
+explicitly (including `rtmp` itself) skips this question - you've already
+made the call.
 
 Running `docker compose up -d --build` directly still works exactly as
 before and bypasses this check entirely - `./deploy.sh` only helps if it's
