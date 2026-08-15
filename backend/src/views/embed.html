@@ -41,7 +41,18 @@
     padding: 18px 16px 16px; display: none; pointer-events: none;
     background: linear-gradient(to top, rgba(0, 0, 0, .75), rgba(0, 0, 0, 0));
     color: #fff;
+    transition: opacity .3s ease, bottom .2s ease;
   }
+  /* Once playback has actually started, #controls-bar occupies the very
+     bottom of the player - shift the title card up to sit just above it
+     instead of the two overlapping. Set from JS (controlsBar.offsetHeight)
+     rather than a hardcoded value, so it stays correct if the controls
+     bar's own height ever changes. */
+  #wrap.is-playing #title-overlay { bottom: var(--controls-height, 0px); }
+  /* Fades out together with #controls-bar during playback (see
+     scheduleControlsIdle()) rather than sitting there alone once the rest
+     of the chrome has hidden itself for inactivity. */
+  #wrap.controls-idle #title-overlay { opacity: 0; }
   #title-overlay-title {
     margin: 0 0 4px; font: 700 15px/1.3 -apple-system, "Segoe UI", Roboto, sans-serif;
   }
@@ -287,6 +298,7 @@
     playButton.style.display = 'none';
     thumbOverlay.style.display = 'none';
     titleOverlay.style.display = 'none';
+    wrap.classList.remove('is-playing');
     video.removeAttribute('src');
     video.load();
 
@@ -396,6 +408,10 @@
     playButton.style.display = 'flex';
     thumbOverlay.src = lastLiveThumbnailUrl || lastCoverUrl || DEFAULT_POSTER;
     thumbOverlay.style.display = 'block';
+    // Sits flush at the very bottom pre-play (controls-bar is hidden below,
+    // see next line) - is-playing (added on the 'playing' event) is what
+    // later shifts it up to make room once the controls bar is showing.
+    wrap.classList.remove('is-playing');
     if (hasTitleOverlay) titleOverlay.style.display = 'block';
     controlsBar.style.display = 'none';
     showControlsBar();
@@ -463,8 +479,15 @@
   video.addEventListener('playing', function () {
     playButton.style.display = 'none';
     thumbOverlay.style.display = 'none';
-    titleOverlay.style.display = 'none';
     controlsBar.style.display = 'flex';
+    // Title/description card stays up (rather than disappearing once
+    // playback starts) - just shifted to sit above the now-visible controls
+    // bar instead of overlapping it, and folded into the same idle-fade
+    // behaviour as the rest of the chrome (see the .controls-idle CSS rule).
+    if (hasTitleOverlay) {
+      wrap.style.setProperty('--controls-height', controlsBar.offsetHeight + 'px');
+      wrap.classList.add('is-playing');
+    }
     // Stays visible (never hidden) but non-interactive - there's no way to
     // stop playback via this control once it's going.
     playPauseBtn.disabled = true;
