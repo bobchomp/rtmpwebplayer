@@ -376,6 +376,7 @@ button.danger:hover { background: var(--ember-tint); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 
 .thumb-picker-box { max-width: 640px; }
+.thumb-picker-upload-label { margin-top: -6px; }
 
 #create-form { display: flex; flex-direction: column; gap: 18px; }
 

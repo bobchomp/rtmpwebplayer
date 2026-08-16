@@ -350,6 +350,7 @@
   var thumbPickerModalBackdrop = document.getElementById('thumb-picker-modal-backdrop');
   var thumbPickerGallery = document.getElementById('thumb-picker-gallery');
   var thumbPickerSkipBtn = document.getElementById('thumb-picker-skip-btn');
+  var thumbPickerUploadInput = document.getElementById('thumb-picker-upload-input');
   var THUMB_POPUP_REMEMBER_MS = 2 * 60 * 60 * 1000;
 
   var detailRecordingToggle = document.getElementById('detail-recording-toggle');
@@ -387,13 +388,9 @@
     return 'liveThumbPopupUntil:' + channelId;
   }
 
-  function maybeShowThumbPopup(channel) {
-    if ((channel.liveThumbnails || []).length < 2) return;
-    var dismissedUntil = Number(localStorage.getItem(thumbPopupStorageKey(channel.id)));
-    if (dismissedUntil && Date.now() < dismissedUntil) return;
-
+  function renderThumbPickerGallery(channel) {
     thumbPickerGallery.innerHTML = '';
-    channel.liveThumbnails.forEach(function (filename) {
+    (channel.liveThumbnails || []).forEach(function (filename) {
       var item = document.createElement('div');
       item.className = 'gallery-item' + (filename === channel.activeLiveThumbnail ? ' active' : '');
 
@@ -420,13 +417,40 @@
 
       thumbPickerGallery.appendChild(item);
     });
+  }
 
+  function maybeShowThumbPopup(channel) {
+    if ((channel.liveThumbnails || []).length < 2) return;
+    var dismissedUntil = Number(localStorage.getItem(thumbPopupStorageKey(channel.id)));
+    if (dismissedUntil && Date.now() < dismissedUntil) return;
+
+    renderThumbPickerGallery(channel);
     thumbPickerModalBackdrop.classList.remove('hidden');
   }
 
   function dismissThumbPopup(channelId) {
     localStorage.setItem(thumbPopupStorageKey(channelId), String(Date.now() + THUMB_POPUP_REMEMBER_MS));
     thumbPickerModalBackdrop.classList.add('hidden');
+  }
+
+  // Lets an admin add a new candidate thumbnail without leaving the popup -
+  // re-renders just the popup's gallery with the new option added, rather
+  // than closing it, since the whole point of being here is still deciding.
+  function uploadThumbFromPopup(file) {
+    if (!file) return;
+    var formData = new FormData();
+    formData.append('image', file);
+    fetch('/api/channels/' + currentChannelId + '/live-thumbnails', { method: 'POST', body: formData })
+      .then(function (res) {
+        if (!res.ok) throw new Error('Upload failed');
+        return res.json();
+      })
+      .then(function (channel) {
+        thumbPickerUploadInput.value = '';
+        renderThumbPickerGallery(channel);
+        return refreshChannelDetail();
+      })
+      .catch(function (err) { alert(err.message); });
   }
 
   function updatePreviewState(isLive, channelId) {
@@ -802,6 +826,10 @@
 
     thumbPickerSkipBtn.addEventListener('click', function () {
       dismissThumbPopup(currentChannelId);
+    });
+
+    thumbPickerUploadInput.addEventListener('change', function (e) {
+      uploadThumbFromPopup(e.target.files[0]);
     });
 
     detailRenameBtn.addEventListener('click', function () {
