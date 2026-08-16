@@ -241,6 +241,13 @@ button.danger:hover { background: var(--ember-tint); }
 }
 .gallery-item .gallery-remove:hover { background: #9C3521; }
 
+/* Larger variant - used where the actual thumbnail content needs to be
+   readable at a glance (e.g. the live-thumbnail picker popup) rather than
+   just recognizable as a swatch. */
+.gallery-lg .gallery-item { width: 220px; height: 124px; }
+.gallery-lg .gallery-item img { border-radius: 8px; border-width: 3px; }
+.gallery-lg .gallery-item .gallery-active-badge { font-size: 11px; padding: 3px 7px; bottom: 6px; left: 6px; }
+
 /* Channel list / picker */
 .channel-row {
   display: flex; align-items: center; gap: 16px; text-decoration: none; color: inherit;
@@ -367,6 +374,8 @@ button.danger:hover { background: var(--ember-tint); }
 }
 .modal-box h3 { margin: 0; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+.thumb-picker-box { max-width: 640px; }
 
 #create-form { display: flex; flex-direction: column; gap: 18px; }
 
