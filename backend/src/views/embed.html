@@ -533,15 +533,30 @@
   fullscreenBtn.addEventListener('click', function () {
     if (document.fullscreenElement) {
       document.exitFullscreen();
+    } else if (video.webkitDisplayingFullscreen) {
+      video.webkitExitFullscreen();
     } else if (wrap.requestFullscreen) {
       wrap.requestFullscreen();
     } else if (wrap.webkitRequestFullscreen) {
-      // Older Safari.
+      // Older desktop Safari.
       wrap.webkitRequestFullscreen();
+    } else if (video.webkitEnterFullscreen) {
+      // iPhone Safari has no element Fullscreen API at all (unlike iPad,
+      // which behaves like desktop Safari above) - the <video> itself is
+      // the only thing that can go fullscreen, via this older iOS-only
+      // method, and doing so hands control to Safari's native video chrome
+      // (our own overlay controls included) until the viewer exits it.
+      video.webkitEnterFullscreen();
     }
   });
   document.addEventListener('fullscreenchange', function () {
     fullscreenIconPath.setAttribute('d', document.fullscreenElement ? FULLSCREEN_EXIT_PATH : FULLSCREEN_ENTER_PATH);
+  });
+  video.addEventListener('webkitbeginfullscreen', function () {
+    fullscreenIconPath.setAttribute('d', FULLSCREEN_EXIT_PATH);
+  });
+  video.addEventListener('webkitendfullscreen', function () {
+    fullscreenIconPath.setAttribute('d', FULLSCREEN_ENTER_PATH);
   });
 
   function poll() {
