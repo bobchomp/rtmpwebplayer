@@ -3,7 +3,8 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
-const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { Upload } = require('@aws-sdk/lib-storage');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { DATA_DIR, readDb } = require('./db');
 
@@ -15,6 +16,21 @@ const RECORDINGS_FILE = path.join(DATA_DIR, 'recordings.json');
 // dashboard - nothing auto-expires.
 const RETENTION_DAYS = Number(process.env.RECORDING_RETENTION_DAYS) || 0;
 const RETENTION_SWEEP_MS = 24 * 60 * 60 * 1000;
+
+// A dropped connection partway through a single-shot upload of an
+// hours-long recording used to mean losing the entire transfer and starting
+// over - multipart splits it into ~8MB parts instead, so a reset only costs
+// re-sending the one part that failed.
+const R2_UPLOAD_PART_SIZE = 8 * 1024 * 1024;
+
+// If a recording just failed (upload/network trouble, not a local bug),
+// don't hammer the same doomed remux+upload again on every reconciliation
+// pass or backend restart - a crash-looping host would otherwise retry the
+// heaviest possible work (a full remux of a potentially hours-long file)
+// every single time it comes back up, which is itself enough to keep it
+// crash-looping. Marker lives next to the raw file so it survives restarts.
+const RETRY_COOLDOWN_MS = 10 * 60 * 1000;
+const FAILURE_MARKER_SUFFIX = '.failed-attempt';
 
 function ensureFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -100,6 +116,14 @@ async function processFinishedRecording({ channel, rawFilePath }) {
     return;
   }
 
+  const failureMarkerPath = `${rawFilePath}${FAILURE_MARKER_SUFFIX}`;
+  try {
+    const markerStat = fs.statSync(failureMarkerPath);
+    if (Date.now() - markerStat.mtimeMs < RETRY_COOLDOWN_MS) return;
+  } catch (err) {
+    // No marker yet, or already past cooldown - proceed.
+  }
+
   const startedAtMatch = path.basename(rawFilePath).match(/^(\d+)\.ts$/);
   const startedAt = startedAtMatch
     ? new Date(Number(startedAtMatch[1]) * 1000).toISOString()
@@ -116,13 +140,17 @@ async function processFinishedRecording({ channel, rawFilePath }) {
     const id = crypto.randomUUID();
     const r2Key = `${channel.id}/${id}.mp4`;
 
-    await r2.send(new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME,
-      Key: r2Key,
-      Body: fs.createReadStream(mp4Path),
-      ContentType: 'video/mp4',
-      ContentLength: stat.size,
-    }));
+    const upload = new Upload({
+      client: r2,
+      partSize: R2_UPLOAD_PART_SIZE,
+      params: {
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: r2Key,
+        Body: fs.createReadStream(mp4Path),
+        ContentType: 'video/mp4',
+      },
+    });
+    await upload.done();
 
     const rows = readAll();
     rows.push({
@@ -141,12 +169,13 @@ async function processFinishedRecording({ channel, rawFilePath }) {
     // succeeded - deleting them unconditionally (e.g. in a `finally`) would
     // silently destroy the only copy of the recording if the upload failed
     // for any reason (bad credentials, wrong bucket, network blip).
-    await cleanupLocalFiles(rawFilePath, mp4Path);
+    await cleanupLocalFiles(rawFilePath, mp4Path, failureMarkerPath);
   } catch (err) {
     console.error(
       `Failed to process recording for channel ${channel.id} - raw file kept for retry: ${rawFilePath}`,
       err.message
     );
+    fs.writeFileSync(failureMarkerPath, String(Date.now()));
   }
 }
 
