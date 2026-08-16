@@ -347,6 +347,11 @@
   var detailThumbGallery = document.getElementById('detail-thumb-gallery');
   var detailThumbUploadInput = document.getElementById('detail-thumb-upload-input');
 
+  var thumbPickerModalBackdrop = document.getElementById('thumb-picker-modal-backdrop');
+  var thumbPickerGallery = document.getElementById('thumb-picker-gallery');
+  var thumbPickerSkipBtn = document.getElementById('thumb-picker-skip-btn');
+  var THUMB_POPUP_REMEMBER_MS = 2 * 60 * 60 * 1000;
+
   var detailRecordingToggle = document.getElementById('detail-recording-toggle');
   var recordingRowTemplate = document.getElementById('recording-row-template');
 
@@ -357,16 +362,71 @@
   function loadChannelDetail(channelId) {
     currentChannelId = channelId;
     wireDetailEventListeners();
-    return refreshChannelDetail();
+    return refreshChannelDetail().then(function (channel) {
+      if (channel) maybeShowThumbPopup(channel);
+    });
   }
 
   function refreshChannelDetail() {
     return api('/api/channels/' + currentChannelId)
-      .then(renderChannelDetail)
+      .then(function (channel) {
+        renderChannelDetail(channel);
+        return channel;
+      })
       .catch(function (err) {
         alert(err.message);
         window.location.hash = '#/';
       });
+  }
+
+  // Prompts the admin to pick a live thumbnail the moment a channel's page
+  // is opened, but only when there's an actual choice to make (2+ uploaded)
+  // and only once per channel per browser every couple hours - re-asking on
+  // every visit would just be noise once someone's already decided.
+  function thumbPopupStorageKey(channelId) {
+    return 'liveThumbPopupUntil:' + channelId;
+  }
+
+  function maybeShowThumbPopup(channel) {
+    if ((channel.liveThumbnails || []).length < 2) return;
+    var dismissedUntil = Number(localStorage.getItem(thumbPopupStorageKey(channel.id)));
+    if (dismissedUntil && Date.now() < dismissedUntil) return;
+
+    thumbPickerGallery.innerHTML = '';
+    channel.liveThumbnails.forEach(function (filename) {
+      var item = document.createElement('div');
+      item.className = 'gallery-item' + (filename === channel.activeLiveThumbnail ? ' active' : '');
+
+      var img = document.createElement('img');
+      img.src = '/uploads/' + filename;
+      img.alt = '';
+      img.title = 'Use this thumbnail';
+      img.addEventListener('click', function () {
+        api('/api/channels/' + channel.id + '/live-thumbnails/' + encodeURIComponent(filename) + '/activate', { method: 'POST' })
+          .then(function () {
+            dismissThumbPopup(channel.id);
+            return refreshChannelDetail();
+          })
+          .catch(function (err) { alert(err.message); });
+      });
+      item.appendChild(img);
+
+      if (filename === channel.activeLiveThumbnail) {
+        var badge = document.createElement('span');
+        badge.className = 'gallery-active-badge';
+        badge.textContent = 'ACTIVE';
+        item.appendChild(badge);
+      }
+
+      thumbPickerGallery.appendChild(item);
+    });
+
+    thumbPickerModalBackdrop.classList.remove('hidden');
+  }
+
+  function dismissThumbPopup(channelId) {
+    localStorage.setItem(thumbPopupStorageKey(channelId), String(Date.now() + THUMB_POPUP_REMEMBER_MS));
+    thumbPickerModalBackdrop.classList.add('hidden');
   }
 
   function updatePreviewState(isLive, channelId) {
@@ -739,6 +799,10 @@
     detailListenersWired = true;
 
     wireCopyButtons(detailView);
+
+    thumbPickerSkipBtn.addEventListener('click', function () {
+      dismissThumbPopup(currentChannelId);
+    });
 
     detailRenameBtn.addEventListener('click', function () {
       detailNameInput.value = detailName.textContent;
