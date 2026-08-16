@@ -34,7 +34,18 @@ echo "record-start.sh: recording ${STREAM_KEY} to ${OUTFILE}"
 # ffmpeg's own PID directly (a separate script invocation, like
 # record-stop.sh, can't - it can only poll).
 (
-  ffmpeg -i "rtmp://127.0.0.1/live/${STREAM_KEY}" -c copy -t "$SAFETY_SECONDS" -f mpegts "$OUTFILE" \
+  # -use_wallclock_as_timestamps stamps each packet by when it actually
+  # arrived rather than trusting the audio/video timestamps embedded in the
+  # RTMP stream itself - nginx-rtmp's own live HLS mux of this same feed
+  # plays back in sync, but this is a completely separate ffmpeg process
+  # reading the stream over its own RTMP connection, and relying on the raw
+  # embedded timestamps here was baking in a fixed A/V offset for the whole
+  # recording (confirmed against a reproduction with a known offset - a
+  # plain -c copy preserved it exactly, wallclock timestamping closed it to
+  # a few ms). -avoid_negative_ts make_zero just keeps the output's own
+  # starting point sane on top of that.
+  ffmpeg -use_wallclock_as_timestamps 1 -i "rtmp://127.0.0.1/live/${STREAM_KEY}" \
+    -c copy -avoid_negative_ts make_zero -t "$SAFETY_SECONDS" -f mpegts "$OUTFILE" \
     > "$LOGFILE" 2>&1 &
   FFMPEG_PID=$!
   echo "$FFMPEG_PID" > "${PIDDIR}/${STREAM_KEY}.pid"
