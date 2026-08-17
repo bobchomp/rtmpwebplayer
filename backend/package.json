@@ -14,10 +14,12 @@
     "@aws-sdk/lib-storage": "^3.1111.0",
     "@aws-sdk/s3-request-presigner": "^3.1096.0",
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "maxmind": "^5.0.6",
     "multer": "^2.2.0",
+    "pdfkit-table": "^0.2.11",
     "tar": "^7.5.22"
   }
 }

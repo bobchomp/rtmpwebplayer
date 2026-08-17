@@ -175,6 +175,8 @@
   var statsFromFilter = document.getElementById('stats-from-filter');
   var statsToFilter = document.getElementById('stats-to-filter');
   var statsExportBtn = document.getElementById('stats-export-btn');
+  var statsExportXlsxBtn = document.getElementById('stats-export-xlsx-btn');
+  var statsExportPdfBtn = document.getElementById('stats-export-pdf-btn');
   var statsTableBody = document.getElementById('stats-table-body');
   var statsEmpty = document.getElementById('stats-empty');
   var statsRowTemplate = document.getElementById('stats-row-template');
@@ -207,6 +209,8 @@
   function loadStats() {
     var query = statsQuery();
     statsExportBtn.href = '/api/stats/export.csv' + (query ? '?' + query : '');
+    statsExportXlsxBtn.href = '/api/stats/export.xlsx' + (query ? '?' + query : '');
+    statsExportPdfBtn.href = '/api/stats/export.pdf' + (query ? '?' + query : '');
 
     return api('/api/stats' + (query ? '?' + query : '')).then(function (data) {
       var selected = statsChannelFilter.value;
