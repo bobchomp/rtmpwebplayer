@@ -1,7 +1,25 @@
+# Every service below carries a mem_limit - a hard per-container ceiling
+# enforced by the kernel (a cgroup limit, the same mechanism Docker always
+# uses, just actually set instead of left unlimited). Without one, a single
+# runaway/leaking process can consume the *entire* host's RAM before
+# anything else gets a say - which is exactly what happened once already:
+# the droplet locked up so hard even SSH couldn't get in, and only a hard
+# power cycle recovered it. With a limit, the same runaway process gets
+# OOM-killed and restarted (restart: unless-stopped brings it straight
+# back) instead of starving the whole box - every other container, and the
+# host itself, keeps running.
+#
+# Budgeted against this droplet's ~1.9GB total RAM (see `docker stats`),
+# leaving real headroom (~300-400MB) unclaimed for the OS/kernel/Docker
+# daemon itself even if every service maxed out its limit at once - that
+# headroom is exactly what was missing during the original incident. Raise
+# individual limits if a service is genuinely being OOM-killed doing real
+# work, rather than raising them preemptively.
 services:
   rtmp:
     build: ./rtmp
     restart: unless-stopped
+    mem_limit: 400m
     ports:
       - "1935:1935" # RTMP ingest - point Restream's Custom RTMP destination here
     environment:
@@ -15,6 +33,7 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    mem_limit: 700m
     ports:
       - "4000:4000" # direct access for local testing; put Caddy in front for production
     environment:
@@ -61,6 +80,7 @@ services:
   dev-rtmp:
     build: ./rtmp
     restart: unless-stopped
+    mem_limit: 150m
     ports:
       - "1936:1935" # separate from production's 1935 - point a *second* OBS profile here
     environment:
@@ -74,6 +94,7 @@ services:
   dev-backend:
     build: ./backend
     restart: unless-stopped
+    mem_limit: 200m
     environment:
       IS_DEV_SITE: "true"
       ADMIN_USERNAME: ${DEV_ADMIN_USERNAME:-}
@@ -110,6 +131,7 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    mem_limit: 150m
     ports:
       - "80:80"
       - "443:443"
