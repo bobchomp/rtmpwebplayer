@@ -95,7 +95,18 @@ const dashboardHtml = stripStatusLinkOnDevSite(loadHtmlPage('dashboard.html'));
 const loginHtml = loadHtmlPage('login.html');
 const privacyHtml = loadHtmlPage('privacy.html');
 
-app.get('/', (req, res) => res.type('html').send(homepageHtml));
+// These pages (and every static asset under PUBLIC_DIR, below) change on
+// every deploy but carry no cache-busting filename/hash, so without an
+// explicit header a browser's own heuristic caching can easily keep serving
+// a stale /app.js or /style.css against a freshly-deployed HTML page for a
+// good while after a deploy - not "broken", just silently mismatched (e.g.
+// old JS querying a class name a newer HTML template renamed). no-cache
+// still allows the browser to keep a local copy, it just requires
+// revalidating it with the server (a cheap conditional GET) before ever
+// using it, so a deploy always takes effect on the very next load.
+const NO_CACHE = 'no-cache';
+
+app.get('/', (req, res) => res.type('html').set('Cache-Control', NO_CACHE).send(homepageHtml));
 
 // The admin dashboard lives at its own path (not '/') so the site's actual
 // homepage can be a genuine public page describing the app - required by
@@ -103,11 +114,11 @@ app.get('/', (req, res) => res.type('html').send(homepageHtml));
 // nothing but a login form. The login form itself lives at yet another path
 // (not folded into the dashboard) so it's a real page of its own rather than
 // a view swapped in by client-side JS.
-app.get(['/dashboard', '/dashboard/'], (req, res) => res.type('html').send(dashboardHtml));
+app.get(['/dashboard', '/dashboard/'], (req, res) => res.type('html').set('Cache-Control', NO_CACHE).send(dashboardHtml));
 
-app.get(['/login', '/login/'], (req, res) => res.type('html').send(loginHtml));
+app.get(['/login', '/login/'], (req, res) => res.type('html').set('Cache-Control', NO_CACHE).send(loginHtml));
 
-app.get('/privacy.html', (req, res) => res.type('html').send(privacyHtml));
+app.get('/privacy.html', (req, res) => res.type('html').set('Cache-Control', NO_CACHE).send(privacyHtml));
 
 // Production-only - it reports on production's own endpoints specifically
 // (see bobchomp/rtmpwebplayer-status), so showing it on the dev site would
@@ -115,11 +126,11 @@ app.get('/privacy.html', (req, res) => res.type('html').send(privacyHtml));
 // anything about the stack they're actually looking at).
 if (!IS_DEV_SITE) {
   app.get('/status', async (req, res) => {
-    res.type('html').send(await renderStatusPage());
+    res.type('html').set('Cache-Control', NO_CACHE).send(await renderStatusPage());
   });
 }
 
-app.use(express.static(PUBLIC_DIR));
+app.use(express.static(PUBLIC_DIR, { setHeaders: (res) => res.set('Cache-Control', NO_CACHE) }));
 
 geoip.ensureDatabase();
 
