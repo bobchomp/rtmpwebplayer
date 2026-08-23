@@ -95,6 +95,64 @@ async function cleanupLocalFiles(...filePaths) {
   await Promise.all(filePaths.map((p) => fs.promises.rm(p, { force: true }).catch(() => {})));
 }
 
+// EBU R128 loudness normalization target - -16 LUFS integrated loudness is
+// the standard target for spoken-word/podcast content (a few dB louder
+// than typical unmastered mic audio), -1.5dBTP true-peak ceiling leaves
+// headroom so bringing quiet passages up doesn't clip already-loud ones.
+const LOUDNORM_TARGET_I = -16;
+const LOUDNORM_TARGET_TP = -1.5;
+const LOUDNORM_TARGET_LRA = 11;
+// ffmpeg's own default per-frame progress logging can run stderr well past
+// Node's default 1MB execFile buffer on an hours-long recording - these
+// flags keep it to just the filter's own output, which is all we parse.
+const FFMPEG_QUIET_FLAGS = ['-hide_banner', '-nostats'];
+const FFMPEG_EXEC_OPTIONS = { maxBuffer: 16 * 1024 * 1024 };
+
+function loudnormFilter(extra) {
+  return `loudnorm=I=${LOUDNORM_TARGET_I}:TP=${LOUDNORM_TARGET_TP}:LRA=${LOUDNORM_TARGET_LRA}${extra || ''}`;
+}
+
+// Single-pass loudnorm just estimates from a rolling buffer as it goes,
+// which is noticeably less accurate - measuring the real source loudness
+// first and feeding those exact numbers back in as a fixed linear gain is
+// what actually avoids both under- and over-correcting.
+async function measureLoudness(inputPath) {
+  const { stderr } = await execFileAsync(
+    'ffmpeg',
+    [...FFMPEG_QUIET_FLAGS, '-i', inputPath, '-af', loudnormFilter(':print_format=json'), '-f', 'null', '-'],
+    FFMPEG_EXEC_OPTIONS
+  );
+  const match = stderr.match(/\{[^{}]*"input_i"[\s\S]*?\}/);
+  if (!match) throw new Error('Could not parse loudnorm measurement output from ffmpeg');
+  return JSON.parse(match[0]);
+}
+
+// Remuxes raw -> mp4 the same way as before (video is a pure stream copy -
+// no re-encode, no quality loss, cheap) but re-encodes just the audio
+// track through two-pass loudnorm instead of copying it untouched, so
+// recordings come out at a consistent, louder level regardless of how
+// quiet the original mic/room audio was.
+async function remuxWithLoudnessNormalization(inputPath, outputPath) {
+  const measured = await measureLoudness(inputPath);
+  await execFileAsync(
+    'ffmpeg',
+    [
+      ...FFMPEG_QUIET_FLAGS,
+      '-y', '-i', inputPath,
+      '-c:v', 'copy',
+      '-af', loudnormFilter(
+        `:measured_I=${measured.input_i}:measured_TP=${measured.input_tp}` +
+        `:measured_LRA=${measured.input_lra}:measured_thresh=${measured.input_thresh}` +
+        `:offset=${measured.target_offset}:linear=true:print_format=summary`
+      ),
+      '-c:a', 'aac', '-b:a', '160k',
+      '-movflags', '+faststart',
+      outputPath,
+    ],
+    FFMPEG_EXEC_OPTIONS
+  );
+}
+
 // In-memory only, keyed by rawFilePath - purely for the dashboard's
 // Recordings page to show what's actively happening right now (remuxing a
 // finished stream, or uploading it to R2). Never persisted: on a restart,
@@ -154,7 +212,7 @@ async function processFinishedRecording({ channel, rawFilePath }) {
   });
 
   try {
-    await execFileAsync('ffmpeg', ['-y', '-i', rawFilePath, '-c', 'copy', '-movflags', '+faststart', mp4Path]);
+    await remuxWithLoudnessNormalization(rawFilePath, mp4Path);
 
     const stat = fs.statSync(mp4Path);
     const durationSeconds = await ffprobeDuration(mp4Path);
@@ -373,4 +431,5 @@ module.exports = {
   deleteRecording,
   sweepExpiredRecordings,
   reconcileOrphanedRecordings,
+  remuxWithLoudnessNormalization,
 };
