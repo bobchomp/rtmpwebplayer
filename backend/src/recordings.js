@@ -119,7 +119,12 @@ function loudnormFilter(extra) {
 async function measureLoudness(inputPath) {
   const { stderr } = await execFileAsync(
     'ffmpeg',
-    [...FFMPEG_QUIET_FLAGS, '-i', inputPath, '-af', loudnormFilter(':print_format=json'), '-f', 'null', '-'],
+    // -vn: this pass only needs the audio stream analyzed - without it,
+    // ffmpeg fully decodes the video too (there's no video-side filter or
+    // codec constraint given here to tell it not to), which for an
+    // hours-long recording turns a should-be-fast audio-only pass into one
+    // that takes as long as decoding the entire video.
+    [...FFMPEG_QUIET_FLAGS, '-i', inputPath, '-vn', '-af', loudnormFilter(':print_format=json'), '-f', 'null', '-'],
     FFMPEG_EXEC_OPTIONS
   );
   const match = stderr.match(/\{[^{}]*"input_i"[\s\S]*?\}/);
