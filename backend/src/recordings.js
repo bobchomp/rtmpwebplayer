@@ -292,7 +292,14 @@ const RAW_DIR = '/recordings/raw';
 // unprocessed for long. Anything currently mid-recording will simply be
 // skipped this pass and picked up on a later one once it's actually done.
 const RECONCILE_STALE_MS = 5 * 60 * 1000;
-const RECONCILE_INTERVAL_MS = 30 * 60 * 1000;
+// A raw file that's too recent to trust at the moment one pass runs (still
+// inside RECONCILE_STALE_MS) just gets skipped that pass, not scheduled for
+// a specific recheck - so this interval alone is what bounds how long it
+// can sit there afterward. A directory scan plus a handful of stat() calls
+// is essentially free, so there's no real cost to checking often - keeping
+// this short (rather than e.g. 30 minutes) is what keeps that worst case
+// down to a few minutes instead of nearly half an hour.
+const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
 async function reconcileOrphanedRecordings() {
   let streamKeys;
@@ -331,10 +338,18 @@ async function reconcileOrphanedRecordings() {
       if (Date.now() - stat.mtimeMs < RECONCILE_STALE_MS) continue;
 
       if (!channel) {
-        // No channel to attribute this to (e.g. deleted since) - same
-        // cleanup rtmpHooks.js's /recording-done does for this case.
+        // No channel to attribute this to (e.g. deleted, or its stream key
+        // was regenerated, since this was recorded) - same cleanup
+        // rtmpHooks.js's /recording-done does for this case. Logged (unlike
+        // the ordinary skip-because-too-recent case above, which would just
+        // be noise every pass for every currently-live recording) since
+        // this is the one path that discards a recording outright - worth
+        // being able to tell apart from "still waiting to be processed".
+        console.error(`No channel found for orphaned recording ${rawFilePath} (streamKey: ${streamKey}) - deleting it.`);
         // eslint-disable-next-line no-await-in-loop
-        await fs.promises.rm(rawFilePath, { force: true }).catch(() => {});
+        await fs.promises.rm(rawFilePath, { force: true }).catch((err) => {
+          console.error(`Failed to delete orphaned recording ${rawFilePath}:`, err.message);
+        });
         continue;
       }
 
