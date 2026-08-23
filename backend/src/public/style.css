@@ -220,7 +220,9 @@ button.danger:hover { background: var(--ember-tint); }
   padding: 4px 9px; border-radius: 999px; letter-spacing: .04em;
 }
 
-.gallery { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 18px; }
+/* Gap needs to clear the edit/delete icons, which sit 7px outside each
+   item's edges - too tight a gap and neighboring items' icons overlap. */
+.gallery { display: flex; gap: 22px; flex-wrap: wrap; margin: 8px 0 18px; }
 .gallery-empty { color: var(--slate); font-size: 13px; }
 .gallery-item { position: relative; width: 72px; height: 41px; }
 .gallery-item img {
