@@ -192,6 +192,7 @@ async function processFinishedRecording({ channel, rawFilePath }) {
       channelId: channel.id,
       channelName: channel.name,
       title: channel.title || channel.name,
+      description: channel.description || '',
       startedAt,
       finishedAt: new Date().toISOString(),
       durationSeconds,

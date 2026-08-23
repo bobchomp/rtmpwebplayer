@@ -770,7 +770,9 @@
       var recordingChannelId = recording.channelId || channelId;
       var node = recordingRowTemplate.content.firstElementChild.cloneNode(true);
       var when = new Date(recording.startedAt);
-      node.querySelector('.recording-title').textContent = recording.title || recording.channelName || 'Recording';
+      var titleText = recording.title || recording.channelName || 'Recording';
+      if (recording.description) titleText += ' - ' + recording.description;
+      node.querySelector('.recording-title').textContent = titleText;
       var metaParts = [when.toLocaleString()];
       if (!channelId && recording.channelName) metaParts.push(recording.channelName);
       if (recording.durationSeconds) metaParts.push(formatDuration(recording.durationSeconds));
