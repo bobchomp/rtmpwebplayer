@@ -355,6 +355,12 @@
   var detailThumbGallery = document.getElementById('detail-thumb-gallery');
   var detailThumbUploadInput = document.getElementById('detail-thumb-upload-input');
 
+  var imageRenameModalBackdrop = document.getElementById('image-rename-modal-backdrop');
+  var imageRenameInput = document.getElementById('image-rename-input');
+  var imageRenameSaveBtn = document.getElementById('image-rename-save-btn');
+  var imageRenameCancelBtn = document.getElementById('image-rename-cancel-btn');
+  var imageRenameTarget = null; // { routeSegment, filename }
+
   var thumbPickerModalBackdrop = document.getElementById('thumb-picker-modal-backdrop');
   var thumbPickerGallery = document.getElementById('thumb-picker-gallery');
   var thumbPickerSkipBtn = document.getElementById('thumb-picker-skip-btn');
@@ -398,9 +404,13 @@
 
   function renderThumbPickerGallery(channel) {
     thumbPickerGallery.innerHTML = '';
+    var names = channel.liveThumbnailNames || {};
     (channel.liveThumbnails || []).forEach(function (filename) {
       var item = document.createElement('div');
       item.className = 'gallery-item' + (filename === channel.activeLiveThumbnail ? ' active' : '');
+
+      var visual = document.createElement('div');
+      visual.className = 'gallery-item-visual';
 
       var img = document.createElement('img');
       img.src = '/uploads/' + filename;
@@ -414,14 +424,21 @@
           })
           .catch(function (err) { alert(err.message); });
       });
-      item.appendChild(img);
+      visual.appendChild(img);
 
       if (filename === channel.activeLiveThumbnail) {
         var badge = document.createElement('span');
         badge.className = 'gallery-active-badge';
         badge.textContent = 'ACTIVE';
-        item.appendChild(badge);
+        visual.appendChild(badge);
       }
+
+      item.appendChild(visual);
+
+      var name = document.createElement('div');
+      name.className = 'gallery-item-name';
+      name.textContent = names[filename] || 'Untitled';
+      item.appendChild(name);
 
       thumbPickerGallery.appendChild(item);
     });
@@ -536,8 +553,9 @@
       .catch(function () {});
   }
 
-  function renderGallery(galleryEl, channel, listField, activeField, routeSegment) {
+  function renderGallery(galleryEl, channel, listField, activeField, routeSegment, namesField) {
     var list = channel[listField] || [];
+    var names = channel[namesField] || {};
     galleryEl.innerHTML = '';
     if (list.length === 0) {
       var empty = document.createElement('span');
@@ -569,6 +587,15 @@
         item.appendChild(badge);
       }
 
+      var editBtn = document.createElement('button');
+      editBtn.className = 'gallery-edit';
+      editBtn.textContent = '✎';
+      editBtn.title = 'Name this image';
+      editBtn.addEventListener('click', function () {
+        openImageRenameModal(routeSegment, filename, names[filename]);
+      });
+      item.appendChild(editBtn);
+
       var removeBtn = document.createElement('button');
       removeBtn.className = 'gallery-remove';
       removeBtn.textContent = '×';
@@ -582,6 +609,18 @@
 
       galleryEl.appendChild(item);
     });
+  }
+
+  function openImageRenameModal(routeSegment, filename, currentName) {
+    imageRenameTarget = { routeSegment: routeSegment, filename: filename };
+    imageRenameInput.value = currentName || '';
+    imageRenameModalBackdrop.classList.remove('hidden');
+    imageRenameInput.focus();
+  }
+
+  function closeImageRenameModal() {
+    imageRenameModalBackdrop.classList.add('hidden');
+    imageRenameTarget = null;
   }
 
   function uploadGalleryImage(routeSegment, file, inputEl) {
@@ -699,8 +738,8 @@
       detailOutputsList.appendChild(node);
     });
 
-    renderGallery(detailCoverGallery, channel, 'coverImages', 'activeCoverImage', 'covers');
-    renderGallery(detailThumbGallery, channel, 'liveThumbnails', 'activeLiveThumbnail', 'live-thumbnails');
+    renderGallery(detailCoverGallery, channel, 'coverImages', 'activeCoverImage', 'covers', 'coverImageNames');
+    renderGallery(detailThumbGallery, channel, 'liveThumbnails', 'activeLiveThumbnail', 'live-thumbnails', 'liveThumbnailNames');
   }
 
   function formatBytes(bytes) {
@@ -941,6 +980,29 @@
     });
     metadataModalBackdrop.addEventListener('click', function (e) {
       if (e.target === metadataModalBackdrop) metadataModalBackdrop.classList.add('hidden');
+    });
+
+    imageRenameCancelBtn.addEventListener('click', closeImageRenameModal);
+    imageRenameModalBackdrop.addEventListener('click', function (e) {
+      if (e.target === imageRenameModalBackdrop) closeImageRenameModal();
+    });
+    imageRenameInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') imageRenameSaveBtn.click();
+      if (e.key === 'Escape') closeImageRenameModal();
+    });
+    imageRenameSaveBtn.addEventListener('click', function () {
+      if (!imageRenameTarget) return;
+      var routeSegment = imageRenameTarget.routeSegment;
+      var filename = imageRenameTarget.filename;
+      api('/api/channels/' + currentChannelId + '/' + routeSegment + '/' + encodeURIComponent(filename) + '/name', {
+        method: 'POST',
+        body: JSON.stringify({ name: imageRenameInput.value }),
+      })
+        .then(function () {
+          closeImageRenameModal();
+          return refreshChannelDetail();
+        })
+        .catch(function (err) { alert(err.message); });
     });
 
     function closeEditOutputModal() {

@@ -87,8 +87,10 @@ router.post('/', requireAuth, (req, res) => {
     websiteEnabled: true,
     coverImages: [],
     activeCoverImage: null,
+    coverImageNames: {},
     liveThumbnails: [],
     activeLiveThumbnail: null,
+    liveThumbnailNames: {},
     // Every relay destination (YouTube, custom RTMP, and future types) lives
     // in this one array, distinguished by `type` - see validateOutputInput
     // below for 'rtmp' outputs and youtube.js's handleOAuthCallback for how
@@ -325,10 +327,11 @@ router.post('/:id/regenerate-key', requireAuth, (req, res) => {
   res.json(redactChannel(channel));
 });
 
-// Registers upload/list/delete/activate routes for a channel image gallery
-// (offline covers, live-pending thumbnails) - each is a list of uploaded
-// images plus a pointer to the one currently in use.
-function registerGalleryRoutes(routeSegment, listField, activeField) {
+// Registers upload/list/delete/activate/rename routes for a channel image
+// gallery (offline covers, live-pending thumbnails) - each is a list of
+// uploaded images, a pointer to the one currently in use, and an optional
+// filename -> display-name map for images the admin has bothered to name.
+function registerGalleryRoutes(routeSegment, listField, activeField, namesField) {
   // Upload a new image into the gallery. The first image ever uploaded
   // becomes active automatically; later ones are just added to the list
   // until explicitly activated.
@@ -369,6 +372,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField) {
 
     channel[listField] = list.filter((f) => f !== filename);
     if (channel[activeField] === filename) channel[activeField] = null;
+    if (channel[namesField]) delete channel[namesField][filename];
 
     const p = path.join(UPLOADS_DIR, filename);
     if (fs.existsSync(p)) fs.unlinkSync(p);
@@ -392,12 +396,37 @@ function registerGalleryRoutes(routeSegment, listField, activeField) {
     writeDb(db);
     res.json(redactChannel(channel));
   });
+
+  // Set (or clear, with an empty name) the display name shown for one image -
+  // purely cosmetic, just so an admin picking between several near-identical
+  // thumbnails in the popup can tell them apart by name instead of guessing.
+  router.post(`/:id/${routeSegment}/:filename/name`, requireAuth, (req, res) => {
+    const db = readDb();
+    const channel = db.channels[req.params.id];
+    if (!channel) return res.status(404).json({ error: 'Not found' });
+
+    const filename = req.params.filename;
+    if (!(channel[listField] || []).includes(filename)) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    const name = ((req.body && req.body.name) || '').trim().slice(0, 60);
+    channel[namesField] = channel[namesField] || {};
+    if (name) {
+      channel[namesField][filename] = name;
+    } else {
+      delete channel[namesField][filename];
+    }
+
+    writeDb(db);
+    res.json(redactChannel(channel));
+  });
 }
 
 // Admin: offline cover gallery (shown whenever the channel isn't live)
-registerGalleryRoutes('covers', 'coverImages', 'activeCoverImage');
+registerGalleryRoutes('covers', 'coverImages', 'activeCoverImage', 'coverImageNames');
 // Admin: live-pending thumbnail gallery (shown once live, before play is pressed)
-registerGalleryRoutes('live-thumbnails', 'liveThumbnails', 'activeLiveThumbnail');
+registerGalleryRoutes('live-thumbnails', 'liveThumbnails', 'activeLiveThumbnail', 'liveThumbnailNames');
 
 // Public: live status + cover, polled by the embed player. Never exposes the stream key.
 router.get('/:id/status', (req, res) => {

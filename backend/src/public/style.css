@@ -240,13 +240,27 @@ button.danger:hover { background: var(--ember-tint); }
   line-height: 16px; text-align: center; padding: 0; border: 2px solid var(--surface);
 }
 .gallery-item .gallery-remove:hover { background: #9C3521; }
+.gallery-item .gallery-edit {
+  position: absolute; top: -7px; left: -7px; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--slate); color: #fff; font-size: 10px;
+  line-height: 16px; text-align: center; padding: 0; border: 2px solid var(--surface);
+}
+.gallery-item .gallery-edit:hover { background: var(--ink); }
 
 /* Larger variant - used where the actual thumbnail content needs to be
    readable at a glance (e.g. the live-thumbnail picker popup) rather than
-   just recognizable as a swatch. */
-.gallery-lg .gallery-item { width: 220px; height: 124px; }
+   just recognizable as a swatch. The item itself grows to fit a name
+   caption below the image, so the image lives in its own fixed-size inner
+   wrapper instead of filling the whole item. */
+.gallery-lg .gallery-item {
+  width: 220px; height: auto; display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+}
+.gallery-lg .gallery-item-visual { position: relative; width: 220px; height: 124px; }
 .gallery-lg .gallery-item img { border-radius: 8px; border-width: 3px; }
 .gallery-lg .gallery-item .gallery-active-badge { font-size: 11px; padding: 3px 7px; bottom: 6px; left: 6px; }
+.gallery-item-name {
+  font: 600 13px/1.3 var(--font-display); color: var(--ink); text-align: center;
+}
 
 /* Channel list / picker */
 .channel-row {
