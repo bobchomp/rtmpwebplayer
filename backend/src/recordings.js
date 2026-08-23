@@ -95,6 +95,20 @@ async function cleanupLocalFiles(...filePaths) {
   await Promise.all(filePaths.map((p) => fs.promises.rm(p, { force: true }).catch(() => {})));
 }
 
+// In-memory only, keyed by rawFilePath - purely for the dashboard's
+// Recordings page to show what's actively happening right now (remuxing a
+// finished stream, or uploading it to R2). Never persisted: on a restart,
+// anything that was mid-flight either resumes via the reconciliation sweep
+// (which rebuilds its own entry here once it picks the file back up) or is
+// simply gone from this list, same as it would be if the tab was refreshed
+// mid-upload - there's no correctness dependency on this surviving a crash,
+// it's status, not data.
+const processingJobs = new Map();
+
+function listProcessingJobs() {
+  return Array.from(processingJobs.values()).sort((a, b) => a.startedAt - b.startedAt);
+}
+
 // Called once a recording's raw .ts file is fully written (see
 // routes/rtmpHooks.js's POST /recording-done, itself called by
 // record-stop.sh once ffmpeg has actually exited, not just been asked to).
@@ -131,6 +145,14 @@ async function processFinishedRecording({ channel, rawFilePath }) {
 
   const mp4Path = rawFilePath.replace(/\.ts$/, '.mp4');
 
+  processingJobs.set(rawFilePath, {
+    channelId: channel.id,
+    channelName: channel.name,
+    stage: 'remuxing',
+    progressPercent: null,
+    startedAt: Date.now(),
+  });
+
   try {
     await execFileAsync('ffmpeg', ['-y', '-i', rawFilePath, '-c', 'copy', '-movflags', '+faststart', mp4Path]);
 
@@ -140,6 +162,9 @@ async function processFinishedRecording({ channel, rawFilePath }) {
     const id = crypto.randomUUID();
     const r2Key = `${channel.id}/${id}.mp4`;
 
+    const job = processingJobs.get(rawFilePath);
+    if (job) { job.stage = 'uploading'; job.progressPercent = 0; }
+
     const upload = new Upload({
       client: r2,
       partSize: R2_UPLOAD_PART_SIZE,
@@ -148,7 +173,16 @@ async function processFinishedRecording({ channel, rawFilePath }) {
         Key: r2Key,
         Body: fs.createReadStream(mp4Path),
         ContentType: 'video/mp4',
+        ContentLength: stat.size,
       },
+    });
+    upload.on('httpUploadProgress', (progress) => {
+      // total is only unknown if ContentLength above didn't take for some
+      // reason (e.g. an SDK version change) - skip rather than divide by
+      // nothing, the stage label alone still says "uploading" either way.
+      if (!progress.total) return;
+      const current = processingJobs.get(rawFilePath);
+      if (current) current.progressPercent = Math.round((progress.loaded / progress.total) * 100);
     });
     await upload.done();
 
@@ -170,12 +204,14 @@ async function processFinishedRecording({ channel, rawFilePath }) {
     // silently destroy the only copy of the recording if the upload failed
     // for any reason (bad credentials, wrong bucket, network blip).
     await cleanupLocalFiles(rawFilePath, mp4Path, failureMarkerPath);
+    processingJobs.delete(rawFilePath);
   } catch (err) {
     console.error(
       `Failed to process recording for channel ${channel.id} - raw file kept for retry: ${rawFilePath}`,
       err.message
     );
     fs.writeFileSync(failureMarkerPath, String(Date.now()));
+    processingJobs.delete(rawFilePath);
   }
 }
 
@@ -315,6 +351,7 @@ setInterval(() => {
 
 module.exports = {
   listRecordings,
+  listProcessingJobs,
   processFinishedRecording,
   getPlaybackUrl,
   deleteRecording,

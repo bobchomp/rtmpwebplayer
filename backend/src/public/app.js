@@ -22,6 +22,7 @@
   var config = { publicHost: window.location.hostname, rtmpHost: window.location.hostname, rtmpPort: 1935 };
   var listRefreshTimer = null;
   var detailPollTimer = null;
+  var recordingsPollTimer = null;
   var currentChannelId = null;
   var currentChannelMetadata = { title: '', description: '' };
   var detailListenersWired = false;
@@ -81,6 +82,7 @@
   function route() {
     if (listRefreshTimer) { clearInterval(listRefreshTimer); listRefreshTimer = null; }
     if (detailPollTimer) { clearInterval(detailPollTimer); detailPollTimer = null; }
+    if (recordingsPollTimer) { clearInterval(recordingsPollTimer); recordingsPollTimer = null; }
 
     var r = parseRoute();
     listView.classList.add('hidden');
@@ -103,6 +105,8 @@
       document.title = 'Recordings - RTMP Web Player';
       recordingsView.classList.remove('hidden');
       loadRecordingsPage();
+      loadProcessingRecordings();
+      recordingsPollTimer = setInterval(loadProcessingRecordings, 3000);
     } else if (r.view === 'how-it-works') {
       document.title = 'How It Works - RTMP Web Player';
       howItWorksView.classList.remove('hidden');
@@ -739,6 +743,37 @@
   var recordingsPageList = document.getElementById('recordings-page-list');
   var recordingsPageEmpty = document.getElementById('recordings-page-empty');
   var recordingsListenersWired = false;
+
+  var recordingsProcessingPanel = document.getElementById('recordings-processing-panel');
+  var recordingsProcessingList = document.getElementById('recordings-processing-list');
+  var recordingProcessingRowTemplate = document.getElementById('recording-processing-row-template');
+
+  // Polled independently of the finished-recordings list/filter below -
+  // this always shows every channel's in-flight jobs regardless of which
+  // channel is selected there, since "what's happening right now" matters
+  // site-wide, not just for whichever channel you happen to be filtered to.
+  function loadProcessingRecordings() {
+    return api('/api/channels/recordings/processing')
+      .then(function (jobs) {
+        recordingsProcessingList.innerHTML = '';
+        recordingsProcessingPanel.classList.toggle('hidden', jobs.length === 0);
+        jobs.forEach(function (job) {
+          var node = recordingProcessingRowTemplate.content.firstElementChild.cloneNode(true);
+          node.querySelector('.recording-processing-channel').textContent = job.channelName;
+          var stageLabel = node.querySelector('.recording-processing-stage');
+          var fill = node.querySelector('.recording-processing-bar-fill');
+          if (job.stage === 'uploading' && typeof job.progressPercent === 'number') {
+            stageLabel.textContent = 'Uploading - ' + job.progressPercent + '%';
+            fill.style.width = job.progressPercent + '%';
+          } else {
+            stageLabel.textContent = 'Converting recording…';
+            fill.classList.add('indeterminate');
+          }
+          recordingsProcessingList.appendChild(node);
+        });
+      })
+      .catch(function () {}); // background status poll - a blip here isn't worth interrupting anyone over
+  }
 
   function renderRecordingRows(channelId, rows) {
     recordingsPageList.innerHTML = '';

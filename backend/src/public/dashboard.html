@@ -256,6 +256,11 @@
 
     <p class="info-banner">A recording can take 5&ndash;30 minutes to appear here after the stream ends, while it's uploaded and processed.</p>
 
+    <section class="panel recordings-processing-panel hidden" id="recordings-processing-panel">
+      <h3>Processing now</h3>
+      <div id="recordings-processing-list"></div>
+    </section>
+
     <section class="panel">
       <label>Channel
         <select id="recordings-channel-select">
@@ -476,6 +481,18 @@
     <button class="secondary recording-play-btn">Play</button>
     <button class="secondary recording-download-btn">Download</button>
     <button class="secondary danger recording-delete-btn">Delete</button>
+  </div>
+</template>
+
+<template id="recording-processing-row-template">
+  <div class="recording-processing-row">
+    <div class="output-info">
+      <span class="output-name recording-processing-channel"></span>
+      <span class="hint recording-processing-stage"></span>
+    </div>
+    <div class="recording-processing-bar-track">
+      <div class="recording-processing-bar-fill"></div>
+    </div>
   </div>
 </template>
 

@@ -444,6 +444,14 @@ router.get('/recordings/all', requireAuth, (req, res) => {
   res.json(rows);
 });
 
+// Admin-only - recordings currently being remuxed/uploaded right now,
+// across every channel. Polled by the Recordings page to show live
+// progress rather than the finished list just silently gaining a new row
+// 5-30 minutes after a stream ends with no visibility in between.
+router.get('/recordings/processing', requireAuth, (req, res) => {
+  res.json(recordings.listProcessingJobs());
+});
+
 // Admin-only - polled by the channel detail page while a recording is
 // active, to show the "still recording after N hours - keep going?" banner.
 // Returns null when there's no in-progress recording to report on (nothing
