@@ -399,9 +399,6 @@ button.danger:hover { background: var(--ember-tint); }
 
 #create-form { display: flex; flex-direction: column; gap: 18px; }
 
-.recording-player-box { max-width: 860px; }
-#recording-player-video { width: 100%; max-height: 70vh; border-radius: var(--radius-sm); background: #000; display: block; }
-
 /* Shared by any page presenting an ordered explanation as a zigzag
    timeline - currently How It Works and How To Use. */
 .step-timeline-panel { max-width: 1040px; padding: 36px 40px 40px; }

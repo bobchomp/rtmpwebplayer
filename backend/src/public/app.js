@@ -723,22 +723,6 @@
 
   // ===================== Recordings page =====================
 
-  var recordingPlayerModalBackdrop = document.getElementById('recording-player-modal-backdrop');
-  var recordingPlayerVideo = document.getElementById('recording-player-video');
-  var recordingPlayerTitle = document.getElementById('recording-player-title');
-  var recordingPlayerCloseBtn = document.getElementById('recording-player-close-btn');
-
-  function closeRecordingPlayer() {
-    recordingPlayerModalBackdrop.classList.add('hidden');
-    recordingPlayerVideo.pause();
-    recordingPlayerVideo.removeAttribute('src');
-    recordingPlayerVideo.load(); // actually stops the in-flight download, removeAttribute alone doesn't
-  }
-  recordingPlayerCloseBtn.addEventListener('click', closeRecordingPlayer);
-  recordingPlayerModalBackdrop.addEventListener('click', function (e) {
-    if (e.target === recordingPlayerModalBackdrop) closeRecordingPlayer();
-  });
-
   var recordingsChannelSelect = document.getElementById('recordings-channel-select');
   var recordingsPageList = document.getElementById('recordings-page-list');
   var recordingsPageEmpty = document.getElementById('recordings-page-empty');
@@ -792,17 +776,6 @@
       if (recording.durationSeconds) metaParts.push(formatDuration(recording.durationSeconds));
       metaParts.push(formatBytes(recording.sizeBytes));
       node.querySelector('.recording-meta').textContent = metaParts.join(' · ');
-
-      node.querySelector('.recording-play-btn').addEventListener('click', function () {
-        api('/api/channels/' + recordingChannelId + '/recordings/' + recording.id + '/url')
-          .then(function (data) {
-            recordingPlayerTitle.textContent = when.toLocaleString() + (recording.channelName ? ' - ' + recording.channelName : '');
-            recordingPlayerVideo.src = data.url;
-            recordingPlayerModalBackdrop.classList.remove('hidden');
-            recordingPlayerVideo.play().catch(function () {}); // autoplay can be blocked - controls are still there either way
-          })
-          .catch(function (err) { alert(err.message); });
-      });
 
       node.querySelector('.recording-download-btn').addEventListener('click', function () {
         api('/api/channels/' + recordingChannelId + '/recordings/' + recording.id + '/url?download=1')
