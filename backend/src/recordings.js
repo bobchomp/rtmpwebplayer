@@ -193,6 +193,15 @@ async function processFinishedRecording({ channel, rawFilePath }) {
     return;
   }
 
+  // Guards against the webhook-driven call (rtmpHooks.js's /recording-done,
+  // fired the instant a stream stops) and the orphan-reconcile sweep both
+  // picking up the same raw file - the sweep only judges "stale" by mtime,
+  // which stops changing the moment recording ends, so a still-in-progress
+  // remux+upload that outlasts one sweep interval would otherwise look
+  // exactly like an abandoned recording and get processed a second time
+  // concurrently, corrupting whichever attempt loses the race.
+  if (processingJobs.has(rawFilePath)) return;
+
   const failureMarkerPath = `${rawFilePath}${FAILURE_MARKER_SUFFIX}`;
   try {
     const markerStat = fs.statSync(failureMarkerPath);

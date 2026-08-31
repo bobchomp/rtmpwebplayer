@@ -10,6 +10,16 @@ const MAX_ATTEMPTS = 10;
 function loginLimiter(req, res, next) {
   const ip = req.ip;
   const now = Date.now();
+
+  // Opportunistic sweep - without this, an entry sticks around forever once
+  // its window passes (every distinct IP that's ever hit this route, bots
+  // and scanners included, would otherwise leak for the life of the
+  // process). Cheap to do on every request since the map only holds IPs
+  // active within the last WINDOW_MS.
+  for (const [entryIp, entry] of loginAttempts) {
+    if (now >= entry.resetAt) loginAttempts.delete(entryIp);
+  }
+
   const rec = loginAttempts.get(ip);
   if (rec && now < rec.resetAt) {
     if (rec.count >= MAX_ATTEMPTS) {
