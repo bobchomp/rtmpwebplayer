@@ -22,6 +22,11 @@ const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
+// Stands in for "when was this last deployed" in the dashboard footer -
+// deploy.sh always rebuilds and restarts the backend container, so process
+// start time and last deploy are effectively the same moment in practice.
+const SERVER_STARTED_AT = new Date().toISOString();
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // nginx-rtmp posts form-encoded webhooks
 
@@ -61,6 +66,7 @@ app.get('/api/config', (req, res) => {
     // itself, not just credential presence, so it stays off on production
     // even if GOOGLE_CLIENT_ID/SECRET were ever accidentally set there.
     youtubeEnabled: IS_DEV_SITE && !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    serverStartedAt: SERVER_STARTED_AT,
   });
 });
 

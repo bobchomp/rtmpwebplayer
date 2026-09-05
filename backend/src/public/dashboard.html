@@ -631,9 +631,17 @@
   </div>
 </div>
 
-<footer class="site-footer">&copy; <span id="copyright-year"></span> Ross Mackenzie</footer>
+<footer class="site-footer">&copy; <span id="copyright-year"></span> Ross Mackenzie<span id="footer-last-updated"></span></footer>
 
 <script src="/app.js"></script>
-<script>document.getElementById('copyright-year').textContent = new Date().getFullYear();</script>
+<script>
+  document.getElementById('copyright-year').textContent = new Date().getFullYear();
+  fetch('/api/config').then(function (r) { return r.json(); }).then(function (cfg) {
+    if (!cfg.serverStartedAt) return;
+    var d = new Date(cfg.serverStartedAt);
+    var formatted = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    document.getElementById('footer-last-updated').textContent = ' · Last updated ' + formatted;
+  }).catch(function () {});
+</script>
 </body>
 </html>
