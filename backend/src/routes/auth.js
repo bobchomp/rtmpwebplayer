@@ -4,30 +4,60 @@ const crypto = require('crypto');
 const router = express.Router();
 
 const loginAttempts = new Map(); // ip -> { count, resetAt }
+// Throttling by IP alone doesn't stop an attacker who just rotates through
+// proxies/IPs while sticking to the same guessed username - tracking the
+// attempted username too catches that, since it's the one thing that stays
+// constant across rotated IPs. Keyed on the raw attempted value, not
+// whether it's actually correct - this is purely attempt-counting, not
+// authentication.
+const usernameAttempts = new Map(); // lowercased username -> { count, resetAt }
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 10;
+// Caps how much of a bogus "username" value (an attacker could send
+// anything in that field) gets used as a map key, so a flood of huge
+// strings can't be used to inflate memory use.
+const MAX_USERNAME_KEY_LENGTH = 100;
 
-function loginLimiter(req, res, next) {
-  const ip = req.ip;
-  const now = Date.now();
-
-  // Opportunistic sweep - without this, an entry sticks around forever once
-  // its window passes (every distinct IP that's ever hit this route, bots
-  // and scanners included, would otherwise leak for the life of the
-  // process). Cheap to do on every request since the map only holds IPs
-  // active within the last WINDOW_MS.
-  for (const [entryIp, entry] of loginAttempts) {
-    if (now >= entry.resetAt) loginAttempts.delete(entryIp);
+// Opportunistic sweep - without this, an entry sticks around forever once
+// its window passes (every distinct IP or attempted username, bots and
+// scanners included, would otherwise leak for the life of the process).
+// Cheap to do on every request since each map only holds keys active
+// within the last WINDOW_MS.
+function pruneExpired(map, now) {
+  for (const [key, entry] of map) {
+    if (now >= entry.resetAt) map.delete(key);
   }
+}
 
-  const rec = loginAttempts.get(ip);
+// Returns false (and leaves the counter untouched) once a key is already at
+// the limit, otherwise records this attempt and returns true.
+function checkAndCount(map, key, now) {
+  const rec = map.get(key);
   if (rec && now < rec.resetAt) {
-    if (rec.count >= MAX_ATTEMPTS) {
-      return res.status(429).json({ error: 'Too many attempts, try again later' });
-    }
+    if (rec.count >= MAX_ATTEMPTS) return false;
     rec.count += 1;
   } else {
-    loginAttempts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    map.set(key, { count: 1, resetAt: now + WINDOW_MS });
+  }
+  return true;
+}
+
+function loginLimiter(req, res, next) {
+  const now = Date.now();
+  pruneExpired(loginAttempts, now);
+  pruneExpired(usernameAttempts, now);
+
+  const ip = req.ip;
+  const rawUsername = req.body && typeof req.body.username === 'string' ? req.body.username : '';
+  const usernameKey = rawUsername.trim().toLowerCase().slice(0, MAX_USERNAME_KEY_LENGTH);
+
+  const ipOk = checkAndCount(loginAttempts, ip, now);
+  // No username submitted at all isn't something worth throttling on its
+  // own - the IP-based check already covers that request.
+  const usernameOk = usernameKey ? checkAndCount(usernameAttempts, usernameKey, now) : true;
+
+  if (!ipOk || !usernameOk) {
+    return res.status(429).json({ error: 'Too many attempts, try again later' });
   }
   next();
 }
