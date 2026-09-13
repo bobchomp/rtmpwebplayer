@@ -1,41 +1,28 @@
 (function () {
-  var loginForm = document.getElementById('login-form');
+  var loginBox = document.getElementById('login-box');
   var loginError = document.getElementById('login-error');
 
-  function api(url, opts) {
-    opts = opts || {};
-    opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
-    return fetch(url, opts).then(function (res) {
-      if (!res.ok) {
-        return res.json().catch(function () { return {}; }).then(function (body) {
-          throw new Error(body.error || ('Request failed: ' + res.status));
-        });
-      }
-      return res.status === 204 ? null : res.json();
-    });
+  // The Auth0 callback redirects failures back here as ?error=... (expired
+  // login attempt, an account that isn't the allowed one, etc.) rather than
+  // showing them on some intermediate page.
+  var params = new URLSearchParams(window.location.search);
+  var error = params.get('error');
+  if (error) {
+    loginError.textContent = error;
+    loginError.classList.remove('hidden');
+    // Drop it from the URL so refreshing/bookmarking doesn't keep re-showing
+    // a stale error.
+    window.history.replaceState({}, '', window.location.pathname);
   }
 
-  loginForm.addEventListener('submit', function (e) {
-    e.preventDefault();
-    loginError.classList.add('hidden');
-    var username = document.getElementById('login-username').value;
-    var password = document.getElementById('login-password').value;
-    api('/api/login', { method: 'POST', body: JSON.stringify({ username: username, password: password }) })
-      .then(function () { window.location.href = '/dashboard'; })
-      .catch(function (err) {
-        loginError.textContent = err.message;
-        loginError.classList.remove('hidden');
-      });
-  });
-
   // If already logged in (e.g. a bookmarked /login visited with a live
-  // session), skip straight to the dashboard instead of showing the form.
-  api('/api/me').then(function (data) {
+  // session), skip straight to the dashboard instead of showing the button.
+  fetch('/api/me').then(function (res) { return res.json(); }).then(function (data) {
     if (data.authenticated) {
       window.location.href = '/dashboard';
     } else {
-      loginForm.classList.remove('hidden');
-      loginForm.classList.add('reveal');
+      loginBox.classList.remove('hidden');
+      loginBox.classList.add('reveal');
     }
   });
 })();

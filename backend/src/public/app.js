@@ -1122,11 +1122,12 @@
   }
 
   logoutBtn.addEventListener('click', function () {
-    api('/api/logout', { method: 'POST' }).then(function () {
-      if (listRefreshTimer) clearInterval(listRefreshTimer);
-      if (detailPollTimer) clearInterval(detailPollTimer);
-      window.location.href = '/login';
-    });
+    // A real navigation, not a fetch - /auth/logout destroys the local
+    // session then redirects through Auth0's own logout endpoint (clearing
+    // Auth0's SSO session too, so logging back in actually re-prompts
+    // instead of silently reusing it), which only works as a browser
+    // redirect, not an XHR/fetch call.
+    window.location.href = '/auth/logout';
   });
 
   api('/api/me').then(function (data) {

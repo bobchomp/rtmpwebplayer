@@ -162,6 +162,13 @@ button.secondary:hover { background: var(--border); }
 button.danger { color: var(--ember); }
 button.danger:hover { background: var(--ember-tint); }
 
+.login-btn {
+  font: 500 13.5px/1 var(--font-display); padding: 11px 15px; border-radius: var(--radius-sm);
+  background: var(--accent); color: #fff; cursor: pointer; text-decoration: none;
+  text-align: center; display: block;
+}
+.login-btn:hover { background: var(--accent-strong); }
+
 .inline-form { display: flex; gap: 8px; }
 .inline-form input { flex: 1; }
 

@@ -61,16 +61,10 @@
   </nav>
 </div>
 
-<form id="login-form" class="login-box hidden">
-  <label>Username
-    <input type="text" id="login-username" autocomplete="username" required>
-  </label>
-  <label>Password
-    <input type="password" id="login-password" autocomplete="current-password" required>
-  </label>
+<div id="login-box" class="login-box hidden">
   <div id="login-error" class="error hidden"></div>
-  <button type="submit">Log in</button>
-</form>
+  <a id="login-btn" class="login-btn" href="/auth/login">Log in with Auth0</a>
+</div>
 
 <script src="/login.js"></script>
 </body>

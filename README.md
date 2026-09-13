@@ -61,13 +61,51 @@ Edit `.env`:
 
 - `PUBLIC_HOST` - your domain (e.g. `stream.example.com`), or the server's
   IP for local testing without HTTPS.
-- `ADMIN_USERNAME` / `ADMIN_PASSWORD` - your dashboard login. Use a strong,
-  unique password - this is the only account and it's what stands between
-  the internet and your channel management.
+- `AUTH0_DOMAIN` / `AUTH0_CLIENT_ID` / `AUTH0_CLIENT_SECRET` / `AUTH0_CALLBACK_URL`
+  / `ADMIN_EMAIL` - your dashboard login, via Auth0 rather than a local
+  password - see "Setting up Auth0 login" below for how to get these.
 - `SESSION_SECRET` / `WEBHOOK_SECRET` - generate each with:
   ```bash
   openssl rand -hex 32
   ```
+
+### Setting up Auth0 login
+
+The dashboard has no password of its own - logging in means signing in
+through [Auth0](https://auth0.com) (a free-tier identity provider), which
+confirms who you are; the app then checks that email against `ADMIN_EMAIL`
+before letting you in. This means your actual login security (2FA, breach
+detection, etc.) is whatever Auth0 - or the Google/GitHub/etc. account you
+sign in with through it - provides, rather than a password this app has to
+protect on its own.
+
+1. Sign up for a free account at [auth0.com](https://auth0.com) and create
+   a tenant (Auth0's term for your own workspace) - any name/region is fine.
+2. In the Auth0 Dashboard: **Applications → Applications → Create Application**.
+3. Name it anything (e.g. "RTMP Web Player"), and choose **Regular Web
+   Applications** as the type - not Single Page App or Native. This matters:
+   a Regular Web App gets a confidential client secret and uses the
+   Authorization Code flow, which is what this server-rendered app expects.
+4. Open the new application's **Settings** tab and note down the **Domain**,
+   **Client ID**, and **Client Secret** - these become `AUTH0_DOMAIN`,
+   `AUTH0_CLIENT_ID`, and `AUTH0_CLIENT_SECRET` in `.env`.
+5. Further down the same Settings tab, under **Application URIs**, set:
+   - **Allowed Callback URLs**: `https://<PUBLIC_HOST>/auth/callback`
+   - **Allowed Logout URLs**: `https://<PUBLIC_HOST>/login`
+   (add the dev-site versions too if you're using one - see "Dev/staging
+   environment" below)
+6. Click **Save Changes**.
+7. Under the application's **Connections** tab, enable however you'd like to
+   sign in - Auth0's own Username-Password-Authentication database
+   connection is enabled by default, or you can enable a Google/GitHub
+   social connection instead if you'd rather not create a separate password
+   at all.
+8. Set `ADMIN_EMAIL` in `.env` to the email address of the account you'll
+   actually sign in with. This is the real gatekeeper - Auth0 only confirms
+   an email is genuinely yours (via `email_verified`), this app is what
+   decides that email is allowed in at all. Anyone else who successfully
+   authenticates through Auth0 (a different Google account, a new
+   Username-Password signup, etc.) gets rejected after that check.
 
 ## 3. Run it
 
@@ -559,9 +597,13 @@ actually the command you reach for.
   Caddy are confirmed working over HTTPS, **close port 4000 in your
   server's firewall** (e.g. `ufw deny 4000`) so the dashboard is only
   reachable through Caddy's HTTPS. Logging in over plain HTTP sends your
-  password and session cookie unencrypted.
-- Keep `ADMIN_PASSWORD` strong and unique - it's the only thing protecting
-  channel management and viewer analytics.
+  session cookie unencrypted.
+- Keep `AUTH0_CLIENT_SECRET` out of version control the same as any other
+  secret in `.env` - it's what proves this app's server (not just anyone who
+  knows your `AUTH0_CLIENT_ID`) is the one completing the login. Double
+  check `ADMIN_EMAIL` is exactly the account you intend, and consider
+  turning on multi-factor authentication for it in Auth0's dashboard under
+  **Security → Multi-factor Auth**.
 - `SESSION_SECRET` and `WEBHOOK_SECRET` should be long random values (the
   `openssl rand -hex 32` from step 2) and kept out of version control - copy
   `.env.example` to `.env` and never commit `.env`.

@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 const authRoutes = require('./routes/auth');
+const auth0Routes = require('./routes/auth0');
 const channelRoutes = require('./routes/channels');
 const rtmpHooks = require('./routes/rtmpHooks');
 const hlsProxy = require('./routes/hlsProxy');
@@ -77,6 +78,7 @@ app.get('/api/tools/load-test.js', requireAuth, (req, res) => {
 });
 
 app.use('/api', authRoutes);
+app.use('/auth', auth0Routes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/rtmp', rtmpHooks);
 // Dev-site-only (see stripYoutubeOnProduction below and rtmpHooks.js) - not
