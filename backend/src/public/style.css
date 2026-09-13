@@ -491,10 +491,10 @@ button.danger:hover { background: var(--ember-tint); }
    real button underneath it on a narrow viewport. */
 .secured-badge {
   position: fixed; right: 16px; bottom: 16px; z-index: 50;
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 9px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
-  padding: 6px 12px; box-shadow: var(--shadow-card);
-  font: 500 11.5px/1 var(--font-display); color: var(--slate);
+  padding: 10px 18px; box-shadow: var(--shadow-card);
+  font: 500 14px/1 var(--font-display); color: var(--slate);
   pointer-events: none;
 }
-.secured-badge img { height: 15px; width: auto; display: block; }
+.secured-badge img { height: 30px; width: auto; display: block; }
