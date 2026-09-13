@@ -482,3 +482,19 @@ button.danger:hover { background: var(--ember-tint); }
   .step-content p, .step-left .step-content p { max-width: none; margin-left: 0; }
   .step-left .step-content h3 { max-width: none; margin-left: 0; text-align: left; }
 }
+
+/* Fixed so it stays in the same spot regardless of a page's own content/
+   scroll position, rather than living inline in any one page's layout -
+   the only way it shows up consistently across every page it's on.
+   pointer-events: none since it's purely informational, not a control -
+   this also means it can never end up sitting on top of and blocking a
+   real button underneath it on a narrow viewport. */
+.secured-badge {
+  position: fixed; right: 16px; bottom: 16px; z-index: 50;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+  padding: 6px 12px; box-shadow: var(--shadow-card);
+  font: 500 11.5px/1 var(--font-display); color: var(--slate);
+  pointer-events: none;
+}
+.secured-badge img { height: 15px; width: auto; display: block; }
