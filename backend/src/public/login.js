@@ -29,7 +29,7 @@
     // same page - which then auto-redirects into a genuinely fresh Auth0
     // login, actually prompting for an account this time.
     loginBtn.textContent = 'Log out and try again';
-    loginBtn.href = '/auth/logout';
+    loginBtn.href = '/auth/logout?to=login';
 
     showBox();
     return;

@@ -71,8 +71,18 @@ router.get('/callback', async (req, res) => {
   }
 });
 
+// Where the browser lands after Auth0's own logout completes. Defaults to
+// the public homepage (the normal dashboard logout button) - but the
+// login page's "Log out and try again" retry (see login.js) needs to land
+// back on /login instead, so it can auto-redirect straight into a fresh
+// Auth0 login rather than dumping someone mid-retry onto the public site.
+// Validated against a fixed allowlist rather than trusted as a raw path,
+// since it ends up in a redirect URL.
+const LOGOUT_DESTINATIONS = { login: '/login' };
+
 router.get('/logout', (req, res) => {
-  const returnTo = `${req.protocol}://${req.get('host')}/login`;
+  const path = LOGOUT_DESTINATIONS[req.query.to] || '/';
+  const returnTo = `${req.protocol}://${req.get('host')}${path}`;
   req.session.destroy(() => {
     if (!isConfigured()) return res.redirect('/login');
     res.redirect(auth0.getLogoutUrl(returnTo));
