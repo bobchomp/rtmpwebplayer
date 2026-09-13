@@ -642,7 +642,8 @@
   fetch('/api/config').then(function (r) { return r.json(); }).then(function (cfg) {
     if (!cfg.serverStartedAt) return;
     var d = new Date(cfg.serverStartedAt);
-    var formatted = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    var formatted = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) +
+      ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
     document.getElementById('footer-last-updated').textContent = ' · Last updated ' + formatted;
   }).catch(function () {});
 </script>
