@@ -397,6 +397,11 @@ button.danger:hover { background: var(--ember-tint); }
 .stats-filters { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .stats-filters label { font-size: 13px; color: var(--slate); }
 .stats-filters select, .stats-filters input[type="date"] { width: auto; }
+/* Pushes the export buttons (and delete-selected, right after them) to the
+   far right of the bar, leaving the channel/date filters left-aligned -
+   an auto margin on the first one is enough since flex only needs it on
+   one side of the gap to split the row into two groups. */
+.stats-filters #stats-export-btn { margin-left: auto; }
 .stats-table-panel { overflow: hidden; padding: 0; }
 .stats-table-scroll { overflow-x: auto; }
 .stats-table { width: 100%; border-collapse: collapse; font: 400 13.5px/1.4 var(--font-body); white-space: nowrap; }
