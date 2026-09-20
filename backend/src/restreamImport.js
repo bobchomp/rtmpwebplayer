@@ -8,6 +8,11 @@
 // this falls back to the account's channel list (GET /user/channels),
 // fetched lazily and cached for the rest of the preview call, checking its
 // channelUrl instead.
+//
+// /user/events/history's from/to query params don't actually filter the
+// response (confirmed against a live account - it just returns full
+// history regardless), so the requested range is enforced here instead,
+// before any per-event analytics calls are made.
 
 const { readDb } = require('./db');
 const restream = require('./restream');
@@ -43,8 +48,17 @@ function viewsForChannel(byChannel, channelId) {
 
 async function previewImport({ from, to }) {
   const accessToken = await getAccessToken();
-  const events = await restream.listEventHistory(accessToken, { from, to });
+  const allEvents = await restream.listEventHistory(accessToken, { from, to });
   const db = readDb();
+
+  const fromMs = from ? new Date(from).getTime() : -Infinity;
+  const toMs = to ? new Date(to).getTime() : Infinity;
+  const events = allEvents.filter((event) => {
+    const ts = event.startedAt ?? event.scheduledFor;
+    if (typeof ts !== 'number') return false;
+    const ms = ts * 1000;
+    return ms >= fromMs && ms <= toMs;
+  });
 
   let channelsCache = null;
   async function resolvePlatform(channelId, externalUrl) {
