@@ -11,6 +11,25 @@ const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
 
 const router = express.Router();
+
+// Sermon titles are always shown wrapped in quotes, by convention - this
+// re-wraps whatever the admin typed in single quotes (stripping one layer
+// of existing wrapping quotes first, straight or curly, so re-saving is
+// idempotent and doesn't pile up nested quote marks). An internal
+// apostrophe just sits inside the wrapping quotes as-is (e.g. "Jesus'
+// Unique Commitment" -> 'Jesus' Unique Commitment') - the same convention
+// already shown in the title field's own placeholder text.
+const OPEN_QUOTES = new Set(['"', "'", '“', '‘']);
+const CLOSE_QUOTES = new Set(['"', "'", '”', '’']);
+function normalizeTitleQuotes(title) {
+  let t = title.trim();
+  if (!t) return t;
+  if (t.length >= 2 && OPEN_QUOTES.has(t[0]) && CLOSE_QUOTES.has(t[t.length - 1])) {
+    t = t.slice(1, -1).trim();
+  }
+  return t ? `'${t}'` : t;
+}
+
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
@@ -159,7 +178,7 @@ router.patch('/:id/metadata', requireAuth, (req, res) => {
     if (req.body.title.length > 100) {
       return res.status(400).json({ error: 'Title too long' });
     }
-    channel.title = req.body.title.trim();
+    channel.title = normalizeTitleQuotes(req.body.title);
   }
   if (typeof req.body.description === 'string') {
     if (req.body.description.length > 300) {
