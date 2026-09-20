@@ -352,6 +352,7 @@
     <div class="detail-header">
       <a href="#/" class="back-link">&larr; All channels</a>
       <div class="detail-header-actions">
+        <button class="secondary" id="detail-restream-link-btn">Link Restream channel</button>
         <span class="channel-name" id="detail-name"></span>
         <input type="text" class="channel-name-input hidden" id="detail-name-input" maxlength="100">
         <button class="secondary" id="detail-rename-btn">Rename</button>
@@ -585,6 +586,26 @@
     </div>
   </div>
 </div>
+
+<div id="restream-link-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Link Restream channel</h3>
+    <p class="hint">Pick which of your connected Restream destinations this channel's title &amp; description should sync to whenever you save them. Connect Restream first from the Stats page if the list below is empty.</p>
+    <div id="restream-link-list" class="restream-link-list"></div>
+    <p id="restream-link-empty" class="hint hidden">No Restream destinations found - connect Restream and add a channel there first.</p>
+    <div class="modal-actions">
+      <button class="secondary" id="restream-link-cancel-btn">Cancel</button>
+      <button id="restream-link-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+<template id="restream-link-row-template">
+  <label class="restream-link-row">
+    <input type="checkbox" class="restream-link-checkbox">
+    <span class="restream-link-name"></span>
+    <span class="restream-link-platform"></span>
+  </label>
+</template>
 
 <div id="restream-import-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal-box restream-import-box">

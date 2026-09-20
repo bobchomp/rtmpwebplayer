@@ -24,7 +24,7 @@
   var detailPollTimer = null;
   var recordingsPollTimer = null;
   var currentChannelId = null;
-  var currentChannelMetadata = { title: '', description: '' };
+  var currentChannelMetadata = { title: '', description: '', restreamChannelIds: [] };
   var detailListenersWired = false;
 
   function api(url, opts) {
@@ -491,6 +491,14 @@
   var metadataSaveBtn = document.getElementById('metadata-save-btn');
   var metadataCancelBtn = document.getElementById('metadata-cancel-btn');
 
+  var detailRestreamLinkBtn = document.getElementById('detail-restream-link-btn');
+  var restreamLinkModalBackdrop = document.getElementById('restream-link-modal-backdrop');
+  var restreamLinkList = document.getElementById('restream-link-list');
+  var restreamLinkEmpty = document.getElementById('restream-link-empty');
+  var restreamLinkSaveBtn = document.getElementById('restream-link-save-btn');
+  var restreamLinkCancelBtn = document.getElementById('restream-link-cancel-btn');
+  var restreamLinkRowTemplate = document.getElementById('restream-link-row-template');
+
   var detailOutputsList = document.getElementById('detail-outputs-list');
   var detailOutputsEmpty = document.getElementById('detail-outputs-empty');
 
@@ -819,7 +827,11 @@
 
     updatePreviewState(channel.isLive, channel.id);
 
-    currentChannelMetadata = { title: channel.title || '', description: channel.description || '' };
+    currentChannelMetadata = {
+      title: channel.title || '',
+      description: channel.description || '',
+      restreamChannelIds: channel.restreamChannelIds || [],
+    };
 
     detailWebsiteToggle.checked = channel.websiteEnabled !== false;
     detailWebsiteHint.textContent = channel.websiteEnabled !== false
@@ -1144,6 +1156,55 @@
     });
     metadataModalBackdrop.addEventListener('click', function (e) {
       if (e.target === metadataModalBackdrop) metadataModalBackdrop.classList.add('hidden');
+    });
+
+    function openRestreamLinkModal() {
+      restreamLinkList.innerHTML = '';
+      restreamLinkList.classList.remove('hidden');
+      restreamLinkEmpty.classList.add('hidden');
+      restreamLinkModalBackdrop.classList.remove('hidden');
+      api('/api/restream/channels').then(function (data) {
+        var restreamChannels = data.channels || [];
+        if (!restreamChannels.length) {
+          restreamLinkList.classList.add('hidden');
+          restreamLinkEmpty.textContent = 'No Restream destinations found - connect Restream and add a channel there first.';
+          restreamLinkEmpty.classList.remove('hidden');
+          return;
+        }
+        var linkedIds = currentChannelMetadata.restreamChannelIds || [];
+        restreamChannels.forEach(function (c) {
+          var frag = restreamLinkRowTemplate.content.cloneNode(true);
+          var checkbox = frag.querySelector('.restream-link-checkbox');
+          checkbox.value = c.id;
+          checkbox.checked = linkedIds.indexOf(c.id) !== -1;
+          frag.querySelector('.restream-link-name').textContent = c.displayName || c.channelUrl || ('Channel ' + c.id);
+          frag.querySelector('.restream-link-platform').textContent = c.platform || '';
+          restreamLinkList.appendChild(frag);
+        });
+      }).catch(function (err) {
+        restreamLinkList.classList.add('hidden');
+        restreamLinkEmpty.textContent = err.message;
+        restreamLinkEmpty.classList.remove('hidden');
+      });
+    }
+    detailRestreamLinkBtn.addEventListener('click', openRestreamLinkModal);
+    restreamLinkCancelBtn.addEventListener('click', function () {
+      restreamLinkModalBackdrop.classList.add('hidden');
+    });
+    restreamLinkModalBackdrop.addEventListener('click', function (e) {
+      if (e.target === restreamLinkModalBackdrop) restreamLinkModalBackdrop.classList.add('hidden');
+    });
+    restreamLinkSaveBtn.addEventListener('click', function () {
+      var ids = [];
+      var checkboxes = restreamLinkList.querySelectorAll('.restream-link-checkbox:checked');
+      for (var i = 0; i < checkboxes.length; i++) ids.push(Number(checkboxes[i].value));
+      api('/api/channels/' + currentChannelId + '/restream-link', {
+        method: 'PATCH',
+        body: JSON.stringify({ channelIds: ids }),
+      }).then(function () {
+        restreamLinkModalBackdrop.classList.add('hidden');
+        return refreshChannelDetail();
+      }).catch(function (err) { alert(err.message); });
     });
 
     imageRenameCancelBtn.addEventListener('click', closeImageRenameModal);

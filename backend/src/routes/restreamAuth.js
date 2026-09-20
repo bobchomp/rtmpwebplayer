@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { requireAuth } = require('../authMiddleware');
 const { readDb, writeDb } = require('../db');
 const restream = require('../restream');
+const { getAccessToken } = require('../restreamSession');
 
 const router = express.Router();
 
@@ -55,6 +56,25 @@ router.post('/disconnect', requireAuth, (req, res) => {
 router.get('/status', requireAuth, (req, res) => {
   const db = readDb();
   res.json({ connected: !!(db.restream && db.restream.refreshToken), connectedAt: db.restream ? db.restream.connectedAt : null });
+});
+
+// Backs the "Link Restream channel" picker on a channel's detail page -
+// lists the account's destination channels so the admin can pick which
+// one(s) this local channel's title/description should sync to.
+router.get('/channels', requireAuth, async (req, res) => {
+  try {
+    const accessToken = await getAccessToken();
+    const result = await restream.listChannels(accessToken);
+    const channels = (result.channels || []).map((c) => ({
+      id: c.id,
+      displayName: c.displayName || '',
+      channelUrl: c.channelUrl || '',
+      platform: restream.platformFromUrl(c.channelUrl),
+    }));
+    res.json({ channels });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

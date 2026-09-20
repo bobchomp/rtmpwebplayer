@@ -16,25 +16,9 @@
 
 const { readDb } = require('./db');
 const restream = require('./restream');
+const { getAccessToken } = require('./restreamSession');
 const { matchChannelForEvent } = require('./restreamMatch');
 const plays = require('./plays');
-
-async function getAccessToken() {
-  const db = readDb();
-  if (!db.restream || !db.restream.refreshToken) {
-    throw new Error('Restream is not connected - connect it first from the Stats page.');
-  }
-  const tokens = await restream.refreshAccessToken(db.restream.refreshToken);
-  return tokens.access_token;
-}
-
-function platformFromUrl(url) {
-  if (!url) return null;
-  const lower = String(url).toLowerCase();
-  if (lower.includes('youtube.com')) return 'youtube';
-  if (lower.includes('facebook.com')) return 'facebook';
-  return null;
-}
 
 function toIso(epochSeconds) {
   if (epochSeconds === null || epochSeconds === undefined) return null;
@@ -62,14 +46,14 @@ async function previewImport({ from, to }) {
 
   let channelsCache = null;
   async function resolvePlatform(channelId, externalUrl) {
-    const direct = platformFromUrl(externalUrl);
+    const direct = restream.platformFromUrl(externalUrl);
     if (direct) return direct;
     if (!channelsCache) {
       const res = await restream.listChannels(accessToken);
       channelsCache = (res && res.channels) || [];
     }
     const match = channelsCache.find((c) => c.id === channelId);
-    return match ? platformFromUrl(match.channelUrl) : null;
+    return match ? restream.platformFromUrl(match.channelUrl) : null;
   }
 
   const results = [];
