@@ -2,13 +2,12 @@
 // (read-only - hits Restream's API, writes nothing locally) and commit a
 // (possibly admin-corrected) list of the preview's rows into plays.js.
 //
-// The exact shape of Restream's event-history and per-event-analytics
-// responses assumed below is NOT independently verified against the live
-// API (see restream.js's top comment) - extractPlatformViews() in
-// particular is the thing most likely to need adjusting once this is
-// tested against a real connected account, since it's guessing at how
-// Restream names/nests a YouTube vs Facebook destination within an event's
-// analytics.
+// Platform detection (YouTube vs Facebook) is read straight off each
+// event's destinations[].externalUrl, since that's given directly on the
+// event and avoids an extra API call. If a destination has no externalUrl,
+// this falls back to the account's channel list (GET /user/channels),
+// fetched lazily and cached for the rest of the preview call, checking its
+// channelUrl instead.
 
 const { readDb } = require('./db');
 const restream = require('./restream');
@@ -24,18 +23,22 @@ async function getAccessToken() {
   return tokens.access_token;
 }
 
-// Assumed shape: analytics.channels is an array of per-destination entries,
-// each carrying some identifying platform name (exact field/casing
-// unverified - checked loosely across the couple of plausible field names)
-// and a views/total-views count for that destination.
-function extractPlatformViews(analytics, platformName) {
-  const channels = (analytics && (analytics.channels || analytics.destinations)) || [];
-  const entry = channels.find((c) => {
-    const label = String(c.platform || c.service || c.type || '').toLowerCase();
-    return label.includes(platformName);
-  });
-  if (!entry) return 0;
-  return Number(entry.views ?? entry.totalViews ?? entry.viewCount ?? 0) || 0;
+function platformFromUrl(url) {
+  if (!url) return null;
+  const lower = String(url).toLowerCase();
+  if (lower.includes('youtube.com')) return 'youtube';
+  if (lower.includes('facebook.com')) return 'facebook';
+  return null;
+}
+
+function toIso(epochSeconds) {
+  if (epochSeconds === null || epochSeconds === undefined) return null;
+  return new Date(epochSeconds * 1000).toISOString();
+}
+
+function viewsForChannel(byChannel, channelId) {
+  const entry = (byChannel && (byChannel[channelId] || byChannel[String(channelId)])) || null;
+  return entry ? Number(entry.viewsTotal) || 0 : 0;
 }
 
 async function previewImport({ from, to }) {
@@ -43,15 +46,40 @@ async function previewImport({ from, to }) {
   const events = await restream.listEventHistory(accessToken, { from, to });
   const db = readDb();
 
+  let channelsCache = null;
+  async function resolvePlatform(channelId, externalUrl) {
+    const direct = platformFromUrl(externalUrl);
+    if (direct) return direct;
+    if (!channelsCache) {
+      const res = await restream.listChannels(accessToken);
+      channelsCache = (res && res.channels) || [];
+    }
+    const match = channelsCache.find((c) => c.id === channelId);
+    return match ? platformFromUrl(match.channelUrl) : null;
+  }
+
   const results = [];
   for (const event of events) {
-    const startedAt = event.startTime || event.scheduledFor || event.createdAt;
-    const finishedAt = event.endTime || null;
+    const startedAt = toIso(event.startedAt) || toIso(event.scheduledFor);
+    const finishedAt = toIso(event.finishedAt);
+    const destinations = event.destinations || [];
 
-    // eslint-disable-next-line no-await-in-loop
-    const analytics = await restream.getEventAnalytics(accessToken, event.id);
-    const youtubeViews = extractPlatformViews(analytics, 'youtube');
-    const facebookViews = extractPlatformViews(analytics, 'facebook');
+    let youtubeViews = 0;
+    let facebookViews = 0;
+    if (destinations.length) {
+      // eslint-disable-next-line no-await-in-loop
+      const analytics = await restream.getEventAnalytics(accessToken, event.id).catch(() => null);
+      const byChannel = (analytics && analytics.byChannel) || {};
+      // eslint-disable-next-line no-restricted-syntax
+      for (const dest of destinations) {
+        // eslint-disable-next-line no-await-in-loop
+        const platform = await resolvePlatform(dest.channelId, dest.externalUrl);
+        if (!platform) continue; // custom RTMP or unrecognized destination
+        const views = viewsForChannel(byChannel, dest.channelId);
+        if (platform === 'youtube') youtubeViews += views;
+        else if (platform === 'facebook') facebookViews += views;
+      }
+    }
     if (!youtubeViews && !facebookViews) continue; // nothing relevant to this event
 
     const matchedChannelId = matchChannelForEvent({ startedAt, finishedAt });

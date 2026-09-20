@@ -1,14 +1,15 @@
 // Thin wrapper around Restream's API - same hand-rolled fetch-based
 // approach as youtube.js/auth0.js, rather than a client library.
 //
-// The OAuth2 endpoints below (authorize/token) are confirmed against
-// Restream's published docs. The Events/Analytics endpoint paths and exact
-// response shapes are NOT independently verified against the live API from
-// this environment (developers.restream.io wasn't reachable to confirm
-// directly) - they're built from the best available public documentation
-// and are the first thing to check against the real docs once the Restream
-// app is registered, before relying on this for real imports. See
-// restreamImport.js for where these get used.
+// OAuth endpoints, scopes, the /user/channels shape, and the
+// /user/events/{id}/analytics/viewers shape are all confirmed against
+// Restream's real developer-portal docs and the app's own registered
+// scope list. The exact response shape of /user/events/history (pagination
+// params, whether list items carry the full Event object) is built from
+// the documented single-Event object shape (id/status/title/description/
+// coverUrl/isRecordOnly/scheduledFor/startedAt/finishedAt/destinations) and
+// is the one remaining thing to double check once a real account is
+// connected. See restreamImport.js for where these get used.
 
 // RESTREAM_API_BASE is an internal override, not something a real
 // deployment needs to set (real Restream tenants all share the one fixed
@@ -17,7 +18,9 @@
 const BASE = process.env.RESTREAM_API_BASE || 'https://api.restream.io';
 const AUTH_BASE = BASE;
 const API_BASE = `${BASE}/v2`;
-const OAUTH_SCOPE = 'profile.default channel.default'; // TODO verify against the real docs - see note above
+// Only what this app needs: read the account's destination channels, and
+// read stream/viewer analytics. There's no dedicated "analytics" scope.
+const OAUTH_SCOPE = 'channels.read stream.read';
 
 function getAuthUrl(state) {
   const params = new URLSearchParams({
@@ -69,11 +72,11 @@ async function apiGet(accessToken, path) {
   return res.json();
 }
 
-// Past stream events in a date range - TODO verify the exact path/params
-// (built from the "list event history" capability documented for the
-// Events API; the Dart client's listEventHistory() suggests a dedicated
-// /user/events/history path rather than a status filter on /user/events,
-// but that's not independently confirmed here).
+// Past stream events in a date range. Each event has the shape:
+// { id, status, title, description, coverUrl, isRecordOnly, scheduledFor,
+//   startedAt, finishedAt, destinations: [{ channelId, externalUrl,
+//   streamingPlatformId }] } - scheduledFor/startedAt/finishedAt are unix
+// epoch seconds.
 async function listEventHistory(accessToken, { from, to } = {}) {
   const params = new URLSearchParams();
   if (from) params.set('from', new Date(from).toISOString());
@@ -82,12 +85,21 @@ async function listEventHistory(accessToken, { from, to } = {}) {
   return apiGet(accessToken, `/user/events/history${query ? `?${query}` : ''}`);
 }
 
-// Per-event viewer analytics, broken down per destination channel - TODO
-// verify the exact path/response shape against the real docs. Expected
-// shape per the public Analytics API description: total views and other
-// metrics per destination channel for this event.
+// The account's destination channels: { channels: [{ id, platformId,
+// channelUrl, displayName }] }. platformId is an opaque Restream-internal
+// number - platform (YouTube vs Facebook) has to be inferred from
+// channelUrl instead.
+async function listChannels(accessToken) {
+  return apiGet(accessToken, '/user/channels');
+}
+
+// Per-event viewer analytics: { total: {...}, byChannel: { "<channelId>":
+// { mean, max, viewsTotal, peakTime, watchedTime, viewersPerMinute } } }.
+// Returns a 404 (thrown as an error by apiGet) if the event has no
+// analytics - callers should treat that as "no views" rather than a
+// hard failure.
 async function getEventAnalytics(accessToken, eventId) {
-  return apiGet(accessToken, `/user/events/${encodeURIComponent(eventId)}/analytics`);
+  return apiGet(accessToken, `/user/events/${encodeURIComponent(eventId)}/analytics/viewers`);
 }
 
 module.exports = {
@@ -95,5 +107,6 @@ module.exports = {
   exchangeCodeForTokens,
   refreshAccessToken,
   listEventHistory,
+  listChannels,
   getEventAnalytics,
 };
