@@ -28,13 +28,16 @@ const EXPORT_COLUMNS = [
 
 const PLATFORM_LABELS = { website: 'Website', youtube: 'YouTube', facebook: 'Facebook' };
 
-// Website rows are one-row-per-visitor, so each one counts as 1 view;
-// YouTube/Facebook rows already carry their own aggregate view count (see
-// restreamImport.js).
+// Website rows are one-row-per-visitor, so each one counts as 1 view and
+// carries its own device type/IP; YouTube/Facebook rows are an aggregate
+// across every viewer (see restreamImport.js) with their own view count
+// but no single device type or IP, so those show as "Various" instead.
 function withDisplayFields(rows) {
   return rows.map((p) => Object.assign({}, p, {
     platformLabel: PLATFORM_LABELS[p.platform] || p.platform,
     views: p.views != null ? p.views : 1,
+    type: p.type || 'Various',
+    ip: p.ip || 'Various',
   }));
 }
 
