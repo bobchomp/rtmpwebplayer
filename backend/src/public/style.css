@@ -427,6 +427,9 @@ button.danger:hover { background: var(--ember-tint); }
    left alone it's silently skipped at commit time. */
 .restream-preview-channel-select.needs-pick { border-color: var(--ember); }
 
+.restream-link-btn { display: inline-flex; align-items: center; gap: 6px; }
+.restream-link-btn-logo { height: 16px; width: auto; display: block; }
+
 .restream-link-list { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 12px; max-height: 320px; overflow-y: auto; }
 .restream-link-row {
   display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-sm);
