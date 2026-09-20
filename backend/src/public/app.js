@@ -204,6 +204,7 @@
   var restreamImportModalBackdrop = document.getElementById('restream-import-modal-backdrop');
   var restreamImportFrom = document.getElementById('restream-import-from');
   var restreamImportTo = document.getElementById('restream-import-to');
+  var restreamImportTodayBtn = document.getElementById('restream-import-today-btn');
   var restreamImportPreviewBtn = document.getElementById('restream-import-preview-btn');
   var restreamImportEmpty = document.getElementById('restream-import-empty');
   var restreamImportPreviewWrap = document.getElementById('restream-import-preview-wrap');
@@ -448,6 +449,12 @@
     restreamImportCancelBtn.addEventListener('click', closeRestreamImportModal);
     restreamImportModalBackdrop.addEventListener('click', function (e) {
       if (e.target === restreamImportModalBackdrop) closeRestreamImportModal();
+    });
+    restreamImportTodayBtn.addEventListener('click', function () {
+      var d = new Date();
+      var today = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      restreamImportFrom.value = today;
+      restreamImportTo.value = today;
     });
     restreamImportPreviewBtn.addEventListener('click', previewRestreamImport);
     restreamImportCommitBtn.addEventListener('click', commitRestreamImport);
