@@ -264,7 +264,7 @@ async function renderStatusPage() {
   .status-row-name a { color: inherit; text-decoration: none; }
   .status-row-name a:hover { text-decoration: underline; }
   .status-dep-btn { background: none; border: none; padding: 0; margin: 0; cursor: pointer; font: inherit; color: inherit; text-align: left; }
-  .status-dep-btn:hover { text-decoration: underline; }
+  .status-dep-btn:hover { background: none; color: inherit; text-decoration: underline; }
   .status-row-uptime { font-size: 13px; color: var(--slate); margin-left: auto; }
   .status-pill { font: 600 12px/1 var(--font-display); padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
   .status-up { background: var(--grass-tint); color: #1D6B44; }
