@@ -476,8 +476,10 @@
     // playback starts) - it's just a row inside #bottom-chrome now, so it
     // naturally sits above the now-visible controls bar rather than
     // overlapping it, and fades with it via the shared .idle class.
-    // Stays visible (never hidden) but non-interactive - there's no way to
-    // stop playback via this control once it's going.
+    // Disabled the instant real playback resumes - there's no way to
+    // deliberately stop playback via this control once it's going (see the
+    // 'pause' handler below for why it's only ever re-enabled, never left
+    // enabled, while actually playing).
     playPauseBtn.disabled = true;
     playPauseBtn.classList.remove('paused');
     startHeartbeat();
@@ -507,6 +509,17 @@
     }
   });
   video.addEventListener('pause', function () {
+    // Fires for a genuine mid-stream pause the viewer has no other way to
+    // recover from - iOS in particular pauses playback outright the moment
+    // its native fullscreen player closes (backgrounding the app, locking
+    // the screen), with no way to un-pause except through this button.
+    // Re-enabling here rather than leaving it enabled permanently is what
+    // keeps the "can't deliberately stop a live stream" behavior intact -
+    // the 'playing' handler above disables it again the instant playback
+    // actually resumes. Guarded on currentlyLive so this doesn't briefly
+    // re-enable it during showOffline()'s own video.load() call, which can
+    // fire a 'pause' event of its own with nothing left to resume.
+    if (currentlyLive) playPauseBtn.disabled = false;
     playPauseBtn.classList.add('paused');
     stopHeartbeat();
   });
