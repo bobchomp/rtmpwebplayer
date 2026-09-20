@@ -178,6 +178,7 @@
   var statsChannelFilter = document.getElementById('stats-channel-filter');
   var statsFromFilter = document.getElementById('stats-from-filter');
   var statsToFilter = document.getElementById('stats-to-filter');
+  var statsTodayBtn = document.getElementById('stats-today-btn');
   var statsExportBtn = document.getElementById('stats-export-btn');
   var statsExportXlsxBtn = document.getElementById('stats-export-xlsx-btn');
   var statsExportPdfBtn = document.getElementById('stats-export-pdf-btn');
@@ -276,6 +277,13 @@
     statsChannelFilter.addEventListener('change', loadStats);
     statsFromFilter.addEventListener('change', loadStats);
     statsToFilter.addEventListener('change', loadStats);
+    statsTodayBtn.addEventListener('click', function () {
+      var d = new Date();
+      var today = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      statsFromFilter.value = today;
+      statsToFilter.value = today;
+      loadStats();
+    });
     statsSelectAllCheckbox.addEventListener('change', function () {
       var checked = statsSelectAllCheckbox.checked;
       statsSelectedIds = {};
