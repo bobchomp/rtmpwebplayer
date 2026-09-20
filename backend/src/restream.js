@@ -72,6 +72,26 @@ async function apiGet(accessToken, path) {
   return res.json();
 }
 
+// The list itself isn't wrapped in a bare array - like /user/channels, it's
+// nested under some key. The exact key isn't documented anywhere reachable,
+// so this checks the plausible ones rather than hardcoding a guess; if none
+// match, the error names the actual top-level keys so a fix is a one-line
+// change instead of another round of guessing.
+function extractEventList(res) {
+  if (Array.isArray(res)) return res;
+  if (res && typeof res === 'object') {
+    const candidates = ['events', 'items', 'data', 'results', 'history'];
+    for (const key of candidates) {
+      if (Array.isArray(res[key])) return res[key];
+    }
+    throw new Error(
+      `Restream /user/events/history response didn't contain a recognizable events array - `
+      + `top-level keys were: ${Object.keys(res).join(', ') || '(none)'}`
+    );
+  }
+  throw new Error('Restream /user/events/history returned an unexpected response shape');
+}
+
 // Past stream events in a date range. Each event has the shape:
 // { id, status, title, description, coverUrl, isRecordOnly, scheduledFor,
 //   startedAt, finishedAt, destinations: [{ channelId, externalUrl,
@@ -82,7 +102,8 @@ async function listEventHistory(accessToken, { from, to } = {}) {
   if (from) params.set('from', new Date(from).toISOString());
   if (to) params.set('to', new Date(to).toISOString());
   const query = params.toString();
-  return apiGet(accessToken, `/user/events/history${query ? `?${query}` : ''}`);
+  const res = await apiGet(accessToken, `/user/events/history${query ? `?${query}` : ''}`);
+  return extractEventList(res);
 }
 
 // The account's destination channels: { channels: [{ id, platformId,
