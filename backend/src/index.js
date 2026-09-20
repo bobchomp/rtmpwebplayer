@@ -13,6 +13,7 @@ const hlsProxy = require('./routes/hlsProxy');
 const embed = require('./routes/embed');
 const watch = require('./routes/watch');
 const youtubeAuth = require('./routes/youtubeAuth');
+const restreamAuth = require('./routes/restreamAuth');
 const statsRoutes = require('./routes/stats');
 const geoip = require('./geoip');
 const { renderStatusPage } = require('./statusPage');
@@ -85,6 +86,7 @@ app.use('/api/rtmp', rtmpHooks);
 // mounted at all on production, so a request to any /api/youtube/* route
 // there gets a plain 404 rather than revealing the route exists.
 if (IS_DEV_SITE) app.use('/api/youtube', youtubeAuth);
+app.use('/api/restream', restreamAuth);
 app.use('/api/stats', statsRoutes);
 app.use('/live', hlsProxy);
 app.use('/embed', embed);

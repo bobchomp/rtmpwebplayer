@@ -4,6 +4,7 @@ const PDFDocument = require('pdfkit-table');
 const { readDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
+const restreamImport = require('../restreamImport');
 
 const router = express.Router();
 
@@ -15,6 +16,8 @@ const EXPORT_COLUMNS = [
   { header: 'Channel', key: 'channelName' },
   { header: 'Title', key: 'title' },
   { header: 'Description', key: 'description' },
+  { header: 'Platform', key: 'platformLabel' },
+  { header: 'Views', key: 'views' },
   { header: 'Type', key: 'type' },
   { header: 'IP Address', key: 'ip' },
   { header: 'Country', key: 'country' },
@@ -23,12 +26,20 @@ const EXPORT_COLUMNS = [
   { header: 'First Play', key: 'firstPlayAt' },
 ];
 
+const PLATFORM_LABELS = { website: 'Website', youtube: 'YouTube', facebook: 'Facebook' };
+
+// Website rows are one-row-per-visitor - a Views count doesn't apply to
+// them, only to the aggregate YouTube/Facebook rows (see restreamImport.js).
+function withDisplayFields(rows) {
+  return rows.map((p) => Object.assign({}, p, { platformLabel: PLATFORM_LABELS[p.platform] || p.platform }));
+}
+
 function exportRows(req) {
-  return plays.listPlays({
+  return withDisplayFields(plays.listPlays({
     channelId: req.query.channelId || undefined,
     from: req.query.from || undefined,
     to: req.query.to || undefined,
-  });
+  }));
 }
 
 // Human-readable description of whatever filters are active, used as the
@@ -83,11 +94,11 @@ router.get('/', requireAuth, (req, res) => {
     .map((c) => ({ id: c.id, name: c.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const rows = plays.listPlays({
+  const rows = withDisplayFields(plays.listPlays({
     channelId: req.query.channelId || undefined,
     from: req.query.from || undefined,
     to: req.query.to || undefined,
-  });
+  }));
 
   res.json({ channels, plays: rows });
 });
@@ -109,6 +120,36 @@ router.delete('/', requireAuth, (req, res) => {
 
   const deletedCount = plays.deletePlays(ids);
   res.json({ deletedCount });
+});
+
+// Read-only - hits Restream's API for the given range and returns what
+// would be imported, without writing anything locally yet. See the Import
+// modal in app.js, which shows this as an editable preview (a row missing
+// a channel match can be assigned one manually) before commit.
+router.post('/restream/preview', requireAuth, async (req, res) => {
+  const { from, to } = req.body || {};
+  if (!from || !to) return res.status(400).json({ error: 'from and to are required' });
+
+  try {
+    const items = await restreamImport.previewImport({ from, to });
+    res.json({ items });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// items: the preview list back from the client, possibly with a
+// manually-picked channelId filled in for rows the automatic match missed.
+router.post('/restream/import', requireAuth, (req, res) => {
+  const items = Array.isArray(req.body && req.body.items) ? req.body.items : [];
+  if (!items.length) return res.status(400).json({ error: 'items is required' });
+
+  try {
+    const importedCount = restreamImport.commitImport(items);
+    res.json({ importedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get('/export.csv', requireAuth, (req, res) => {
@@ -180,7 +221,7 @@ router.get('/export.pdf', requireAuth, async (req, res) => {
       rows: rows.map((p) => EXPORT_COLUMNS.map((c) => (p[c.key] === null || p[c.key] === undefined ? '' : String(p[c.key])))),
     },
     {
-      columnsSize: [80, 70, 90, 140, 45, 70, 60, 70, 70, 80],
+      columnsSize: [80, 70, 90, 130, 60, 45, 45, 70, 55, 60, 60, 75],
       prepareHeader: () => doc.fontSize(8).font('Helvetica-Bold'),
       prepareRow: () => doc.fontSize(8).font('Helvetica'),
     }

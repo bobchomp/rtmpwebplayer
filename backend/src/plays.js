@@ -118,6 +118,7 @@ function recordPlay({ channelId, ip, userAgent }) {
     channelName: channel.name,
     title: channel.title || channel.name,
     description: channel.description || '',
+    platform: 'website',
     type: detectDeviceType(userAgent),
     ip,
     country: geo.country,
@@ -127,6 +128,41 @@ function recordPlay({ channelId, ip, userAgent }) {
     latestPlayAt: nowIso,
   });
   dirty = true;
+}
+
+// One row per platform per Restream-reported stream event (a whole
+// audience, not one visitor - see restreamImport.js) - id is deterministic
+// (platform + the Restream event it came from) rather than a random UUID,
+// so re-importing an overlapping date range naturally overwrites the same
+// rows in place with refreshed view counts instead of duplicating them.
+function importedRowId(platform, restreamEventId) {
+  return `restream-${platform}-${restreamEventId}`;
+}
+
+// Upserts a batch of Restream-derived rows (see restreamImport.js for how
+// they're built) - each identified by importedRowId(), so this is the one
+// place that actually implements "re-importing refreshes the numbers"
+// rather than piling up duplicates. Flushed immediately, same reasoning as
+// deletePlays() - this is a deliberate, infrequent admin action expected to
+// durably stick right away, not whenever the periodic flush next happens to run.
+function upsertImportedPlays(rows) {
+  ensureLoaded();
+  const byId = new Map(plays.map((p, i) => [p.id, i]));
+
+  rows.forEach((row) => {
+    const id = importedRowId(row.platform, row.restreamEventId);
+    const record = Object.assign({}, row, { id });
+    if (byId.has(id)) {
+      plays[byId.get(id)] = record;
+    } else {
+      plays.push(record);
+      byId.set(id, plays.length - 1);
+    }
+  });
+
+  dirty = true;
+  flush();
+  return rows.length;
 }
 
 // Reads straight from the in-memory array - always fully up to date
@@ -146,6 +182,11 @@ function listPlays({ channelId, from, to } = {}) {
     const toMs = new Date(to).getTime();
     rows = rows.filter((p) => new Date(p.latestPlayAt).getTime() <= toMs);
   }
+
+  // Rows recorded before the platform field existed have none stored at
+  // all - they're all website visits (the only kind that existed then), so
+  // that's the correct default rather than something to migrate on disk.
+  rows = rows.map((p) => (p.platform ? p : Object.assign({}, p, { platform: 'website' })));
 
   return rows.sort((a, b) => new Date(b.latestPlayAt) - new Date(a.latestPlayAt));
 }
@@ -193,4 +234,4 @@ setInterval(flush, FLUSH_INTERVAL_MS).unref();
   });
 });
 
-module.exports = { recordPlay, listPlays, countActiveViewers, deletePlays };
+module.exports = { recordPlay, listPlays, countActiveViewers, deletePlays, upsertImportedPlays };

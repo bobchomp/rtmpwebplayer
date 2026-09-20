@@ -301,6 +301,15 @@
       </div>
     </section>
 
+    <section class="panel stats-restream-panel">
+      <div class="stats-restream-row">
+        <span id="stats-restream-status-text" class="hint">Checking Restream connection&hellip;</span>
+        <a id="stats-restream-connect-btn" class="secondary hidden" href="/api/restream/connect">Connect Restream</a>
+        <button type="button" class="secondary hidden" id="stats-restream-import-btn">Import from Restream</button>
+        <button type="button" class="secondary danger hidden" id="stats-restream-disconnect-btn">Disconnect Restream</button>
+      </div>
+    </section>
+
     <section class="panel stats-table-panel">
       <div class="stats-table-scroll">
         <table class="stats-table">
@@ -311,6 +320,8 @@
               <th>Channel</th>
               <th>Title</th>
               <th>Description</th>
+              <th>Platform</th>
+              <th>Views</th>
               <th>Type</th>
               <th>IP Address</th>
               <th>Country</th>
@@ -503,12 +514,27 @@
     <td class="stats-col-channel"></td>
     <td class="stats-col-title"></td>
     <td class="stats-col-description"></td>
+    <td class="stats-col-platform"></td>
+    <td class="stats-col-views"></td>
     <td class="stats-col-type"></td>
     <td class="stats-col-ip"></td>
     <td class="stats-col-country"></td>
     <td class="stats-col-region"></td>
     <td class="stats-col-city"></td>
     <td class="stats-col-first"></td>
+  </tr>
+</template>
+
+<template id="restream-import-preview-row-template">
+  <tr>
+    <td class="restream-preview-date"></td>
+    <td class="restream-preview-title"></td>
+    <td>
+      <span class="restream-preview-channel-label"></span>
+      <select class="restream-preview-channel-select hidden"></select>
+    </td>
+    <td class="restream-preview-youtube"></td>
+    <td class="restream-preview-facebook"></td>
   </tr>
 </template>
 
@@ -556,6 +582,41 @@
     <div class="modal-actions">
       <button class="secondary" id="metadata-cancel-btn">Cancel</button>
       <button id="metadata-save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="restream-import-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-box restream-import-box">
+    <h3>Import from Restream</h3>
+    <p class="hint">Pulls YouTube/Facebook view counts for streams in this range and previews them before anything's imported. Re-importing a stream you've already imported refreshes its numbers.</p>
+    <div class="restream-import-dates">
+      <label>From
+        <input type="date" id="restream-import-from">
+      </label>
+      <label>To
+        <input type="date" id="restream-import-to">
+      </label>
+      <button type="button" class="secondary" id="restream-import-preview-btn">Preview</button>
+    </div>
+    <p id="restream-import-empty" class="hint hidden">No streams with YouTube/Facebook views found in that range.</p>
+    <div id="restream-import-preview-wrap" class="hidden">
+      <table class="restream-import-preview-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Title</th>
+            <th>Channel</th>
+            <th>YouTube views</th>
+            <th>Facebook views</th>
+          </tr>
+        </thead>
+        <tbody id="restream-import-preview-body"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="restream-import-cancel-btn">Cancel</button>
+      <button type="button" id="restream-import-commit-btn" class="hidden">Import</button>
     </div>
   </div>
 </div>

@@ -410,6 +410,23 @@ button.danger:hover { background: var(--ember-tint); }
 .stats-table tbody tr:hover { background: var(--surface-sunken); }
 .stats-table td:first-child, .stats-table th:first-child { padding-left: 16px; }
 
+.stats-restream-panel { padding: 14px 20px; }
+.stats-restream-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+.restream-import-box { max-width: 720px; width: 100%; }
+.restream-import-dates { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 4px 0 12px; }
+.restream-import-dates label { font-size: 13px; color: var(--slate); }
+.restream-import-preview-table { width: 100%; border-collapse: collapse; font: 400 13px/1.4 var(--font-body); margin-bottom: 4px; }
+.restream-import-preview-table th, .restream-import-preview-table td {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border);
+}
+.restream-import-preview-table th { color: var(--slate); font: 600 11px/1 var(--font-display); text-transform: uppercase; letter-spacing: .04em; }
+.restream-import-preview-table select { font: inherit; padding: 4px 6px; }
+/* Flags a row the automatic channel match couldn't place - picking one from
+   the dropdown (rather than leaving it as-is) is what gets it imported;
+   left alone it's silently skipped at commit time. */
+.restream-preview-channel-select.needs-pick { border-color: var(--ember); }
+
 /* Title & description popup */
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 100; background: rgba(34, 38, 43, .45);

@@ -101,6 +101,7 @@
       document.title = 'Stats - RTMP Web Player';
       statsView.classList.remove('hidden');
       loadStats();
+      checkRestreamStatus();
     } else if (r.view === 'recordings') {
       document.title = 'Recordings - RTMP Web Player';
       recordingsView.classList.remove('hidden');
@@ -193,6 +194,27 @@
   // delete, etc.) rather than persisted across them, since the underlying
   // row set can change out from under a stale selection.
   var statsSelectedIds = {};
+  var statsChannelsCache = [];
+
+  var statsRestreamStatusText = document.getElementById('stats-restream-status-text');
+  var statsRestreamConnectBtn = document.getElementById('stats-restream-connect-btn');
+  var statsRestreamImportBtn = document.getElementById('stats-restream-import-btn');
+  var statsRestreamDisconnectBtn = document.getElementById('stats-restream-disconnect-btn');
+
+  var restreamImportModalBackdrop = document.getElementById('restream-import-modal-backdrop');
+  var restreamImportFrom = document.getElementById('restream-import-from');
+  var restreamImportTo = document.getElementById('restream-import-to');
+  var restreamImportPreviewBtn = document.getElementById('restream-import-preview-btn');
+  var restreamImportEmpty = document.getElementById('restream-import-empty');
+  var restreamImportPreviewWrap = document.getElementById('restream-import-preview-wrap');
+  var restreamImportPreviewBody = document.getElementById('restream-import-preview-body');
+  var restreamImportPreviewRowTemplate = document.getElementById('restream-import-preview-row-template');
+  var restreamImportCancelBtn = document.getElementById('restream-import-cancel-btn');
+  var restreamImportCommitBtn = document.getElementById('restream-import-commit-btn');
+  // The preview's own working copy - each item's channelId can be edited
+  // in place (via a row's channel <select>, for anything the automatic
+  // match missed) before commit sends this same array back.
+  var restreamPreviewItems = [];
   var statsCurrentPlayIds = [];
 
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
@@ -218,6 +240,7 @@
     statsExportPdfBtn.href = '/api/stats/export.pdf' + (query ? '?' + query : '');
 
     return api('/api/stats' + (query ? '?' + query : '')).then(function (data) {
+      statsChannelsCache = data.channels;
       var selected = statsChannelFilter.value;
       statsChannelFilter.innerHTML = '';
       var allOption = document.createElement('option');
@@ -251,8 +274,10 @@
         row.querySelector('.stats-col-channel').textContent = p.channelName;
         row.querySelector('.stats-col-title').textContent = p.title;
         row.querySelector('.stats-col-description').textContent = p.description || '';
-        row.querySelector('.stats-col-type').textContent = p.type;
-        row.querySelector('.stats-col-ip').textContent = p.ip;
+        row.querySelector('.stats-col-platform').textContent = p.platformLabel || '';
+        row.querySelector('.stats-col-views').textContent = p.views || '';
+        row.querySelector('.stats-col-type').textContent = p.type || '';
+        row.querySelector('.stats-col-ip').textContent = p.ip || '';
         row.querySelector('.stats-col-country').textContent = p.country || '';
         row.querySelector('.stats-col-region').textContent = p.region || '';
         row.querySelector('.stats-col-city').textContent = p.city || '';
@@ -269,6 +294,116 @@
     statsSelectedCount.textContent = String(selectedCount);
     statsSelectAllCheckbox.checked = statsCurrentPlayIds.length > 0 && selectedCount === statsCurrentPlayIds.length;
     statsSelectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < statsCurrentPlayIds.length;
+  }
+
+  function checkRestreamStatus() {
+    return api('/api/restream/status').then(function (data) {
+      statsRestreamConnectBtn.classList.toggle('hidden', data.connected);
+      statsRestreamImportBtn.classList.toggle('hidden', !data.connected);
+      statsRestreamDisconnectBtn.classList.toggle('hidden', !data.connected);
+      statsRestreamStatusText.textContent = data.connected
+        ? 'Restream connected'
+        : 'Restream not connected - connect it to import YouTube/Facebook view counts.';
+    }).catch(function () {
+      statsRestreamStatusText.textContent = 'Could not check Restream connection status.';
+    });
+  }
+
+  function openRestreamImportModal() {
+    restreamImportFrom.value = '';
+    restreamImportTo.value = '';
+    restreamImportEmpty.classList.add('hidden');
+    restreamImportPreviewWrap.classList.add('hidden');
+    restreamImportCommitBtn.classList.add('hidden');
+    restreamImportPreviewBody.innerHTML = '';
+    restreamPreviewItems = [];
+    restreamImportModalBackdrop.classList.remove('hidden');
+  }
+
+  function closeRestreamImportModal() {
+    restreamImportModalBackdrop.classList.add('hidden');
+  }
+
+  function formatPreviewDate(iso) {
+    return iso ? new Date(iso).toLocaleString() : '';
+  }
+
+  function renderRestreamPreview() {
+    restreamImportPreviewBody.innerHTML = '';
+    restreamImportEmpty.classList.toggle('hidden', restreamPreviewItems.length > 0);
+    restreamImportPreviewWrap.classList.toggle('hidden', restreamPreviewItems.length === 0);
+    restreamImportCommitBtn.classList.toggle('hidden', restreamPreviewItems.length === 0);
+
+    restreamPreviewItems.forEach(function (item, index) {
+      var row = restreamImportPreviewRowTemplate.content.firstElementChild.cloneNode(true);
+      row.querySelector('.restream-preview-date').textContent = formatPreviewDate(item.startedAt);
+      row.querySelector('.restream-preview-title').textContent = item.restreamTitle || '';
+      row.querySelector('.restream-preview-youtube').textContent = item.youtubeViews || 0;
+      row.querySelector('.restream-preview-facebook').textContent = item.facebookViews || 0;
+
+      var label = row.querySelector('.restream-preview-channel-label');
+      var select = row.querySelector('.restream-preview-channel-select');
+      if (item.channelId) {
+        label.textContent = item.channelName || '';
+      } else {
+        label.classList.add('hidden');
+        select.classList.remove('hidden');
+        select.classList.add('needs-pick');
+        var placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Pick a channel…';
+        select.appendChild(placeholder);
+        statsChannelsCache.forEach(function (c) {
+          var opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          select.appendChild(opt);
+        });
+        select.addEventListener('change', function () {
+          restreamPreviewItems[index].channelId = select.value || null;
+          select.classList.toggle('needs-pick', !select.value);
+        });
+      }
+
+      restreamImportPreviewBody.appendChild(row);
+    });
+  }
+
+  function previewRestreamImport() {
+    if (!restreamImportFrom.value || !restreamImportTo.value) {
+      alert('Pick both a From and To date first.');
+      return;
+    }
+    restreamImportPreviewBtn.disabled = true;
+    api('/api/stats/restream/preview', {
+      method: 'POST',
+      body: JSON.stringify({
+        from: restreamImportFrom.value,
+        to: restreamImportTo.value + 'T23:59:59.999',
+      }),
+    }).then(function (data) {
+      restreamPreviewItems = data.items;
+      renderRestreamPreview();
+    }).catch(function (err) {
+      alert(err.message);
+    }).then(function () {
+      restreamImportPreviewBtn.disabled = false;
+    });
+  }
+
+  function commitRestreamImport() {
+    restreamImportCommitBtn.disabled = true;
+    api('/api/stats/restream/import', {
+      method: 'POST',
+      body: JSON.stringify({ items: restreamPreviewItems }),
+    }).then(function () {
+      closeRestreamImportModal();
+      return loadStats();
+    }).catch(function (err) {
+      alert(err.message);
+    }).then(function () {
+      restreamImportCommitBtn.disabled = false;
+    });
   }
 
   function wireStatsEventListeners() {
@@ -302,6 +437,20 @@
         .then(loadStats)
         .catch(function (err) { alert(err.message); });
     });
+
+    statsRestreamDisconnectBtn.addEventListener('click', function () {
+      if (!confirm('Disconnect Restream? You can reconnect any time - already-imported rows stay put.')) return;
+      api('/api/restream/disconnect', { method: 'POST' })
+        .then(checkRestreamStatus)
+        .catch(function (err) { alert(err.message); });
+    });
+    statsRestreamImportBtn.addEventListener('click', openRestreamImportModal);
+    restreamImportCancelBtn.addEventListener('click', closeRestreamImportModal);
+    restreamImportModalBackdrop.addEventListener('click', function (e) {
+      if (e.target === restreamImportModalBackdrop) closeRestreamImportModal();
+    });
+    restreamImportPreviewBtn.addEventListener('click', previewRestreamImport);
+    restreamImportCommitBtn.addEventListener('click', commitRestreamImport);
   }
   wireStatsEventListeners();
 
