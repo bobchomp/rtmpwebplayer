@@ -1183,7 +1183,19 @@
         });
       }).catch(function (err) {
         restreamLinkList.classList.add('hidden');
-        restreamLinkEmpty.textContent = err.message;
+        if (err.message === 'not_connected') {
+          restreamLinkEmpty.innerHTML = '';
+          var text = document.createElement('span');
+          text.textContent = 'Restream is not connected. ';
+          var connectLink = document.createElement('a');
+          connectLink.className = 'secondary restream-link-btn';
+          connectLink.href = '/api/restream/connect?returnTo=' + encodeURIComponent('/dashboard#/channel/' + currentChannelId);
+          connectLink.innerHTML = 'Connect <img src="/restream.svg" alt="Restream" class="restream-link-btn-logo">';
+          restreamLinkEmpty.appendChild(text);
+          restreamLinkEmpty.appendChild(connectLink);
+        } else {
+          restreamLinkEmpty.textContent = err.message;
+        }
         restreamLinkEmpty.classList.remove('hidden');
       });
     }

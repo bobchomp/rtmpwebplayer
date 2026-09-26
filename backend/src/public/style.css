@@ -430,6 +430,8 @@ button.danger:hover { background: var(--ember-tint); }
 .restream-link-btn { display: inline-flex; align-items: center; gap: 7px; }
 .restream-link-btn-logo { height: 26px; width: auto; display: block; }
 
+#restream-link-empty { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+
 .restream-link-list { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 12px; max-height: 320px; overflow-y: auto; }
 .restream-link-row {
   display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-sm);
