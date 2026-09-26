@@ -207,9 +207,12 @@ router.patch('/:id/metadata', requireAuth, async (req, res) => {
       await Promise.all(channel.restreamChannelIds.map((id) =>
         restream.updateChannelMeta(accessToken, id, { title: channel.title, description: channel.description })
       ));
+      console.log(`Synced title/description to Restream channel(s) ${channel.restreamChannelIds.join(', ')} for local channel ${channel.id}`);
     } catch (err) {
       console.error(`Failed to sync title/description to Restream for channel ${channel.id}:`, err.message);
     }
+  } else {
+    console.log(`Skipping Restream sync for channel ${channel.id} - no restreamChannelIds linked`);
   }
 
   res.json(redactChannel(channel));
