@@ -249,8 +249,14 @@
     statsExportPdfBtn.href = '/api/stats/export.pdf' + (query ? '?' + query : '');
     // Only makes sense for one channel's own services - "All channels" would
     // mix different channels' streams into the same date+AM/PM buckets.
-    statsExportTemplateBtn.href = '/api/stats/export-template.xlsx' + (query ? '?' + query : '');
+    // Always the trailing 6 months server-side, so From/To aren't included
+    // here - they wouldn't do anything.
+    statsExportTemplateBtn.href = '/api/stats/export-template.xlsx'
+      + (statsChannelFilter.value ? '?channelId=' + encodeURIComponent(statsChannelFilter.value) : '');
     statsExportTemplateBtn.classList.toggle('disabled', !statsChannelFilter.value);
+    statsExportTemplateBtn.title = statsChannelFilter.value
+      ? 'Exports the last 6 months for this channel, regardless of the From/To filters above'
+      : 'Select a single channel above to export in template';
 
     return api('/api/stats' + (query ? '?' + query : '')).then(function (data) {
       statsChannelsCache = data.channels;

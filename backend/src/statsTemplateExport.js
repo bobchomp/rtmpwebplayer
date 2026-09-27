@@ -194,7 +194,18 @@ function escapeXml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 }
 
-async function buildTemplateWorkbook({ channelId, channelName, from, to }) {
+// Always the trailing 6 months from today, regardless of whatever From/To
+// range is set in the Stats page's own filters - this is a fixed-window
+// snapshot report by design, not a filtered view like the other exports.
+function last6MonthsRange() {
+  const to = new Date();
+  const from = new Date(to);
+  from.setMonth(from.getMonth() - 6);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+async function buildTemplateWorkbook({ channelId, channelName }) {
+  const { from, to } = last6MonthsRange();
   const serviceRows = buildServiceRows({ channelId, from, to });
 
   const workbook = new ExcelJS.Workbook();
