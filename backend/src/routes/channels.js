@@ -9,8 +9,6 @@ const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
 const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
-const restream = require('../restream');
-const { getAccessToken } = require('../restreamSession');
 
 const router = express.Router();
 
@@ -105,11 +103,6 @@ router.post('/', requireAuth, (req, res) => {
     // title/description) - see the /:id/metadata route below.
     title: '',
     description: '',
-    // Restream destination channel IDs (from GET /api/restream/channels)
-    // this local channel is linked to - saving title/description also
-    // pushes to each of these via restream.updateChannelMeta(). Empty by
-    // default; set through the /:id/restream-link route.
-    restreamChannelIds: [],
     websiteEnabled: true,
     coverImages: [],
     activeCoverImage: null,
@@ -176,7 +169,7 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
 // Admin: update the shared title/description used both for the embed page's
 // metadata (title tag, meta/OG description, on-screen overlay) and as the
 // YouTube broadcast's title/description.
-router.patch('/:id/metadata', requireAuth, async (req, res) => {
+router.patch('/:id/metadata', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
   if (!channel) return res.status(404).json({ error: 'Not found' });
@@ -193,44 +186,6 @@ router.patch('/:id/metadata', requireAuth, async (req, res) => {
     }
     channel.description = req.body.description.trim();
   }
-  writeDb(db);
-
-  // Best-effort - there's no "go live" hook into Restream the way there is
-  // for YouTube (this app never creates the Restream event; the encoder
-  // streams into Restream directly), so pushing the new title/description
-  // here, as the account's stored default for each linked channel, is the
-  // only integration point available. A Restream failure never fails the
-  // local save - the site's own title is the source of truth regardless.
-  if (Array.isArray(channel.restreamChannelIds) && channel.restreamChannelIds.length) {
-    try {
-      const accessToken = await getAccessToken();
-      await Promise.all(channel.restreamChannelIds.map((id) =>
-        restream.updateChannelMeta(accessToken, id, { title: channel.title, description: channel.description })
-      ));
-      console.log(`Synced title/description to Restream channel(s) ${channel.restreamChannelIds.join(', ')} for local channel ${channel.id}`);
-    } catch (err) {
-      console.error(`Failed to sync title/description to Restream for channel ${channel.id}:`, err.message);
-    }
-  } else {
-    console.log(`Skipping Restream sync for channel ${channel.id} - no restreamChannelIds linked`);
-  }
-
-  res.json(redactChannel(channel));
-});
-
-// Admin: which Restream destination channel(s) (from GET
-// /api/restream/channels) this local channel's title/description should
-// sync to - see the push logic in /:id/metadata above.
-router.patch('/:id/restream-link', requireAuth, (req, res) => {
-  const db = readDb();
-  const channel = db.channels[req.params.id];
-  if (!channel) return res.status(404).json({ error: 'Not found' });
-
-  const ids = req.body.channelIds;
-  if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'number')) {
-    return res.status(400).json({ error: 'channelIds must be an array of numbers' });
-  }
-  channel.restreamChannelIds = ids;
   writeDb(db);
   res.json(redactChannel(channel));
 });

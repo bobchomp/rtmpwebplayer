@@ -18,13 +18,9 @@
 const BASE = process.env.RESTREAM_API_BASE || 'https://api.restream.io';
 const AUTH_BASE = BASE;
 const API_BASE = `${BASE}/v2`;
-// Only what this app needs: read the account's destination channels, read
-// stream/viewer analytics, and (channels.write) push the sermon title back
-// out to linked destination channels - see updateChannelMeta() below. If a
-// pre-existing connection was made before channels.write was added here,
-// its stored token was minted under the narrower scope and needs a
-// disconnect/reconnect to pick up write access.
-const OAUTH_SCOPE = 'channels.read stream.read channels.write';
+// Only what this app needs: read the account's destination channels, and
+// read stream/viewer analytics. There's no dedicated "analytics" scope.
+const OAUTH_SCOPE = 'channels.read stream.read';
 
 function getAuthUrl(state) {
   const params = new URLSearchParams({
@@ -76,20 +72,9 @@ async function apiGet(accessToken, path) {
   return res.json();
 }
 
-async function apiPatch(accessToken, path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Restream API request to ${path} failed: ${res.status} ${await res.text()}`);
-  return res.json();
-}
-
 // Channels are identified by a numeric platformId, not a platform name -
 // this is the shared way of telling YouTube/Facebook destinations apart,
-// used both for import analytics (restreamImport.js) and for the
-// channel-linking picker (routes/restreamAuth.js).
+// used by import analytics (restreamImport.js).
 function platformFromUrl(url) {
   if (!url) return null;
   const lower = String(url).toLowerCase();
@@ -149,13 +134,6 @@ async function getEventAnalytics(accessToken, eventId) {
   return apiGet(accessToken, `/user/events/${encodeURIComponent(eventId)}/analytics/viewers`);
 }
 
-// Sets a destination channel's stored default title/description - what
-// Restream sends to YouTube/Facebook the next time a stream starts on that
-// channel. Requires channels.write.
-async function updateChannelMeta(accessToken, channelId, { title, description }) {
-  return apiPatch(accessToken, `/user/channel-meta/${encodeURIComponent(channelId)}`, { title, description });
-}
-
 module.exports = {
   getAuthUrl,
   exchangeCodeForTokens,
@@ -163,6 +141,5 @@ module.exports = {
   listEventHistory,
   listChannels,
   getEventAnalytics,
-  updateChannelMeta,
   platformFromUrl,
 };
