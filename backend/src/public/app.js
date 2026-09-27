@@ -105,9 +105,16 @@
     } else if (r.view === 'recordings') {
       document.title = 'Recordings - RTMP Web Player';
       recordingsView.classList.remove('hidden');
-      loadRecordingsPage();
-      loadProcessingRecordings();
-      recordingsPollTimer = setInterval(loadProcessingRecordings, 3000);
+      if (config.recordingsEnabled) {
+        recordingsDisabledNotice.classList.add('hidden');
+        recordingsNormalContent.classList.remove('hidden');
+        loadRecordingsPage();
+        loadProcessingRecordings();
+        recordingsPollTimer = setInterval(loadProcessingRecordings, 3000);
+      } else {
+        recordingsNormalContent.classList.add('hidden');
+        recordingsDisabledNotice.classList.remove('hidden');
+      }
     } else if (r.view === 'how-it-works') {
       document.title = 'How It Works - RTMP Web Player';
       howItWorksView.classList.remove('hidden');
@@ -930,6 +937,10 @@
   var recordingsPageList = document.getElementById('recordings-page-list');
   var recordingsPageEmpty = document.getElementById('recordings-page-empty');
   var recordingsListenersWired = false;
+  var recordingsNormalContent = document.getElementById('recordings-normal-content');
+  var recordingsDisabledNotice = document.getElementById('recordings-disabled-notice');
+  var recordingDisabledModalBackdrop = document.getElementById('recording-disabled-modal-backdrop');
+  var recordingDisabledOkBtn = document.getElementById('recording-disabled-ok-btn');
 
   var recordingsProcessingPanel = document.getElementById('recordings-processing-panel');
   var recordingsProcessingList = document.getElementById('recordings-processing-list');
@@ -1120,6 +1131,11 @@
     });
 
     detailRecordingToggle.addEventListener('change', function () {
+      if (detailRecordingToggle.checked && !config.recordingsEnabled) {
+        detailRecordingToggle.checked = false;
+        showRecordingDisabledModal();
+        return;
+      }
       api('/api/channels/' + currentChannelId + '/website-settings', {
         method: 'PATCH',
         body: JSON.stringify({ recordingEnabled: detailRecordingToggle.checked }),
@@ -1269,6 +1285,23 @@
       uploadGalleryImage('live-thumbnails', e.target.files[0], detailThumbUploadInput);
     });
   }
+
+  // ===================== Recording disabled popup =====================
+  // Shown instead of turning the "Record streams" toggle on, when
+  // config.recordingsEnabled is false (see /api/config's recordingsEnabled -
+  // RECORDINGS_ENABLED=false or R2 not configured). The Recordings page has
+  // its own inline version of this same notice - see route()'s
+  // 'recordings' branch below.
+
+  function showRecordingDisabledModal() {
+    recordingDisabledModalBackdrop.classList.remove('hidden');
+  }
+  recordingDisabledOkBtn.addEventListener('click', function () {
+    recordingDisabledModalBackdrop.classList.add('hidden');
+  });
+  recordingDisabledModalBackdrop.addEventListener('click', function (e) {
+    if (e.target === recordingDisabledModalBackdrop) recordingDisabledModalBackdrop.classList.add('hidden');
+  });
 
   // ===================== Auth =====================
 

@@ -445,6 +445,18 @@ button.danger:hover { background: var(--ember-tint); }
 .thumb-picker-box { max-width: 640px; }
 .thumb-picker-upload-label { margin-top: -6px; }
 
+/* Shared between the inline Recordings-page notice and the popup shown when
+   trying to turn a channel's "Record streams" toggle on - both while
+   RECORDINGS_ENABLED=false or R2 isn't configured (see recordings.js's
+   recordingsAvailable()). */
+.recording-disabled-notice {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px;
+  padding: 56px 24px;
+}
+.recording-disabled-notice .modal-actions { margin-top: 4px; }
+.recording-disabled-logo { height: 56px; width: auto; display: block; }
+.recording-disabled-text { font: 700 20px/1.4 var(--font-display); color: var(--ink); margin: 0; max-width: 380px; }
+
 #create-form { display: flex; flex-direction: column; gap: 18px; }
 
 /* Shared by any page presenting an ordered explanation as a zigzag

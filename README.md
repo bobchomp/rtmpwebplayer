@@ -478,6 +478,12 @@ not a public one, nobody can reach them by URL, only through this page.
    then `docker compose up -d --build` (this also needs `ffmpeg` in the
    backend's image, already included).
 
+Without R2 configured (or with `RECORDINGS_ENABLED=false` set explicitly,
+even if R2 is configured), recording is off deployment-wide: the
+**Recordings** page and the **Record streams** toggle both show a
+"Recording is disabled in the app config" notice instead of doing anything,
+rather than the toggle silently having no effect.
+
 ### How it works, if you're curious
 
 nginx-rtmp records the raw incoming stream (via the same `exec_publish`

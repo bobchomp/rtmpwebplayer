@@ -15,6 +15,7 @@ const watch = require('./routes/watch');
 const youtubeAuth = require('./routes/youtubeAuth');
 const restreamAuth = require('./routes/restreamAuth');
 const statsRoutes = require('./routes/stats');
+const recordings = require('./recordings');
 const geoip = require('./geoip');
 const { renderStatusPage } = require('./statusPage');
 const { requireAuth } = require('./authMiddleware');
@@ -68,6 +69,11 @@ app.get('/api/config', (req, res) => {
     // itself, not just credential presence, so it stays off on production
     // even if GOOGLE_CLIENT_ID/SECRET were ever accidentally set there.
     youtubeEnabled: IS_DEV_SITE && !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    // See recordings.js's recordingsAvailable() - true unless RECORDINGS_ENABLED=false
+    // or R2 isn't configured. rtmpHooks.js's /recording-enabled is the real
+    // enforcement point; this just lets the dashboard warn up front instead
+    // of a toggle silently doing nothing.
+    recordingsEnabled: recordings.recordingsAvailable(),
     serverStartedAt: SERVER_STARTED_AT,
   });
 });

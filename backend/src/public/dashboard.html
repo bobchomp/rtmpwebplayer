@@ -254,25 +254,32 @@
       <a href="#/" class="back-link">&larr; All channels</a>
     </div>
 
-    <p class="info-banner">A recording can take 5&ndash;30 minutes to appear here after the stream ends, while it's uploaded and processed.</p>
-
-    <section class="panel recordings-processing-panel hidden" id="recordings-processing-panel">
-      <h3>Processing now</h3>
-      <div id="recordings-processing-list"></div>
+    <section class="panel recording-disabled-notice hidden" id="recordings-disabled-notice">
+      <img src="/CLOUDFLARE.png" alt="Cloudflare" class="recording-disabled-logo">
+      <p class="recording-disabled-text">Recording is disabled in the app config</p>
     </section>
 
-    <section class="panel">
-      <label>Channel
-        <select id="recordings-channel-select">
-          <option value="">All channels</option>
-        </select>
-      </label>
-    </section>
+    <div id="recordings-normal-content">
+      <p class="info-banner">A recording can take 5&ndash;30 minutes to appear here after the stream ends, while it's uploaded and processed.</p>
 
-    <section class="panel recordings-panel">
-      <div id="recordings-page-list"></div>
-      <p class="hint hidden" id="recordings-page-empty">Select a channel above to see its recordings.</p>
-    </section>
+      <section class="panel recordings-processing-panel hidden" id="recordings-processing-panel">
+        <h3>Processing now</h3>
+        <div id="recordings-processing-list"></div>
+      </section>
+
+      <section class="panel">
+        <label>Channel
+          <select id="recordings-channel-select">
+            <option value="">All channels</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="panel recordings-panel">
+        <div id="recordings-page-list"></div>
+        <p class="hint hidden" id="recordings-page-empty">Select a channel above to see its recordings.</p>
+      </section>
+    </div>
   </div>
 
   <div id="stats-view" class="hidden">
@@ -566,6 +573,16 @@
         <button type="submit">Create channel</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div id="recording-disabled-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-box recording-disabled-notice">
+    <img src="/CLOUDFLARE.png" alt="Cloudflare" class="recording-disabled-logo">
+    <p class="recording-disabled-text">Recording is disabled in the app config</p>
+    <div class="modal-actions">
+      <button id="recording-disabled-ok-btn">OK</button>
+    </div>
   </div>
 </div>
 

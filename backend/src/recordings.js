@@ -68,6 +68,19 @@ function getR2Client() {
   });
 }
 
+// Whole-deployment kill switch, used by /api/config (dashboard warning),
+// routes/rtmpHooks.js's /recording-enabled (the actual enforcement - stops
+// the rtmp container's ffmpeg from ever starting), and routes/channels.js's
+// website-settings route (rejects turning a channel's toggle on while this
+// is false). RECORDINGS_ENABLED=false always wins; missing R2 config also
+// counts as disabled, since without it a recording would just fill the rtmp
+// container's disk with raw files that never get uploaded (see
+// processFinishedRecording below) rather than actually failing loudly.
+function recordingsAvailable() {
+  if (process.env.RECORDINGS_ENABLED === 'false') return false;
+  return !!getR2Client() && !!process.env.R2_BUCKET_NAME;
+}
+
 // Passing no channelId returns recordings for every channel, newest first -
 // used by the dashboard's "All channels" recordings view.
 function listRecordings(channelId) {
@@ -446,4 +459,5 @@ module.exports = {
   sweepExpiredRecordings,
   reconcileOrphanedRecordings,
   remuxWithLoudnessNormalization,
+  recordingsAvailable,
 };

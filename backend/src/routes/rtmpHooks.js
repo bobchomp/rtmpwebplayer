@@ -177,8 +177,17 @@ router.get('/relay-targets', (req, res) => {
 // (an opt-in, per-channel setting) can be turned on/off from the dashboard
 // without touching nginx config. Plain "yes"/"no" text, same style as
 // relay-targets above.
+//
+// recordingsAvailable() is the deployment-wide kill switch, checked ahead
+// of the per-channel setting - covers both an explicit RECORDINGS_ENABLED=false
+// and R2 simply not being configured, so recording can't silently fill this
+// container's disk with raw files that never get uploaded.
 router.get('/recording-enabled', (req, res) => {
   if (!checkSecret(req, res)) return;
+
+  if (!recordings.recordingsAvailable()) {
+    return res.type('text/plain').send('no');
+  }
 
   const streamKey = req.query.streamKey;
   const db = readDb();
