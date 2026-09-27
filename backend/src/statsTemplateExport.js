@@ -9,14 +9,26 @@
 // been touched since 2022 and drags in old, largely-abandoned dependencies.
 // Rather than build on either, the chart here is rendered by hand as an SVG
 // (full control, zero extra runtime surface for that part) and rasterized
-// with sharp (actively maintained, ships prebuilt binaries for Alpine/musl,
-// so the Docker image needs no build-toolchain changes) before being
-// embedded as a picture - visually identical when opened, just not a
-// click-to-edit native Excel chart.
+// with resvg (actively maintained, ships prebuilt binaries for Alpine/musl)
+// before being embedded as a picture - visually identical when opened, just
+// not a click-to-edit native Excel chart.
+//
+// resvg is given the bundled font file directly (fonts/DejaVuSans.ttf) with
+// loadSystemFonts disabled, rather than relying on the OS having any font
+// installed at all - the production container is Alpine, which ships with
+// zero fonts by default, and an earlier attempt at fixing this by
+// apk-installing a font package didn't get picked up by sharp's rasterizer
+// (sharp's prebuilt libvips binary appears not to do OS font discovery the
+// same way on musl/Alpine as it does elsewhere) - explicit is safer than
+// hoping the runtime environment has the right thing installed.
 
+const path = require('path');
 const ExcelJS = require('exceljs');
-const sharp = require('sharp');
+const { Resvg } = require('@resvg/resvg-js');
 const plays = require('./plays');
+
+const FONT_FILE = path.join(__dirname, 'fonts', 'DejaVuSans.ttf');
+const FONT_FAMILY = 'DejaVu Sans';
 
 // The server's own OS clock is very likely UTC, not the church's local
 // time - computing "before/after 1pm" in raw UTC would misclassify
@@ -145,7 +157,7 @@ function renderChartSvg(serviceRows) {
     const x = marginLeft + i * barSlot + barSlot / 2;
     const y = marginTop + plotHeight + 14;
     xLabels += `<text x="${x.toFixed(1)}" y="${y}" font-size="10" fill="#333" text-anchor="end" `
-      + `transform="rotate(-60 ${x.toFixed(1)} ${y})" font-family="DejaVu Sans, sans-serif">${escapeXml(row.label)}</text>`;
+      + `transform="rotate(-60 ${x.toFixed(1)} ${y})" font-family="${FONT_FAMILY}">${escapeXml(row.label)}</text>`;
   });
 
   const gridStep = niceMax / 5;
@@ -155,7 +167,7 @@ function renderChartSvg(serviceRows) {
     const value = gridStep * i;
     const y = marginTop + yScale(value);
     gridLines += `<line x1="${marginLeft}" y1="${y.toFixed(1)}" x2="${marginLeft + plotWidth}" y2="${y.toFixed(1)}" stroke="#e0e0e0" stroke-width="1" />`;
-    yLabels += `<text x="${marginLeft - 8}" y="${(y + 3).toFixed(1)}" font-size="10" fill="#333" text-anchor="end" font-family="DejaVu Sans, sans-serif">${Math.round(value)}</text>`;
+    yLabels += `<text x="${marginLeft - 8}" y="${(y + 3).toFixed(1)}" font-size="10" fill="#333" text-anchor="end" font-family="${FONT_FAMILY}">${Math.round(value)}</text>`;
   }
 
   let legend = '';
@@ -163,7 +175,7 @@ function renderChartSvg(serviceRows) {
     const lx = marginLeft + i * 110;
     const ly = 12;
     legend += `<rect x="${lx}" y="${ly}" width="12" height="12" fill="${s.color}" />`;
-    legend += `<text x="${lx + 16}" y="${ly + 10}" font-size="11" fill="#333" font-family="DejaVu Sans, sans-serif">${escapeXml(s.label)}</text>`;
+    legend += `<text x="${lx + 16}" y="${ly + 10}" font-size="11" fill="#333" font-family="${FONT_FAMILY}">${escapeXml(s.label)}</text>`;
   });
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
@@ -208,7 +220,15 @@ async function buildTemplateWorkbook({ channelId, channelName, from, to }) {
 
   if (serviceRows.length) {
     const svg = renderChartSvg(serviceRows);
-    const png = await sharp(Buffer.from(svg)).png().toBuffer();
+    const resvg = new Resvg(svg, {
+      font: {
+        loadSystemFonts: false,
+        fontFiles: [FONT_FILE],
+        defaultFontFamily: FONT_FAMILY,
+        sansSerifFamily: FONT_FAMILY,
+      },
+    });
+    const png = resvg.render().asPng();
     const imageId = workbook.addImage({ buffer: png, extension: 'png' });
     sheet.addImage(imageId, {
       tl: { col: 6, row: 1 },
