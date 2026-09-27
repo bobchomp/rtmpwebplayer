@@ -5,6 +5,7 @@ const { readDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
 const restreamImport = require('../restreamImport');
+const statsTemplateExport = require('../statsTemplateExport');
 
 const router = express.Router();
 
@@ -201,6 +202,34 @@ router.get('/export.xlsx', requireAuth, async (req, res) => {
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', 'attachment; filename="stats.xlsx"');
+  await workbook.xlsx.write(res);
+  res.end();
+});
+
+// A separate shape from the row-per-play exports above - one row per
+// service (date + AM/PM, derived from timestamps - see
+// statsTemplateExport.js) with website/facebook/youtube as columns and a
+// stacked bar chart, matching a specific spreadsheet format the admin
+// already uses. Single-channel only: mixing more than one channel's
+// services into the same date+AM/PM buckets wouldn't mean anything.
+router.get('/export-template.xlsx', requireAuth, async (req, res) => {
+  const channelId = req.query.channelId;
+  if (!channelId) return res.status(400).json({ error: 'Select a single channel first' });
+
+  const db = readDb();
+  const channel = db.channels[channelId];
+  if (!channel) return res.status(404).json({ error: 'Channel not found' });
+
+  const workbook = await statsTemplateExport.buildTemplateWorkbook({
+    channelId,
+    channelName: channel.name,
+    from: req.query.from || undefined,
+    to: req.query.to || undefined,
+  });
+
+  const safeName = channel.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'channel';
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}_livestream_stats.xlsx"`);
   await workbook.xlsx.write(res);
   res.end();
 });

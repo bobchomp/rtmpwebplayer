@@ -190,6 +190,7 @@
   var statsExportBtn = document.getElementById('stats-export-btn');
   var statsExportXlsxBtn = document.getElementById('stats-export-xlsx-btn');
   var statsExportPdfBtn = document.getElementById('stats-export-pdf-btn');
+  var statsExportTemplateBtn = document.getElementById('stats-export-template-btn');
   var statsTableBody = document.getElementById('stats-table-body');
   var statsEmpty = document.getElementById('stats-empty');
   var statsRowTemplate = document.getElementById('stats-row-template');
@@ -246,6 +247,10 @@
     statsExportBtn.href = '/api/stats/export.csv' + (query ? '?' + query : '');
     statsExportXlsxBtn.href = '/api/stats/export.xlsx' + (query ? '?' + query : '');
     statsExportPdfBtn.href = '/api/stats/export.pdf' + (query ? '?' + query : '');
+    // Only makes sense for one channel's own services - "All channels" would
+    // mix different channels' streams into the same date+AM/PM buckets.
+    statsExportTemplateBtn.href = '/api/stats/export-template.xlsx' + (query ? '?' + query : '');
+    statsExportTemplateBtn.classList.toggle('disabled', !statsChannelFilter.value);
 
     return api('/api/stats' + (query ? '?' + query : '')).then(function (data) {
       statsChannelsCache = data.channels;

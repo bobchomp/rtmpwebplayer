@@ -126,6 +126,7 @@ a.secondary {
   text-decoration: none; display: inline-flex; align-items: center;
 }
 a.secondary:hover { background: var(--border); }
+a.secondary.disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
 
 .panel {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
