@@ -145,7 +145,7 @@ function renderChartSvg(serviceRows) {
     const x = marginLeft + i * barSlot + barSlot / 2;
     const y = marginTop + plotHeight + 14;
     xLabels += `<text x="${x.toFixed(1)}" y="${y}" font-size="10" fill="#333" text-anchor="end" `
-      + `transform="rotate(-60 ${x.toFixed(1)} ${y})" font-family="Calibri, Arial, sans-serif">${escapeXml(row.label)}</text>`;
+      + `transform="rotate(-60 ${x.toFixed(1)} ${y})" font-family="DejaVu Sans, sans-serif">${escapeXml(row.label)}</text>`;
   });
 
   const gridStep = niceMax / 5;
@@ -155,7 +155,7 @@ function renderChartSvg(serviceRows) {
     const value = gridStep * i;
     const y = marginTop + yScale(value);
     gridLines += `<line x1="${marginLeft}" y1="${y.toFixed(1)}" x2="${marginLeft + plotWidth}" y2="${y.toFixed(1)}" stroke="#e0e0e0" stroke-width="1" />`;
-    yLabels += `<text x="${marginLeft - 8}" y="${(y + 3).toFixed(1)}" font-size="10" fill="#333" text-anchor="end" font-family="Calibri, Arial, sans-serif">${Math.round(value)}</text>`;
+    yLabels += `<text x="${marginLeft - 8}" y="${(y + 3).toFixed(1)}" font-size="10" fill="#333" text-anchor="end" font-family="DejaVu Sans, sans-serif">${Math.round(value)}</text>`;
   }
 
   let legend = '';
@@ -163,7 +163,7 @@ function renderChartSvg(serviceRows) {
     const lx = marginLeft + i * 110;
     const ly = 12;
     legend += `<rect x="${lx}" y="${ly}" width="12" height="12" fill="${s.color}" />`;
-    legend += `<text x="${lx + 16}" y="${ly + 10}" font-size="11" fill="#333" font-family="Calibri, Arial, sans-serif">${escapeXml(s.label)}</text>`;
+    legend += `<text x="${lx + 16}" y="${ly + 10}" font-size="11" fill="#333" font-family="DejaVu Sans, sans-serif">${escapeXml(s.label)}</text>`;
   });
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
