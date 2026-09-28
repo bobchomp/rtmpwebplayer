@@ -29,34 +29,77 @@ for arg in "$@"; do
   fi
 done
 
+# Whether any services were named explicitly on the command line - tracked
+# before the RTMP prompt below can populate ARGS itself, since only the
+# default (nothing named) path should ever be filtered by the dev-stopped
+# check further down. Naming services explicitly is always respected as-is,
+# including deliberately starting dev back up with `./deploy.sh dev-backend`.
+NAMED_SERVICES=false
+[ ${#ARGS[@]} -gt 0 ] && NAMED_SERVICES=true
+
+# Whether the dev site is currently deliberately stopped (via
+# ./toggle-dev.sh or ./stop-dev.sh), so a default/bare deploy can leave it
+# that way instead of switching it back on. `docker compose up` brings up
+# every service it's given regardless of that service's previous state - it
+# has no idea "stopped" was a deliberate choice - so a bare deploy used to
+# silently re-enable dev every time. Checked the same way toggle-dev.sh
+# checks it: a container that exists but isn't running was deliberately
+# stopped; one that doesn't exist yet (the very first deploy) hasn't been -
+# that case should still get created normally.
+DEV_STOPPED=false
+DEV_CID=$(docker compose ps -a -q dev-backend 2>/dev/null || true)
+if [ -n "$DEV_CID" ]; then
+  DEV_STATE=$(docker inspect -f '{{.State.Running}}' "$DEV_CID" 2>/dev/null || echo true)
+  [ "$DEV_STATE" = "true" ] || DEV_STOPPED=true
+fi
+if [ "$DEV_STOPPED" = true ] && [ "$NAMED_SERVICES" = false ]; then
+  echo "Dev site is currently stopped (via toggle-dev.sh/stop-dev.sh) - leaving it stopped."
+fi
+
 # Rebuilding rtmp/dev-rtmp restarts the container actually holding the live
 # RTMP connection - that drops any live stream outright, and (worse) can
 # silently strand an in-progress recording's raw file forever if ffmpeg's
 # finalize-and-upload handoff gets killed mid-flight (see README's
 # recordings troubleshooting). Only asked on a bare "rebuild everything" run
 # with no services named - naming specific services, or --force, means
-# you've already made that call. docker compose has no "everything except
-# X" flag, so declining means listing every other service explicitly - keep
-# this in sync with docker-compose.yml if a new service is ever added.
-NON_RTMP_SERVICES=(backend dev-backend caddy)
-if [ "$FORCE" = false ] && [ ${#ARGS[@]} -eq 0 ]; then
+# you've already made that call.
+REBUILD_RTMP=true
+if [ "$FORCE" = false ] && [ "$NAMED_SERVICES" = false ]; then
   read -r -p "Rebuild the RTMP ingest server(s) too? This drops any live stream and can strand an in-progress recording. [y/N] " RTMP_REPLY
   case "$RTMP_REPLY" in
     y|Y|yes|YES) ;;
-    *) ARGS=("${NON_RTMP_SERVICES[@]}") ;;
+    *) REBUILD_RTMP=false ;;
   esac
 fi
 
-# Whether this run touches rtmp/dev-rtmp at all - just the above answer for
-# a bare run, or a direct check of what was actually named otherwise (empty
-# ARGS here only happens via --force, which means the full default rebuild).
-REBUILD_RTMP=true
-if [ ${#ARGS[@]} -gt 0 ]; then
+# Whether this run touches rtmp/dev-rtmp at all - the above answer for a
+# bare run, or a direct check of what was actually named otherwise.
+if [ "$NAMED_SERVICES" = true ]; then
   REBUILD_RTMP=false
   for s in "${ARGS[@]}"; do
     case "$s" in
       rtmp|dev-rtmp) REBUILD_RTMP=true ;;
     esac
+  done
+fi
+
+# Builds the actual default service list from scratch rather than leaving
+# ARGS empty (which would mean "every service in docker-compose.yml" to the
+# final `up` command) - that's the only way to keep dev out of it when it's
+# stopped. docker compose has no "everything except X" flag, so this has to
+# enumerate services explicitly - keep in sync with docker-compose.yml if a
+# new service is ever added.
+if [ "$NAMED_SERVICES" = false ]; then
+  ALL_SERVICES=(rtmp backend dev-rtmp dev-backend caddy)
+  ARGS=()
+  for s in "${ALL_SERVICES[@]}"; do
+    case "$s" in
+      rtmp|dev-rtmp) [ "$REBUILD_RTMP" = true ] || continue ;;
+    esac
+    case "$s" in
+      dev-backend|dev-rtmp) [ "$DEV_STOPPED" = false ] || continue ;;
+    esac
+    ARGS+=("$s")
   done
 fi
 
