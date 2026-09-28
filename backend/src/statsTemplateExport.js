@@ -199,8 +199,13 @@ function escapeXml(str) {
 // snapshot report by design, not a filtered view like the other exports.
 function last6MonthsRange() {
   const to = new Date();
-  const from = new Date(to);
-  from.setMonth(from.getMonth() - 6);
+  // Date#setMonth overflows into the next month when today's day-of-month
+  // doesn't exist 6 months earlier (e.g. Aug 31 -> "Feb 31" -> rolls to Mar
+  // 2/3), silently shrinking the window by a few days. Going via the 1st of
+  // the target month and clamping the day avoids that.
+  const from = new Date(to.getFullYear(), to.getMonth() - 6, 1);
+  const lastDayOfFromMonth = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+  from.setDate(Math.min(to.getDate(), lastDayOfFromMonth));
   return { from: from.toISOString(), to: to.toISOString() };
 }
 

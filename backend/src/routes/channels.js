@@ -154,19 +154,22 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
   const channel = db.channels[req.params.id];
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
-  if (typeof req.body.websiteEnabled === 'boolean') {
-    channel.websiteEnabled = req.body.websiteEnabled;
-  }
   // Opt-in per channel - record-start.sh (in the rtmp container) checks this
   // via GET /api/rtmp/recording-enabled the moment a publish starts, which
   // is also where the deployment-wide kill switch (recordingsAvailable() -
   // RECORDINGS_ENABLED=false or missing R2 config) is enforced. Rejected
   // here too so turning the toggle on while disabled fails outright instead
-  // of silently storing a setting that'll never actually record.
+  // of silently storing a setting that'll never actually record. Checked
+  // before any field is applied so a rejection here doesn't leave
+  // websiteEnabled mutated on the in-memory channel but never persisted.
+  if (req.body.recordingEnabled === true && !recordings.recordingsAvailable()) {
+    return res.status(400).json({ error: 'Recording is disabled in the app config' });
+  }
+
+  if (typeof req.body.websiteEnabled === 'boolean') {
+    channel.websiteEnabled = req.body.websiteEnabled;
+  }
   if (typeof req.body.recordingEnabled === 'boolean') {
-    if (req.body.recordingEnabled && !recordings.recordingsAvailable()) {
-      return res.status(400).json({ error: 'Recording is disabled in the app config' });
-    }
     channel.recordingEnabled = req.body.recordingEnabled;
   }
   writeDb(db);

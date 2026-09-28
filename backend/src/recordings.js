@@ -54,18 +54,27 @@ function writeAll(rows) {
 // Recordings are opt-in per channel and R2 is optional overall (same
 // pattern as GEOIP_LICENSE_KEY) - null here just means "not configured yet",
 // handled gracefully everywhere it's used rather than throwing.
+//
+// Cached rather than built fresh each call - recordingsAvailable() (below)
+// calls this on every /api/config load and every RTMP publish start, and
+// the R2 env vars never change for the life of the process.
+let cachedR2Client = null;
+
 function getR2Client() {
   if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
     return null;
   }
-  return new S3Client({
-    region: 'auto',
-    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-    },
-  });
+  if (!cachedR2Client) {
+    cachedR2Client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      },
+    });
+  }
+  return cachedR2Client;
 }
 
 // Whole-deployment kill switch, used by /api/config (dashboard warning),
