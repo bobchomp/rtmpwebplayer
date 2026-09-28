@@ -117,8 +117,8 @@ const SERIES = [
 // (three stacked series, category labels along the bottom, a simple
 // legend), not a general-purpose charting engine.
 function renderChartSvg(serviceRows) {
-  const width = 1100;
-  const height = 480;
+  const width = 1400;
+  const height = 620;
   const marginLeft = 50;
   const marginRight = 20;
   const marginTop = 30;
@@ -243,7 +243,7 @@ async function buildTemplateWorkbook({ channelId, channelName }) {
     const imageId = workbook.addImage({ buffer: png, extension: 'png' });
     sheet.addImage(imageId, {
       tl: { col: 6, row: 1 },
-      ext: { width: 1100 * 0.6, height: 480 * 0.6 },
+      ext: { width: 1400, height: 620 },
     });
   }
 
