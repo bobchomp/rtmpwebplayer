@@ -212,9 +212,13 @@ async function buildTemplateWorkbook({ channelId, channelName }) {
     });
     const png = resvg.render().asPng();
     const imageId = workbook.addImage({ buffer: png, extension: 'png' });
+    // Rasterized at the SVG's full 1400x620 for crisp text, but displayed a
+    // bit smaller than that (80%) so the chart doesn't dominate the sheet -
+    // shrinking the source resolution itself instead would make the text
+    // blurry rather than just physically smaller.
     sheet.addImage(imageId, {
       tl: { col: 6, row: 1 },
-      ext: { width: 1400, height: 620 },
+      ext: { width: 1400 * 0.8, height: 620 * 0.8 },
     });
   }
 
