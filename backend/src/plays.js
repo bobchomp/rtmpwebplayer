@@ -3,14 +3,9 @@ const path = require('path');
 const crypto = require('crypto');
 const { readDb, writeDb, DATA_DIR } = require('./db');
 const geoip = require('./geoip');
+const { serviceKey } = require('./serviceWindow');
 
 const PLAYS_FILE = path.join(DATA_DIR, 'plays.json');
-
-// A viewer who keeps watching (pausing/buffering/resuming) generates repeated
-// "playing" events - within this window they're treated as one ongoing watch
-// (only "latestPlayAt" moves), rather than a new row per resume. A gap longer
-// than this means they've genuinely come back later, so it's a fresh row.
-const SESSION_GAP_MS = 30 * 60 * 1000;
 
 // A busy service start can mean dozens of viewers' first play event landing
 // within the same few seconds. Writing plays.json straight through on every
@@ -96,13 +91,21 @@ function recordPlay({ channelId, ip, userAgent }) {
   if (!channel) return;
 
   const now = Date.now();
-  const nowIso = new Date(now).toISOString();
+  const nowDate = new Date(now);
+  const nowIso = nowDate.toISOString();
 
+  // One row per IP per service (same London calendar date + side of the
+  // 1pm AM/PM cutoff - see serviceWindow.js), not per 30-minute gap - a
+  // viewer who drops off and reconnects later in the same service still
+  // counts as a single view, matching how Export in Template counts rows
+  // per service. Keyed off the existing row's own firstPlayAt (when its
+  // service started) rather than its latestPlayAt, so it stays matched to
+  // the same service for as long as that service runs.
   const existing = plays.find(
     (p) =>
       p.channelId === channelId &&
       p.ip === ip &&
-      now - new Date(p.latestPlayAt).getTime() < SESSION_GAP_MS
+      serviceKey(new Date(p.firstPlayAt)) === serviceKey(nowDate)
   );
 
   if (existing) {

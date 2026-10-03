@@ -26,44 +26,10 @@ const path = require('path');
 const ExcelJS = require('exceljs');
 const { Resvg } = require('@resvg/resvg-js');
 const plays = require('./plays');
+const { londonDateLabel, half, serviceKey } = require('./serviceWindow');
 
 const FONT_FILE = path.join(__dirname, 'fonts', 'DejaVuSans.ttf');
 const FONT_FAMILY = 'DejaVu Sans';
-
-// The server's own OS clock is very likely UTC, not the church's local
-// time - computing "before/after 1pm" in raw UTC would misclassify
-// services during British Summer Time (UTC+1, roughly late March to late
-// October). Intl's timeZone support is built into Node (no dependency
-// needed) and handles the DST transition correctly.
-const LONDON_TZ = 'Europe/London';
-const AM_PM_CUTOFF_HOUR = 13; // 1pm
-
-const hourFormatter = new Intl.DateTimeFormat('en-GB', { timeZone: LONDON_TZ, hour: 'numeric', hourCycle: 'h23' });
-const dateKeyFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: LONDON_TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
-const labelFormatter = new Intl.DateTimeFormat('en-GB', { timeZone: LONDON_TZ, day: '2-digit', month: 'short' });
-
-function londonHour(date) {
-  return Number(hourFormatter.format(date));
-}
-
-// 'YYYY-MM-DD' in London local time, used purely as a stable sort/group key
-// (not displayed) - en-CA formats as YYYY-MM-DD directly.
-function londonDateKey(date) {
-  return dateKeyFormatter.format(date);
-}
-
-// e.g. "04jan" - matches the existing manually-compiled sheet's format
-// (zero-padded day, lowercase three-letter month, no separator).
-function londonDateLabel(date) {
-  const parts = labelFormatter.formatToParts(date);
-  const day = parts.find((p) => p.type === 'day').value;
-  const month = parts.find((p) => p.type === 'month').value.toLowerCase();
-  return `${day}${month}`;
-}
-
-function half(date) {
-  return londonHour(date) < AM_PM_CUTOFF_HOUR ? 'AM' : 'PM';
-}
 
 // One row per (date, half) bucket actually present in the data, sorted
 // chronologically. website = count of website plays whose firstPlayAt
@@ -81,7 +47,7 @@ function buildServiceRows({ channelId, from, to }) {
     if (!p.firstPlayAt) return;
     const date = new Date(p.firstPlayAt);
     if (Number.isNaN(date.getTime())) return;
-    const bucketKey = `${londonDateKey(date)}-${half(date)}`;
+    const bucketKey = serviceKey(date);
 
     if (!buckets.has(bucketKey)) {
       buckets.set(bucketKey, {
