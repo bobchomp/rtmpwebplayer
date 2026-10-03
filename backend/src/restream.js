@@ -108,13 +108,37 @@ function extractEventList(res) {
 //   startedAt, finishedAt, destinations: [{ channelId, externalUrl,
 //   streamingPlatformId }] } - scheduledFor/startedAt/finishedAt are unix
 // epoch seconds.
-async function listEventHistory(accessToken, { from, to } = {}) {
-  const params = new URLSearchParams();
-  if (from) params.set('from', new Date(from).toISOString());
-  if (to) params.set('to', new Date(to).toISOString());
-  const query = params.toString();
-  const res = await apiGet(accessToken, `/user/events/history${query ? `?${query}` : ''}`);
-  return extractEventList(res);
+//
+// /user/events/history is paginated (confirmed against a live account:
+// { items: [...], pagination: { page, pages_total, limit } }, 10 items per
+// page) and - as noted above - its own from/to params don't filter
+// anything, so a single request only ever returns the most recent page.
+// Importing any range older than that page silently came back empty. Pages
+// come back newest-first, so this walks forward a page at a time and stops
+// as soon as a whole page is older than the requested `from` (or once
+// pages_total is reached) - no need to page through months/years of
+// history just to import last Sunday.
+async function listEventHistory(accessToken, { from } = {}) {
+  const fromMs = from ? new Date(from).getTime() : -Infinity;
+  const allItems = [];
+  let page = 1;
+  let pagesTotal = 1;
+
+  for (;;) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await apiGet(accessToken, `/user/events/history?page=${page}`);
+    const items = extractEventList(res);
+    allItems.push(...items);
+    pagesTotal = (res && res.pagination && Number(res.pagination.pages_total)) || page;
+
+    const oldestOnPage = items.length
+      ? Math.min(...items.map((e) => ((e.startedAt ?? e.scheduledFor) ?? 0) * 1000))
+      : Infinity;
+    if (!items.length || oldestOnPage < fromMs || page >= pagesTotal) break;
+    page += 1;
+  }
+
+  return allItems;
 }
 
 // The account's destination channels: { channels: [{ id, platformId,
