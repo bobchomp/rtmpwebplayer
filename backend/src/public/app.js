@@ -218,6 +218,7 @@
   var restreamImportPreviewWrap = document.getElementById('restream-import-preview-wrap');
   var restreamImportPreviewBody = document.getElementById('restream-import-preview-body');
   var restreamImportPreviewRowTemplate = document.getElementById('restream-import-preview-row-template');
+  var restreamImportSelectAllCheckbox = document.getElementById('restream-import-select-all');
   var restreamImportCancelBtn = document.getElementById('restream-import-cancel-btn');
   var restreamImportCommitBtn = document.getElementById('restream-import-commit-btn');
   // The preview's own working copy - each item's channelId can be edited
@@ -347,14 +348,30 @@
     return iso ? new Date(iso).toLocaleString() : '';
   }
 
+  // Keeps the header checkbox in sync with the individual row checkboxes -
+  // checked when every row is included, indeterminate when some but not
+  // all are, unchecked when none are (or there are no rows at all).
+  function updateRestreamSelectAllUi() {
+    var includedCount = restreamPreviewItems.filter(function (item) { return item.included !== false; }).length;
+    restreamImportSelectAllCheckbox.checked = restreamPreviewItems.length > 0 && includedCount === restreamPreviewItems.length;
+    restreamImportSelectAllCheckbox.indeterminate = includedCount > 0 && includedCount < restreamPreviewItems.length;
+  }
+
   function renderRestreamPreview() {
     restreamImportPreviewBody.innerHTML = '';
     restreamImportEmpty.classList.toggle('hidden', restreamPreviewItems.length > 0);
     restreamImportPreviewWrap.classList.toggle('hidden', restreamPreviewItems.length === 0);
     restreamImportCommitBtn.classList.toggle('hidden', restreamPreviewItems.length === 0);
+    updateRestreamSelectAllUi();
 
     restreamPreviewItems.forEach(function (item, index) {
       var row = restreamImportPreviewRowTemplate.content.firstElementChild.cloneNode(true);
+      var includeCheckbox = row.querySelector('.restream-preview-include');
+      includeCheckbox.checked = item.included !== false;
+      includeCheckbox.addEventListener('change', function () {
+        restreamPreviewItems[index].included = includeCheckbox.checked;
+        updateRestreamSelectAllUi();
+      });
       row.querySelector('.restream-preview-date').textContent = formatPreviewDate(item.startedAt);
       row.querySelector('.restream-preview-title').textContent = item.restreamTitle || '';
       row.querySelector('.restream-preview-youtube').textContent = item.youtubeViews || 0;
@@ -411,10 +428,15 @@
   }
 
   function commitRestreamImport() {
+    var itemsToImport = restreamPreviewItems.filter(function (item) { return item.included !== false; });
+    if (!itemsToImport.length) {
+      alert('Nothing selected - tick at least one stream to import.');
+      return;
+    }
     restreamImportCommitBtn.disabled = true;
     api('/api/stats/restream/import', {
       method: 'POST',
-      body: JSON.stringify({ items: restreamPreviewItems }),
+      body: JSON.stringify({ items: itemsToImport }),
     }).then(function (result) {
       closeRestreamImportModal();
       return loadStats().then(function () {
@@ -483,6 +505,12 @@
     });
     restreamImportPreviewBtn.addEventListener('click', previewRestreamImport);
     restreamImportCommitBtn.addEventListener('click', commitRestreamImport);
+    restreamImportSelectAllCheckbox.addEventListener('change', function () {
+      var checked = restreamImportSelectAllCheckbox.checked;
+      restreamPreviewItems.forEach(function (item) { item.included = checked; });
+      var rowCheckboxes = restreamImportPreviewBody.querySelectorAll('.restream-preview-include');
+      for (var i = 0; i < rowCheckboxes.length; i++) rowCheckboxes[i].checked = checked;
+    });
   }
   wireStatsEventListeners();
 
