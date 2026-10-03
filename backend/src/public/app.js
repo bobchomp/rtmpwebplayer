@@ -415,9 +415,16 @@
     api('/api/stats/restream/import', {
       method: 'POST',
       body: JSON.stringify({ items: restreamPreviewItems }),
-    }).then(function () {
+    }).then(function (result) {
       closeRestreamImportModal();
-      return loadStats();
+      return loadStats().then(function () {
+        var msg = 'Imported ' + result.importedCount + ' row(s) from ' + result.itemCount + ' stream(s).';
+        var skipped = result.skippedNoChannel + result.skippedNoViews;
+        if (skipped) {
+          msg += ' Skipped ' + skipped + ' (' + result.skippedNoChannel + ' with no channel match, ' + result.skippedNoViews + ' with no views).';
+        }
+        alert(msg);
+      });
     }).catch(function (err) {
       alert(err.message);
     }).then(function () {

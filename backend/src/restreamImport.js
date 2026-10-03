@@ -101,13 +101,29 @@ async function previewImport({ from, to }) {
 // items: the (possibly admin-corrected, e.g. a manually picked channelId
 // for a needsManualChannel row) list from previewImport(). Anything still
 // missing a channelId at this point is skipped rather than guessed at.
+//
+// Logs every skip with its reason, and returns counts rather than just a
+// single number - the commit button used to give no feedback at all beyond
+// "no error was thrown", which made a silent 0-rows-written commit
+// indistinguishable from a successful one in the UI.
 function commitImport(items) {
   const db = readDb();
   const rows = [];
+  let skippedNoChannel = 0;
+  let skippedNoViews = 0;
 
   items.forEach((item) => {
     const channel = item.channelId ? db.channels[item.channelId] : null;
-    if (!channel) return;
+    if (!channel) {
+      skippedNoChannel += 1;
+      console.warn(`[restream-import] Skipping event ${item.restreamEventId} - no channel (channelId=${item.channelId})`);
+      return;
+    }
+    if (!item.youtubeViews && !item.facebookViews) {
+      skippedNoViews += 1;
+      console.warn(`[restream-import] Skipping event ${item.restreamEventId} for ${channel.name} - no YouTube/Facebook views`);
+      return;
+    }
 
     const common = {
       channelId: channel.id,
@@ -122,7 +138,9 @@ function commitImport(items) {
     if (item.facebookViews) rows.push(Object.assign({}, common, { platform: 'facebook', views: item.facebookViews }));
   });
 
-  return plays.upsertImportedPlays(rows);
+  const importedCount = plays.upsertImportedPlays(rows);
+  console.log(`[restream-import] Committed ${importedCount} row(s) from ${items.length} event(s) - skipped ${skippedNoChannel} (no channel), ${skippedNoViews} (no views).`);
+  return { importedCount, itemCount: items.length, skippedNoChannel, skippedNoViews };
 }
 
 module.exports = { previewImport, commitImport };

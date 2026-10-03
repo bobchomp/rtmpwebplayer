@@ -153,8 +153,8 @@ router.post('/restream/import', requireAuth, (req, res) => {
   if (!items.length) return res.status(400).json({ error: 'items is required' });
 
   try {
-    const importedCount = restreamImport.commitImport(items);
-    res.json({ importedCount });
+    const result = restreamImport.commitImport(items);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
