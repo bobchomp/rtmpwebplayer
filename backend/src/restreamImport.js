@@ -125,11 +125,19 @@ function commitImport(items) {
       return;
     }
 
+    // Each imported row is a different historical stream, so it needs that
+    // stream's own title (item.restreamTitle, already captured at preview
+    // time) rather than channel.title - that's just whatever the channel's
+    // title happens to be set to *right now*, which would stamp every row,
+    // regardless of when it actually aired, with today's title. There's no
+    // equivalent per-event description available from Restream's API, so
+    // this is left blank rather than similarly mislabeling every row with
+    // the channel's current description.
     const common = {
       channelId: channel.id,
       channelName: channel.name,
-      title: channel.title || channel.name,
-      description: channel.description || '',
+      title: item.restreamTitle || channel.name,
+      description: '',
       firstPlayAt: item.startedAt,
       latestPlayAt: item.finishedAt || item.startedAt,
       restreamEventId: item.restreamEventId,
