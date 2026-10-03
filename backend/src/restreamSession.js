@@ -1,7 +1,7 @@
-// Turns the stored Restream refresh token into a fresh access token -
-// shared by the import flow (restreamImport.js) and the per-channel title
-// sync (routes/channels.js, routes/restreamAuth.js), so both go through
-// the one "are we even connected" check.
+// Turns the stored Restream refresh token into a fresh access token - used
+// by the import flow (restreamImport.js) via routes/stats.js, and by the
+// OAuth connect/disconnect/status routes (routes/restreamAuth.js). See
+// docs/restream-api-notes.md for what's known about the API itself.
 
 const { readDb } = require('./db');
 const restream = require('./restream');
