@@ -1,47 +1,46 @@
-# Every service below carries a mem_limit - a hard per-container ceiling
-# enforced by the kernel (a cgroup limit, the same mechanism Docker always
-# uses, just actually set instead of left unlimited). Without one, a single
-# runaway/leaking process can consume the *entire* host's RAM before
-# anything else gets a say - which is exactly what happened once already:
-# the droplet locked up so hard even SSH couldn't get in, and only a hard
-# power cycle recovered it. With a limit, the same runaway process gets
-# OOM-killed and restarted (restart: unless-stopped brings it straight
-# back) instead of starving the whole box - every other container, and the
-# host itself, keeps running.
+# The dev/staging deployment - a fully separate docker-compose project from
+# production (its own folder, its own checkout of the `dev` branch, its own
+# .env, its own data volumes - nothing shared except the caddy-shared
+# network below, which lets the *production* Caddy instance reach this
+# stack's dev-backend to serve dev.stream.rossmackenzie.co.uk). See
+# README's "Dev/staging deployment" for the full setup.
 #
-# Budgeted against this droplet's ~1.9GB total RAM (see `docker stats`),
-# leaving real headroom (~300-400MB) unclaimed for the OS/kernel/Docker
-# daemon itself even if every service maxed out its limit at once - that
-# headroom is exactly what was missing during the original incident. Raise
-# individual limits if a service is genuinely being OOM-killed doing real
-# work, rather than raising them preemptively.
+# Same per-service mem_limit reasoning as production's docker-compose.yml -
+# budgeted against this droplet's total RAM alongside the production stack,
+# which is still running on the same box.
 services:
-  rtmp:
+  dev-rtmp:
     build: ./rtmp
     restart: unless-stopped
-    mem_limit: 400m
+    mem_limit: 150m
     ports:
-      - "1935:1935" # RTMP ingest - point Restream's Custom RTMP destination here
+      - "1936:1935" # separate from production's 1935 - point a *second* OBS profile here
     environment:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
     volumes:
-      - hls_data:/tmp/hls
-      - recordings_data:/recordings
+      - dev_hls_data:/tmp/hls
+      - dev_recordings_data:/recordings
     networks:
       - internal
 
-  backend:
+  dev-backend:
     build: ./backend
     restart: unless-stopped
-    mem_limit: 700m
-    ports:
-      - "4000:4000" # direct access for local testing; put Caddy in front for production
+    mem_limit: 200m
     environment:
+      IS_DEV_SITE: "true"
+      # Reuses the same Auth0 application/tenant as production (same person
+      # logs into both) - just needs this domain's own callback URL added
+      # to that application's Allowed Callback URLs list in the Auth0
+      # dashboard, since the domain differs from production's.
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}
       AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID}
       AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET}
       AUTH0_CALLBACK_URL: ${AUTH0_CALLBACK_URL}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
+      # Reuses the same RESTREAM_CLIENT_ID/SECRET as production - just needs
+      # this domain's own callback URL added to that Restream app's allowed
+      # redirect URIs.
       RESTREAM_CLIENT_ID: ${RESTREAM_CLIENT_ID:-}
       RESTREAM_CLIENT_SECRET: ${RESTREAM_CLIENT_SECRET:-}
       RESTREAM_REDIRECT_URI: ${RESTREAM_REDIRECT_URI:-}
@@ -49,18 +48,14 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
       PUBLIC_HOST: ${PUBLIC_HOST}
       RTMP_PUBLIC_HOST: ${RTMP_PUBLIC_HOST:-}
-      RTMP_PORT: "1935"
-      HLS_INTERNAL_URL: "http://rtmp:8080"
+      RTMP_PORT: "1936"
+      HLS_INTERNAL_URL: "http://dev-rtmp:8080"
       PORT: "4000"
-      # YouTube relaying is a dev-site-only feature by design - not something
-      # to re-add here. Even setting these would do nothing on production:
-      # index.js only mounts /api/youtube, and rtmpHooks.js only acts on
-      # 'youtube' outputs, when IS_DEV_SITE is true. The dev site is a fully
-      # separate deployment now (its own folder, its own docker-compose.yml
-      # on the `dev` branch) - see README's "Dev/staging deployment".
-      # GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      # GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      # GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      # YouTube relaying is dev-site-only by design (see index.js/rtmpHooks.js
+      # checking IS_DEV_SITE) - this is the one place it actually takes effect.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       ALLOWED_EMBED_DOMAINS: ${ALLOWED_EMBED_DOMAINS:-}
       GEOIP_LICENSE_KEY: ${GEOIP_LICENSE_KEY:-}
       LIVE_DELAY_MS: ${LIVE_DELAY_MS:-}
@@ -73,36 +68,16 @@ services:
       RECORDING_WARN_HOURS: ${RECORDING_WARN_HOURS:-}
       RECORDING_GRACE_MINUTES: ${RECORDING_GRACE_MINUTES:-}
     volumes:
-      - backend_data:/app/data
-      - backend_uploads:/app/uploads
-      - recordings_data:/recordings
+      - dev_backend_data:/app/data
+      - dev_backend_uploads:/app/uploads
+      - dev_recordings_data:/recordings
     depends_on:
-      - rtmp
+      - dev-rtmp
     networks:
       - internal
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    mem_limit: 150m
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      PUBLIC_HOST: ${PUBLIC_HOST}
-    volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - backend
-    networks:
-      - internal
-      # The dev site is a separate docker-compose project entirely (its own
-      # folder, its own `dev` branch checkout - see README's "Dev/staging
-      # deployment") - this is the one network bridging the two, so Caddy
-      # can still reach dev-backend by name for dev.stream.rossmackenzie.co.uk
-      # (see caddy/Caddyfile) without the two stacks sharing anything else.
+      # So production's Caddy (a completely separate compose project) can
+      # still reach this container by name - see docker-compose.yml's own
+      # caddy service and caddy/Caddyfile in the production folder.
       - caddy-shared
 
 networks:
@@ -111,9 +86,7 @@ networks:
     external: true
 
 volumes:
-  hls_data:
-  backend_data:
-  backend_uploads:
-  recordings_data:
-  caddy_data:
-  caddy_config:
+  dev_hls_data:
+  dev_backend_data:
+  dev_backend_uploads:
+  dev_recordings_data:

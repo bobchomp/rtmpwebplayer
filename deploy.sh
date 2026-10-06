@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Wraps `docker compose up -d --build` with a live-stream safety check.
 #
-# db.json lives inside the backend container's own Docker volume, not on
-# the host filesystem, so live status is read via `docker compose exec`
+# db.json lives inside the dev-backend container's own Docker volume, not
+# on the host filesystem, so live status is read via `docker compose exec`
 # rather than reading a file directly - this also means a container that
 # isn't running yet (e.g. the very first deploy) just fails the check
 # harmlessly, since nothing could be live through it anyway.
@@ -12,12 +12,16 @@
 # something is. A bare (no services named) run also asks separately whether
 # to rebuild the RTMP ingest server - see below.
 #
-# This is production only - see README's "Dev/staging deployment" for the
-# separate dev folder/branch, with its own deploy.sh.
+# This is the dev deployment only - see README's "Dev/staging deployment"
+# for the separate production folder, with its own deploy.sh. There's no
+# "don't silently restart a deliberately-stopped dev" concern here the way
+# there was when dev shared a compose file with production: this folder's
+# only services ARE dev, so choosing to deploy it already means choosing to
+# have it running.
 #
 # Usage:
 #   ./deploy.sh              # rebuild everything - asks first whether to include RTMP
-#   ./deploy.sh backend      # rebuild specific service(s) only - no RTMP prompt, already scoped
+#   ./deploy.sh dev-backend  # rebuild specific service(s) only - no RTMP prompt, already scoped
 #   ./deploy.sh --force      # skip every prompt entirely, full rebuild as before
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -32,7 +36,7 @@ for arg in "$@"; do
   fi
 done
 
-# Rebuilding rtmp restarts the container actually holding the live RTMP
+# Rebuilding dev-rtmp restarts the container actually holding the live RTMP
 # connection - that drops any live stream outright, and (worse) can
 # silently strand an in-progress recording's raw file forever if ffmpeg's
 # finalize-and-upload handoff gets killed mid-flight (see README's
@@ -48,15 +52,15 @@ if [ "$FORCE" = false ] && [ ${#ARGS[@]} -eq 0 ]; then
   esac
 fi
 
-# Whether this run touches rtmp at all - the above answer for a bare run, or
-# a direct check of what was actually named otherwise.
+# Whether this run touches dev-rtmp at all - the above answer for a bare
+# run, or a direct check of what was actually named otherwise.
 if [ ${#ARGS[@]} -gt 0 ]; then
   REBUILD_RTMP=false
   for s in "${ARGS[@]}"; do
-    [ "$s" = "rtmp" ] && REBUILD_RTMP=true
+    [ "$s" = "dev-rtmp" ] && REBUILD_RTMP=true
   done
 elif [ "$REBUILD_RTMP" = false ]; then
-  ARGS=(backend caddy)
+  ARGS=(dev-backend)
 fi
 
 # Prints "<channel name>|<minutes live>" for each currently-live channel, or
@@ -66,7 +70,7 @@ fi
 # host - a bare Docker host (like DigitalOcean's 1-Click Docker droplet) has
 # no Node.js installed at all; it only exists inside the app's own containers.
 check_live() {
-  docker compose exec -T backend node -e '
+  docker compose exec -T dev-backend node -e '
     try {
       const fs = require("fs");
       const db = JSON.parse(fs.readFileSync("/app/data/db.json", "utf8"));
