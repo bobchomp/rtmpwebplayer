@@ -119,6 +119,13 @@ header {
   margin-bottom: 28px;
 }
 header .wordmark { flex-shrink: 0; }
+.header-channel-actions {
+  margin-right: auto; margin-left: 12px; padding-left: 20px;
+  border-left: 1px solid var(--border);
+}
+@media (max-width: 600px) {
+  .header-channel-actions { flex-basis: 100%; margin-left: 0; padding-left: 0; border-left: 0; }
+}
 .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 a.secondary {
   font: 500 13.5px/1 var(--font-display); padding: 9px 15px; border-radius: var(--radius-sm); border: 1px solid transparent;
@@ -294,12 +301,7 @@ button.danger:hover { background: var(--ember-tint); }
 .channel-row-arrow { color: var(--slate-soft); }
 
 /* Channel detail view */
-.detail-header {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 22px; flex-wrap: wrap;
-}
 .detail-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.back-link { color: var(--accent-strong); text-decoration: none; font: 500 14px/1 var(--font-display); white-space: nowrap; }
-.back-link:hover { text-decoration: underline; }
 
 .detail-columns {
   display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;

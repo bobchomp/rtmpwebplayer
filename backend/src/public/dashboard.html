@@ -21,6 +21,14 @@
       </svg>
       <span class="wordmark-text">RTMP <b>Web Player</b></span>
     </h1>
+    <div class="detail-header-actions header-channel-actions hidden" id="header-channel-actions">
+      <span class="channel-name" id="detail-name"></span>
+      <input type="text" class="channel-name-input hidden" id="detail-name-input" maxlength="100">
+      <button class="secondary" id="detail-rename-btn">Rename</button>
+      <button class="hidden" id="detail-save-name-btn">Save</button>
+      <button class="secondary hidden" id="detail-cancel-name-btn">Cancel</button>
+      <button class="secondary danger" id="detail-delete-btn">Delete channel</button>
+    </div>
     <div class="header-actions">
       <!-- status-link:start -->
       <a href="/status" id="status-btn" class="secondary" target="_blank" rel="noopener">Status</a>
@@ -42,10 +50,6 @@
   </header>
 
   <div id="how-to-use-view" class="hidden">
-    <div class="detail-header">
-      <a href="#/" class="back-link">&larr; All channels</a>
-    </div>
-
     <section class="panel step-timeline-panel">
       <p class="step-timeline-intro">A practical walkthrough - what to actually click, in order, to get a stream on your website.</p>
 
@@ -119,10 +123,6 @@
   </div>
 
   <div id="stream-test-view" class="hidden">
-    <div class="detail-header">
-      <a href="#/" class="back-link">&larr; All channels</a>
-    </div>
-
     <p class="info-banner">This generates real traffic against the live site - hundreds of simulated viewers, indistinguishable from real ones. Only run it against a channel you're deliberately testing, and expect it to show up in that channel's Stats afterward (cleanup instructions below). The script's password is <code>smithton</code>.</p>
 
     <section class="panel">
@@ -179,10 +179,6 @@
   </div>
 
   <div id="how-it-works-view" class="hidden">
-    <div class="detail-header">
-      <a href="#/" class="back-link">&larr; All channels</a>
-    </div>
-
     <section class="panel step-timeline-panel">
       <p class="step-timeline-intro">The mechanics behind the site - what actually happens on the server, end to end.</p>
 
@@ -256,10 +252,6 @@
   </div>
 
   <div id="recordings-view" class="hidden">
-    <div class="detail-header">
-      <a href="#/" class="back-link">&larr; All channels</a>
-    </div>
-
     <section class="panel recording-disabled-notice hidden" id="recordings-disabled-notice">
       <img src="/CLOUDFLARE.png" alt="Cloudflare" class="recording-disabled-logo">
       <p class="recording-disabled-text">Recording is disabled in the app config</p>
@@ -289,10 +281,6 @@
   </div>
 
   <div id="stats-view" class="hidden">
-    <div class="detail-header">
-      <a href="#/" class="back-link">&larr; All channels</a>
-    </div>
-
     <section class="panel">
       <div class="stats-filters">
         <label>Channel
@@ -363,18 +351,6 @@
   </div>
 
   <div id="channel-detail-view" class="hidden">
-    <div class="detail-header">
-      <a href="#/" class="back-link">&larr; All channels</a>
-      <div class="detail-header-actions">
-        <span class="channel-name" id="detail-name"></span>
-        <input type="text" class="channel-name-input hidden" id="detail-name-input" maxlength="100">
-        <button class="secondary" id="detail-rename-btn">Rename</button>
-        <button class="hidden" id="detail-save-name-btn">Save</button>
-        <button class="secondary hidden" id="detail-cancel-name-btn">Cancel</button>
-        <button class="secondary danger" id="detail-delete-btn">Delete channel</button>
-      </div>
-    </div>
-
     <div class="detail-columns">
 
       <div class="detail-col-left">

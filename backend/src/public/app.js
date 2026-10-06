@@ -4,6 +4,7 @@
 
   var listView = document.getElementById('channel-list-view');
   var detailView = document.getElementById('channel-detail-view');
+  var headerChannelActions = document.getElementById('header-channel-actions');
   var statsView = document.getElementById('stats-view');
   var recordingsView = document.getElementById('recordings-view');
   var howItWorksView = document.getElementById('how-it-works-view');
@@ -87,6 +88,7 @@
     var r = parseRoute();
     listView.classList.add('hidden');
     detailView.classList.add('hidden');
+    headerChannelActions.classList.add('hidden');
     statsView.classList.add('hidden');
     recordingsView.classList.add('hidden');
     howItWorksView.classList.add('hidden');
@@ -95,6 +97,7 @@
 
     if (r.view === 'detail') {
       detailView.classList.remove('hidden');
+      headerChannelActions.classList.remove('hidden');
       loadChannelDetail(r.channelId);
       detailPollTimer = setInterval(pollLiveStatus, 5000);
     } else if (r.view === 'stats') {
