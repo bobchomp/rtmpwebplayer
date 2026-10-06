@@ -93,7 +93,7 @@ protect on its own.
    - **Allowed Callback URLs**: `https://<PUBLIC_HOST>/auth/callback`
    - **Allowed Logout URLs**: `https://<PUBLIC_HOST>/login`
    (add the dev-site versions too if you're using one - see "Dev/staging
-   environment" below)
+   deployment" below)
 6. Click **Save Changes**.
 7. Under the application's **Connections** tab, enable however you'd like to
    sign in - Auth0's own Username-Password-Authentication database
@@ -497,7 +497,7 @@ until you delete it yourself.
 ## Relaying to YouTube
 
 **Dev-site-only by design.** YouTube relaying only ever runs on the
-dev/staging stack (see "Dev/staging environment" below) - the production
+dev/staging deployment (see "Dev/staging deployment" below) - the production
 site mounts none of its routes and shows none of its UI, regardless of
 whether `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are set anywhere. This
 isn't a temporary state pending Google verification - it's the intended
@@ -527,10 +527,10 @@ custom RTMP destination and a YouTube one simultaneously) - just click
    ```
    https://dev.<PUBLIC_HOST>/api/youtube/callback
    ```
-5. Add the resulting Client ID/Secret to `.env` as the `GOOGLE_CLIENT_ID` /
-   `GOOGLE_CLIENT_SECRET` / `DEV_GOOGLE_REDIRECT_URI` variables described in
-   "Dev/staging environment" below, then
-   `docker compose up -d --build dev-rtmp dev-backend`.
+5. Add the resulting Client ID/Secret to the **dev deployment's** `.env` as
+   `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` (see
+   "Dev/staging deployment" below - this only ever takes effect there, never
+   on production), then `docker compose up -d --build` in that folder.
 
 ### Using it
 
@@ -560,77 +560,99 @@ whenever a channel goes live, and spawn/kill the `ffmpeg` relay accordingly.
 The backend creates the actual YouTube broadcast+stream via the YouTube
 Data API the moment a YouTube-enabled channel starts publishing.
 
-## Dev/staging environment
+## Dev/staging deployment
 
-`docker-compose.yml` includes a second, fully isolated copy of the `rtmp`
-and `backend` services (`dev-rtmp`/`dev-backend`) - own admin login, own RTMP
-port, own data/recordings volumes, nothing shared with production - served
-at `dev.stream.rossmackenzie.co.uk` on this same droplet via a second Caddy
-site block. Use it to test changes (including anything that needs a real
-OAuth grant, like recording a demo video for Google's verification) without
-touching the live site.
+The dev site at `dev.stream.rossmackenzie.co.uk` is a **completely separate
+deployment** from production - its own folder on the server, its own git
+checkout (the `dev` branch, not `main`), its own `docker-compose.yml`, its
+own `.env`, its own data volumes. Nothing is shared with the production
+folder except one thing: a Docker network (`caddy-shared`) that lets
+production's Caddy instance still reach dev's backend container to serve
+HTTPS for the dev domain, since running a second Caddy instance just for
+that would mean a second set of certificates and more RAM used on a droplet
+that's already budgeted tightly (see `docker-compose.yml`'s own comment on
+that). Everything else - the app code, the data, whether it's even running
+at all - is fully independent, including which commit it's on. Use it to
+test changes (including anything that needs a real OAuth grant, like
+recording a demo video for Google's verification) without touching the live
+site, and without dev always having to mirror exactly what's live in
+production.
 
-To turn it on:
+### One-time setup
 
-1. In Cloudflare DNS, add an **A record** for `dev.stream.rossmackenzie.co.uk`
+1. Create the shared network once: `docker network create caddy-shared`
+2. In the **production** folder, pull the latest `main` (it now expects this
+   network to exist - see `docker-compose.yml`'s `caddy` service) and
+   redeploy: `git pull origin main && ./deploy.sh`
+3. Clone a second, separate checkout for dev, on the `dev` branch:
+   ```bash
+   git clone -b dev https://github.com/bobchomp/rtmpwebplayer.git rtmpwebplayer-dev
+   cd rtmpwebplayer-dev
+   ```
+4. Copy `.env.example` to `.env` and fill it in - same shape as
+   production's, but every variable here is dev's own (no `DEV_` prefix
+   needed, since this is already a dedicated file). `AUTH0_CLIENT_ID`/
+   `AUTH0_CLIENT_SECRET` and `RESTREAM_CLIENT_ID`/`RESTREAM_CLIENT_SECRET`
+   reuse the same values as production (same Auth0 tenant/Restream app) -
+   just add this domain's own callback URL to each of their allowed
+   redirect URIs, since the domain differs. `GOOGLE_CLIENT_ID`/
+   `GOOGLE_CLIENT_SECRET`/`GOOGLE_REDIRECT_URI` are what enable YouTube
+   relaying (dev-only by design) - see "One-time Google Cloud setup" above.
+5. In Cloudflare DNS, add an **A record** for `dev.stream.rossmackenzie.co.uk`
    pointing at the same droplet IP as `stream.rossmackenzie.co.uk`.
-2. Uncomment and fill in the `DEV_*` variables in `.env` (see
-   `.env.example`) - use different secrets/admin credentials than
-   production. `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (not `DEV_`-prefixed
-   - they're dev-only, so there's no production copy to distinguish them
-   from) plus `DEV_GOOGLE_REDIRECT_URI` are what actually enable YouTube
-   relaying here - add that redirect URL as an **Authorized redirect URI**
-   on the OAuth Client in Google Cloud Console (Credentials page, not
-   Branding).
-3. `docker compose up -d --build dev-rtmp dev-backend caddy`
-4. Point your encoder at `rtmp://<droplet-ip>:1936/live` (note the different
+6. `docker compose up -d --build`
+7. Point your encoder at `rtmp://<droplet-ip>:1936/live` (note the different
    port from production's 1935) and visit
    `https://dev.stream.rossmackenzie.co.uk/dashboard` to manage it.
 
-The dev stack runs continuously alongside production once it's up, which
-matters on a smaller droplet - it's a full second copy of the backend and
-nginx-rtmp, using memory whether or not anyone's actively using it. If
-you're not testing something on dev, `./toggle-dev.sh` stops those two
-containers if they're running, or starts them if they're stopped -
-whichever applies (checking first whether dev is currently live, same as
-`deploy.sh`'s check, if it's about to stop it). `./stop-dev.sh` and
-`./start-dev.sh` are also there directly if you want one specific
+### Day to day
+
+Both folders have their own `deploy.sh`, `toggle-dev.sh`/`start-dev.sh`/
+`stop-dev.sh` scripts. `toggle-dev.sh` (run from the dev folder) stops the
+dev site if it's running, or starts it if it's stopped - whichever applies
+(checking first whether dev is currently live, same as `deploy.sh`'s own
+check, if it's about to stop it) - worth doing when you're not actively
+testing something, since it's a full second copy of the backend and
+nginx-rtmp using memory on a smaller droplet whether or not anyone's using
+it. `stop-dev.sh`/`start-dev.sh` are there directly if you want one specific
 direction rather than a toggle.
 
-Once something's tested and ready, deploy the same commit to production the
-normal way (`git pull origin main && ./deploy.sh`) - the dev stack is just
-for trying things first, not a place things get promoted *from*
-automatically.
+Since dev tracks its own `dev` branch independently, `git pull` in the dev
+folder only brings in whatever's actually been merged to `dev` - not every
+commit on `main` automatically. Once something's tested and ready for
+everyone, merge it into `main` and deploy to production the normal way;
+`dev` is a place to try things first, not something production gets
+promoted *from* automatically.
 
 ### Deploying safely while something's live
 
-`./deploy.sh` is a thin wrapper around `docker compose up -d --build` that
-checks first whether any channel (production or dev) is currently live,
-since rebuilding drops the RTMP connection and cuts the stream. It always
-asks you to confirm before deploying - a plain "Would you like to deploy?"
-if nothing's live, or a more pointed "Deploy anyway?" naming the live
-channel(s) if something is. Pass `--force` to skip the confirmation
-entirely (e.g. for a scripted/non-interactive deploy), or service names to
-rebuild only specific ones, same as `docker compose up -d --build` itself
-accepts:
+`./deploy.sh` (in either folder) is a thin wrapper around
+`docker compose up -d --build` that checks first whether any channel is
+currently live, since rebuilding drops the RTMP connection and cuts the
+stream. It always asks you to confirm before deploying - a plain "Would you
+like to deploy?" if nothing's live, or a more pointed "Deploy anyway?"
+naming the live channel(s) if something is. Pass `--force` to skip the
+confirmation entirely (e.g. for a scripted/non-interactive deploy), or
+service names to rebuild only specific ones, same as
+`docker compose up -d --build` itself accepts:
 
 ```bash
-./deploy.sh                      # rebuild everything - asks first whether to include RTMP
-./deploy.sh backend dev-backend  # rebuild specific services only
-./deploy.sh --force              # skip every prompt entirely
+./deploy.sh              # rebuild everything - asks first whether to include RTMP
+./deploy.sh backend      # rebuild specific service(s) only
+./deploy.sh --force      # skip every prompt entirely
 ```
 
 A bare `./deploy.sh` (no service names) asks a second question before the
-live check: whether to rebuild the RTMP ingest server(s) (`rtmp`/
-`dev-rtmp`) too, defaulting to no. That's deliberate - rebuilding rtmp
-doesn't just drop the live connection, it also kills any in-progress
-recording's ffmpeg process outright, before it gets a chance to hand off to
-the backend for upload, stranding the raw file until someone notices and
-reprocesses it by hand. Most deploys only touch application code
+live check: whether to rebuild the RTMP ingest server too (`rtmp` in
+production, `dev-rtmp` in dev), defaulting to no. That's deliberate -
+rebuilding it doesn't just drop the live connection, it also kills any
+in-progress recording's ffmpeg process outright, before it gets a chance to
+hand off to the backend for upload, stranding the raw file until someone
+notices and reprocesses it by hand. Most deploys only touch application code
 (`backend/`), so most of the time you want "no" here and only rebuild rtmp
 when you've actually changed something under `rtmp/`. Naming services
-explicitly (including `rtmp` itself) skips this question - you've already
-made the call.
+explicitly (including `rtmp`/`dev-rtmp` itself) skips this question - you've
+already made the call.
 
 Running `docker compose up -d --build` directly still works exactly as
 before and bypasses this check entirely - `./deploy.sh` only helps if it's
