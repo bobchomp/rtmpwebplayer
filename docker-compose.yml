@@ -11,8 +11,9 @@
 services:
   dev-rtmp:
     build: ./rtmp
-    # Without this Compose prefixes the folder name too, giving the
-    # redundant "rtmpwebplayer-dev-dev-rtmp-1".
+    # Without these Compose prefixes the folder name too, giving the
+    # redundant "rtmpwebplayer-dev-dev-rtmp(-1)".
+    image: dev-rtmp
     container_name: dev-rtmp
     restart: unless-stopped
     mem_limit: 150m
@@ -28,6 +29,7 @@ services:
 
   dev-backend:
     build: ./backend
+    image: dev-backend
     container_name: dev-backend
     restart: unless-stopped
     mem_limit: 200m
