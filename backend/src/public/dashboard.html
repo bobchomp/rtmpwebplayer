@@ -25,11 +25,18 @@
       <!-- status-link:start -->
       <a href="/status" id="status-btn" class="secondary" target="_blank" rel="noopener">Status</a>
       <!-- status-link:end -->
-      <a href="#/how-to-use" id="how-to-use-btn" class="secondary">How To Use</a>
-      <a href="#/how-it-works" id="how-it-works-btn" class="secondary">How It Works</a>
       <a href="#/" id="channels-btn" class="secondary">Channels</a>
       <a href="#/recordings" id="recordings-btn" class="secondary">Recordings</a>
       <a href="#/stats" id="stats-btn" class="secondary">Stats</a>
+      <div class="help-menu">
+        <button type="button" id="help-menu-btn" class="secondary" aria-haspopup="true" aria-expanded="false">
+          Help <span class="help-menu-caret" aria-hidden="true">&#9662;</span>
+        </button>
+        <div class="help-menu-panel hidden" id="help-menu-panel" role="menu">
+          <a href="#/how-it-works" id="how-it-works-btn" role="menuitem">How It Works</a>
+          <a href="#/how-to-use" id="how-to-use-btn" role="menuitem">How To Use</a>
+        </div>
+      </div>
       <button id="logout-btn" class="secondary">Log out</button>
     </div>
   </header>

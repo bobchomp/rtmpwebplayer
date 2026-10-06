@@ -1348,6 +1348,33 @@
     });
   }
 
+  // ===================== Help dropdown =====================
+  var helpMenuBtn = document.getElementById('help-menu-btn');
+  var helpMenuPanel = document.getElementById('help-menu-panel');
+
+  function closeHelpMenu() {
+    helpMenuPanel.classList.add('hidden');
+    helpMenuBtn.classList.remove('help-menu-btn-open');
+    helpMenuBtn.setAttribute('aria-expanded', 'false');
+  }
+  function openHelpMenu() {
+    helpMenuPanel.classList.remove('hidden');
+    helpMenuBtn.classList.add('help-menu-btn-open');
+    helpMenuBtn.setAttribute('aria-expanded', 'true');
+  }
+  helpMenuBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (helpMenuPanel.classList.contains('hidden')) openHelpMenu();
+    else closeHelpMenu();
+  });
+  // Any click elsewhere on the page (including a route change triggered by
+  // one of this menu's own links) closes it - without this it'd stay open
+  // hovering over whatever view you just navigated to.
+  document.addEventListener('click', closeHelpMenu);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeHelpMenu();
+  });
+
   logoutBtn.addEventListener('click', function () {
     // A real navigation, not a fetch - /auth/logout destroys the local
     // session then redirects through Auth0's own logout endpoint (clearing
