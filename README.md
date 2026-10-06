@@ -337,12 +337,9 @@ streaming on the left, the outputs it fans out to on the right.
 The right panel on a channel's detail page lists everywhere that channel's
 stream goes:
 
-- **Your Website** - the embed player itself (see above). Has its own
-  on/off toggle: switching it off makes the embed page and video URLs
-  return "not found" to everyone except you (your own dashboard preview
-  keeps working, since it's a genuinely useful way to confirm a stream is
-  live even if you're not publishing it to your site) - handy if a channel
-  is only ever meant to go to YouTube or a custom output. The player's
+- **Your Website** - the embed player itself (see above). Always available
+  for every channel, with no on/off toggle - there's no way to disable the
+  embed page or its video URLs short of deleting the channel. The player's
   pause/play control is always greyed out (never hidden) once playback
   starts, so there's no way for a viewer to stop it from there - volume
   and fullscreen are unaffected, and the initial "click to watch" button
@@ -364,9 +361,8 @@ stream goes:
     email, etc. It's added instantly (no form to fill in) and
     there's only ever one per channel; the link itself is never shown on
     screen (it's a real access-control secret, not just a page address) -
-    click **Copy link** on its row any time to grab it. Independent of the
-    "Your Website" toggle above - turning that off doesn't affect this link,
-    since it's a different sharing channel, not embedding on your own site.
+    click **Copy link** on its row any time to grab it. A different sharing
+    channel from "Your Website" above, not embedding on your own site.
     Unlike every other link in this app, it deliberately refuses to render
     inside anyone else's `<iframe>` (sends `X-Frame-Options: DENY` and a
     `frame-ancestors 'none'` CSP), so it can't be passed off as someone

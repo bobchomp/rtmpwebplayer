@@ -103,7 +103,6 @@ router.post('/', requireAuth, (req, res) => {
     // title/description) - see the /:id/metadata route below.
     title: '',
     description: '',
-    websiteEnabled: true,
     coverImages: [],
     activeCoverImage: null,
     coverImageNames: {},
@@ -146,9 +145,9 @@ router.patch('/:id', requireAuth, (req, res) => {
   res.json(redactChannel(channel));
 });
 
-// Admin: toggle whether the embed page / HLS proxy serve this channel at
-// all. RTMP ingest and other outputs (YouTube, custom RTMP) are unaffected -
-// this only gates the public-facing website/embed path.
+// Admin: toggle whether this channel records. Named website-settings from
+// when it also gated the embed page (removed - the embed/HLS proxy are
+// always available now, there's no way to disable them per channel).
 router.patch('/:id/website-settings', requireAuth, (req, res) => {
   const db = readDb();
   const channel = db.channels[req.params.id];
@@ -159,16 +158,11 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
   // is also where the deployment-wide kill switch (recordingsAvailable() -
   // RECORDINGS_ENABLED=false or missing R2 config) is enforced. Rejected
   // here too so turning the toggle on while disabled fails outright instead
-  // of silently storing a setting that'll never actually record. Checked
-  // before any field is applied so a rejection here doesn't leave
-  // websiteEnabled mutated on the in-memory channel but never persisted.
+  // of silently storing a setting that'll never actually record.
   if (req.body.recordingEnabled === true && !recordings.recordingsAvailable()) {
     return res.status(400).json({ error: 'Recording is disabled in the app config' });
   }
 
-  if (typeof req.body.websiteEnabled === 'boolean') {
-    channel.websiteEnabled = req.body.websiteEnabled;
-  }
   if (typeof req.body.recordingEnabled === 'boolean') {
     channel.recordingEnabled = req.body.recordingEnabled;
   }

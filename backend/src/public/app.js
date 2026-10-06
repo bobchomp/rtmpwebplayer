@@ -534,9 +534,6 @@
   var detailRegenBtn = document.getElementById('detail-regen-btn');
   var detailEmbedCode = document.getElementById('detail-embed-code');
 
-  var detailWebsiteHint = document.getElementById('detail-website-hint');
-  var detailWebsiteToggle = document.getElementById('detail-website-toggle');
-
   var editMetadataBtn = document.getElementById('edit-metadata-btn');
   var metadataModalBackdrop = document.getElementById('metadata-modal-backdrop');
   var metadataTitleInput = document.getElementById('metadata-title-input');
@@ -874,11 +871,6 @@
 
     currentChannelMetadata = { title: channel.title || '', description: channel.description || '' };
 
-    detailWebsiteToggle.checked = channel.websiteEnabled !== false;
-    detailWebsiteHint.textContent = channel.websiteEnabled !== false
-      ? 'This is the embed player itself'
-      : 'Off - the embed and your website are not showing this stream';
-
     detailRecordingToggle.checked = !!channel.recordingEnabled;
     recordingContinueBanner.classList.add('hidden'); // reset on nav - pollLiveStatus re-shows it if still warranted
 
@@ -1162,18 +1154,6 @@
       api('/api/channels/' + currentChannelId + '/regenerate-key', { method: 'POST' })
         .then(refreshChannelDetail)
         .catch(function (err) { alert(err.message); });
-    });
-
-    detailWebsiteToggle.addEventListener('change', function () {
-      api('/api/channels/' + currentChannelId + '/website-settings', {
-        method: 'PATCH',
-        body: JSON.stringify({ websiteEnabled: detailWebsiteToggle.checked }),
-      })
-        .then(refreshChannelDetail)
-        .catch(function (err) {
-          alert(err.message);
-          detailWebsiteToggle.checked = !detailWebsiteToggle.checked;
-        });
     });
 
     detailRecordingToggle.addEventListener('change', function () {
