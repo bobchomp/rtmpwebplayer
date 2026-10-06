@@ -11,6 +11,9 @@
 services:
   dev-rtmp:
     build: ./rtmp
+    # Without this Compose prefixes the folder name too, giving the
+    # redundant "rtmpwebplayer-dev-dev-rtmp-1".
+    container_name: dev-rtmp
     restart: unless-stopped
     mem_limit: 150m
     ports:
@@ -25,6 +28,7 @@ services:
 
   dev-backend:
     build: ./backend
+    container_name: dev-backend
     restart: unless-stopped
     mem_limit: 200m
     environment:
@@ -74,11 +78,17 @@ services:
     depends_on:
       - dev-rtmp
     networks:
-      - internal
+      internal:
+        # rtmp/nginx.conf.template hardcodes its webhooks to http://backend:4000.
+        # Aliased on this project's own internal network only - never on
+        # caddy-shared, where "backend" would be ambiguous for Caddy, which
+        # also sees production's backend by that name.
+        aliases:
+          - backend
       # So production's Caddy (a completely separate compose project) can
       # still reach this container by name - see docker-compose.yml's own
       # caddy service and caddy/Caddyfile in the production folder.
-      - caddy-shared
+      caddy-shared: {}
 
 networks:
   internal:
