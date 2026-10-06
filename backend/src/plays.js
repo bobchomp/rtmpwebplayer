@@ -90,6 +90,16 @@ function recordPlay({ channelId, ip, userAgent }) {
   const channel = db.channels[channelId];
   if (!channel) return;
 
+  // The embed page's own play button is hidden/disabled whenever the
+  // channel isn't live, and genuine playback is only ever possible while it
+  // is (the HLS segments a viewer would be decoding only exist for as long
+  // as the encoder is actually connected) - so a /track ping that arrives
+  // while the channel is offline can't be real playback. Rejecting it here,
+  // not just in the player's own UI, closes the gap regardless of what's
+  // actually sending the ping (a stale/background tab, a browser extension
+  // poking the <video> element, or a bot hitting this endpoint directly).
+  if (!channel.isLive) return;
+
   const now = Date.now();
   const nowDate = new Date(now);
   const nowIso = nowDate.toISOString();
