@@ -1340,6 +1340,10 @@
       if (addOutputTypeYoutubeBtn) addOutputTypeYoutubeBtn.classList.toggle('hidden', !cfg.youtubeEnabled);
       var youtubePrivacyNotice = document.getElementById('add-output-youtube-privacy-notice');
       if (youtubePrivacyNotice) youtubePrivacyNotice.classList.toggle('hidden', !cfg.youtubeEnabled);
+      // The page itself still works via a direct link/bookmark (showing the
+      // same disabled notice as always - see route()'s 'recordings' branch) -
+      // just no point advertising it in the nav when there's nothing to see.
+      document.getElementById('recordings-btn').classList.toggle('hidden', !cfg.recordingsEnabled);
       route();
     });
   }
