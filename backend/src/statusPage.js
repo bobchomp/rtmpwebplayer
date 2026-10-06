@@ -92,15 +92,61 @@ function statusMeta(status) {
   return { label: 'Down', className: 'status-down' };
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DAYBAR_COUNT = 30;
+
+// Degraded vs down is a judgment call Upptime itself doesn't make - it only
+// ever records the raw minutes a day's checks spent failing
+// (dailyMinutesDown, keyed by UTC date). A handful of minutes is far more
+// likely a single transient check failure than a real outage, so only a
+// full hour-plus of downtime in a day counts as "down" here; anything less
+// (but still nonzero) shows as a lighter "degraded" tick rather than lumping
+// every single blip in with a genuine incident.
+const DAYBAR_DOWN_THRESHOLD_MIN = 60;
+
+function dayBarMeta(minutesDown, dateLabel) {
+  if (minutesDown <= 0) return { className: 'status-daybar-up', title: `${dateLabel}: operational` };
+  if (minutesDown < DAYBAR_DOWN_THRESHOLD_MIN) {
+    return { className: 'status-daybar-degraded', title: `${dateLabel}: ${minutesDown}m downtime` };
+  }
+  return { className: 'status-daybar-down', title: `${dateLabel}: ${minutesDown}m downtime` };
+}
+
+// One tick per day, oldest (left) to most recent (right) - matches the
+// convention of every other status page (GitHub's included). Built from
+// summary.json's own dailyMinutesDown map rather than a separate fetch -
+// Upptime already includes it in the exact same response this page's rows
+// come from. A date with no entry at all means Upptime logged zero downtime
+// for it (not "no data") - in practice this only ever covers the last 30
+// days of an already-months-old monitor, so there's no real "before
+// monitoring started" case to account for here.
+function renderDayBars(site) {
+  const daily = site.dailyMinutesDown || {};
+  const today = new Date();
+  const bars = [];
+  for (let i = DAYBAR_COUNT - 1; i >= 0; i -= 1) {
+    const date = new Date(today.getTime() - i * DAY_MS);
+    const key = date.toISOString().slice(0, 10);
+    const minutesDown = Object.prototype.hasOwnProperty.call(daily, key) ? daily[key] : 0;
+    const dateLabel = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const meta = dayBarMeta(minutesDown, dateLabel);
+    bars.push(`<span class="status-daybar ${meta.className}" title="${escapeHtml(meta.title)}"></span>`);
+  }
+  return `<div class="status-daybars" role="img" aria-label="Uptime for the last ${DAYBAR_COUNT} days">${bars.join('')}</div>`;
+}
+
 function renderRows(sites) {
   return sites
     .map((site) => {
       const meta = statusMeta(site.status);
       return `
-      <li class="status-row">
-        <span class="status-row-name">${escapeHtml(site.name)}</span>
-        <span class="status-pill ${meta.className}">${meta.label}</span>
-        <span class="status-row-uptime">${escapeHtml(site.uptimeMonth || site.uptime)} uptime (30d)</span>
+      <li class="status-row status-row-component">
+        <div class="status-row-top">
+          <span class="status-row-name">${escapeHtml(site.name)}</span>
+          <span class="status-pill ${meta.className}">${meta.label}</span>
+          <span class="status-row-uptime">${escapeHtml(site.uptimeMonth || site.uptime)} uptime (30d)</span>
+        </div>
+        ${renderDayBars(site)}
       </li>`;
     })
     .join('');
@@ -266,6 +312,14 @@ async function renderStatusPage() {
   .status-dep-btn { background: none; border: none; padding: 0; margin: 0; cursor: pointer; font: inherit; color: inherit; text-align: left; }
   .status-dep-btn:hover { background: none; color: inherit; text-decoration: underline; }
   .status-row-uptime { font-size: 13px; color: var(--slate); margin-left: auto; }
+
+  .status-row-component { flex-direction: column; align-items: stretch; gap: 12px; }
+  .status-row-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .status-daybars { display: flex; gap: 3px; }
+  .status-daybar { flex: 1 1 0; min-width: 3px; height: 26px; border-radius: 3px; }
+  .status-daybar-up { background: var(--grass); }
+  .status-daybar-degraded { background: var(--amber); }
+  .status-daybar-down { background: var(--ember); }
   .status-pill { font: 600 12px/1 var(--font-display); padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
   .status-up { background: var(--grass-tint); color: #1D6B44; }
   .status-degraded { background: var(--amber-tint); color: #6B4E14; }
