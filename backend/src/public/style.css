@@ -119,12 +119,19 @@ header {
   margin-bottom: 28px;
 }
 header .wordmark { flex-shrink: 0; }
-.header-channel-actions {
-  margin-right: auto; margin-left: 12px; padding-left: 20px;
-  border-left: 1px solid var(--border);
+.header-channel-actions { margin-right: auto; }
+/* max-content minimums stop the nav wrapping onto two rows; below this
+   width there isn't room for all three side by side, so it falls back to
+   sitting beside the wordmark. */
+@media (min-width: 1280px) {
+  header:has(> .header-channel-actions:not(.hidden)) {
+    display: grid; grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+  }
+  header .header-channel-actions { margin-right: 0; }
+  header .header-actions { justify-self: end; }
 }
 @media (max-width: 600px) {
-  .header-channel-actions { flex-basis: 100%; margin-left: 0; padding-left: 0; border-left: 0; }
+  .header-channel-actions { flex-basis: 100%; }
 }
 .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 a.secondary {
