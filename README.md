@@ -444,6 +444,32 @@ Leave `RESTREAM_CLIENT_ID`/`RESTREAM_CLIENT_SECRET`/`RESTREAM_REDIRECT_URI`
 unset to skip this entirely - the rest of the Stats page works the same
 either way.
 
+### Automatic weekly import
+
+The same import can run on a schedule from an external cron service such
+as [cron-job.org](https://cron-job.org), so Monday's stats are already in
+without anyone clicking through the preview. Each run imports the last 14
+days, which also refreshes the previous week's streams whose YouTube counts
+kept climbing. Streams it can't match to a channel are skipped and counted
+in the response; assign those by hand from the normal import preview.
+
+1. Generate a secret on the server with `openssl rand -hex 32`, add it to
+   `.env` as `RESTREAM_IMPORT_SECRET`, and redeploy the backend.
+2. Restream must already be connected from the Stats page - the scheduled
+   run reuses that connection.
+3. In cron-job.org, create a job:
+   - **URL:** `https://<PUBLIC_HOST>/api/stats/restream/auto-import`
+   - **Schedule:** Mondays, at whatever time suits
+   - **Advanced → Request method:** `POST`
+   - **Advanced → Headers:** `Authorization` = `Bearer <your secret>`
+   - **Notifications:** turn on "notify on failure", so an expired Restream
+     connection or a bad secret emails you instead of failing silently.
+
+Add `?days=N` to the URL (1-60) to import a different window. The endpoint
+returns `404` while `RESTREAM_IMPORT_SECRET` is unset, `401` for a wrong
+secret, and `500` with the reason if the import itself fails (for example,
+Restream needing to be reconnected).
+
 ## Recording streams
 
 Turn on **Record streams** in a channel's detail page and every future

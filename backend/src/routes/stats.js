@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit-table');
@@ -156,6 +157,48 @@ router.post('/restream/import', requireAuth, (req, res) => {
     const result = restreamImport.commitImport(items);
     res.json(result);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+function secretMatches(provided, expected) {
+  // Hashing first gives equal-length buffers, which timingSafeEqual requires.
+  const a = crypto.createHash('sha256').update(String(provided)).digest();
+  const b = crypto.createHash('sha256').update(String(expected)).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
+const AUTO_IMPORT_DEFAULT_DAYS = 14;
+const AUTO_IMPORT_MAX_DAYS = 60;
+
+// For an external scheduler (see README's "Automatic weekly import"), so it
+// authenticates with RESTREAM_IMPORT_SECRET instead of an admin session, and
+// is switched off (404) when that's unset. Imports every matched stream in
+// the window without a preview - unmatched ones are skipped and counted, to
+// be assigned by hand from the Stats page.
+router.post('/restream/auto-import', async (req, res) => {
+  const expected = process.env.RESTREAM_IMPORT_SECRET;
+  if (!expected) return res.status(404).json({ error: 'Not found' });
+
+  const match = /^Bearer (.+)$/.exec(req.get('authorization') || '');
+  if (!match || !secretMatches(match[1], expected)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const requestedDays = Number.parseInt(req.query.days, 10);
+  const days = Number.isFinite(requestedDays)
+    ? Math.min(Math.max(requestedDays, 1), AUTO_IMPORT_MAX_DAYS)
+    : AUTO_IMPORT_DEFAULT_DAYS;
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+
+  try {
+    const items = await restreamImport.previewImport({ from: from.toISOString(), to: to.toISOString() });
+    const result = restreamImport.commitImport(items);
+    console.log(`[restream-auto-import] ${days}-day window: imported ${result.importedCount} row(s).`);
+    res.json(Object.assign({ from: from.toISOString(), to: to.toISOString(), days }, result));
+  } catch (err) {
+    console.error(`[restream-auto-import] Failed: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 });
