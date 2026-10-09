@@ -21,9 +21,32 @@ const { renderStatusPage } = require('./statusPage');
 const { requireAuth } = require('./authMiddleware');
 const { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripStatusLinkOnDevSite, stripYoutubeOnProduction } = require('./devBanner');
 
+// Anyone who knows the session secret can forge an admin session cookie, so
+// refuse to start rather than fall back to a guessable one.
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET || SESSION_SECRET === 'change-me') {
+  console.error('SESSION_SECRET is missing or still "change-me" - set it in .env (openssl rand -hex 32).');
+  process.exit(1);
+}
+
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+
+// /embed is meant to be iframed on other sites and sets its own
+// frame-ancestors (see embedSecurity.js); everything else, the dashboard
+// included, may only be framed by this site itself, which blocks
+// clickjacking an admin into pressing a button.
+app.use((req, res, next) => {
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  if (req.secure) res.set('Strict-Transport-Security', 'max-age=31536000');
+  if (!req.path.startsWith('/embed')) {
+    res.set('X-Frame-Options', 'SAMEORIGIN');
+    res.set('Content-Security-Policy', "frame-ancestors 'self'");
+  }
+  next();
+});
 
 // Stands in for "when was this last deployed" in the dashboard footer -
 // deploy.sh always rebuilds and restarts the backend container, so process
@@ -36,7 +59,7 @@ app.use(express.urlencoded({ extended: true })); // nginx-rtmp posts form-encode
 app.use(
   session({
     name: 'rwp.sid',
-    secret: process.env.SESSION_SECRET || 'change-me',
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
