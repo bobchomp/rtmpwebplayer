@@ -19,7 +19,7 @@
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "maxmind": "^5.0.6",
-    "multer": "^2.2.0",
+    "multer": "^2.4.0",
     "pdfkit-table": "^0.2.11",
     "tar": "^7.5.22"
   }

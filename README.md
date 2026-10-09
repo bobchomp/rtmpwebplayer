@@ -115,8 +115,9 @@ docker compose up -d --build
 
 First build compiles nginx from source (a couple of minutes). After that:
 
-- Dashboard: `http://<server-ip>:4000/dashboard` (or `https://<PUBLIC_HOST>/dashboard`
-  once DNS + Caddy are working)
+- Dashboard: `https://<PUBLIC_HOST>/dashboard` once DNS + Caddy are working
+  (the backend's own port 4000 only listens on the server's loopback
+  address - see "Production security checklist")
 - RTMP ingest: `rtmp://<server-ip-or-domain>:1935/live`
 
 Log in, click **Create channel**, give it a name. You'll get:
@@ -307,7 +308,8 @@ empty incidents list if the actual cause is maintenance in progress.
 ## Local testing without a domain
 
 Set `PUBLIC_HOST=localhost` (or your machine's LAN IP) in `.env` and skip
-Caddy - hit the backend directly at `http://localhost:4000`. You can test
+Caddy - hit the backend directly at `http://localhost:4000` from the same
+machine (it's bound to loopback only, so not from other devices). You can test
 RTMP publishing with `ffmpeg`:
 
 ```bash
@@ -686,12 +688,16 @@ actually the command you reach for.
 
 ## Production security checklist
 
-- `docker-compose.yml` publishes the backend directly on port **4000** for
-  convenience during initial setup/local testing. Once your domain and
-  Caddy are confirmed working over HTTPS, **close port 4000 in your
-  server's firewall** (e.g. `ufw deny 4000`) so the dashboard is only
-  reachable through Caddy's HTTPS. Logging in over plain HTTP sends your
-  session cookie unencrypted.
+- The backend's port **4000** is published on `127.0.0.1` only, so the
+  dashboard is only reachable from outside through Caddy's HTTPS. Keep it
+  that way: a plain `"4000:4000"` mapping would expose it on the server's
+  public IP over plain HTTP, and Docker's published ports bypass `ufw`, so
+  a firewall rule on the host won't close it. To reach it directly from
+  your own computer, use an SSH tunnel:
+  `ssh -L 4000:127.0.0.1:4000 root@<server-ip>`, then `http://localhost:4000`.
+- The app refuses to start if `SESSION_SECRET` is unset or still the
+  example's `change-me`, since anyone who knows the secret can forge an
+  admin login.
 - Keep `AUTH0_CLIENT_SECRET` out of version control the same as any other
   secret in `.env` - it's what proves this app's server (not just anyone who
   knows your `AUTH0_CLIENT_ID`) is the one completing the login. Double
