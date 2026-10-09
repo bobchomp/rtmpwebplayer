@@ -35,7 +35,11 @@ services:
     restart: unless-stopped
     mem_limit: 700m
     ports:
-      - "4000:4000" # direct access for local testing; put Caddy in front for production
+      # Loopback only: reachable from the machine itself for local testing,
+      # never from the internet. Public traffic goes through Caddy (HTTPS)
+      # over the internal network. Docker's published ports bypass ufw, so
+      # binding here is the only reliable way to keep this closed.
+      - "127.0.0.1:4000:4000"
     environment:
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}
       AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID}
