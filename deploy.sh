@@ -107,5 +107,11 @@ if [ "$FORCE" = false ]; then
   esac
 fi
 
+# Compose otherwise also rebuilds and restarts whatever the named services
+# depend on (backend depends on rtmp), which would drop a live stream even
+# on a backend-only deploy whenever the rtmp image happens to have changed.
+DEPS_FLAG=()
+[ "$REBUILD_RTMP" = false ] && DEPS_FLAG=(--no-deps)
+
 echo "Deploying..."
-docker compose up -d --build "${ARGS[@]}"
+docker compose up -d --build "${DEPS_FLAG[@]}" "${ARGS[@]}"
