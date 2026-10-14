@@ -58,25 +58,6 @@ function generateStreamKey() {
   return crypto.randomBytes(20).toString('hex');
 }
 
-// A YouTube output carries an OAuth refresh token - a server-to-platform
-// credential with no legitimate reason to reach the browser. Every route
-// that serializes a channel goes through this first to strip it if present.
-const SECRET_OUTPUT_FIELDS = ['refreshToken'];
-
-function redactChannel(channel) {
-  const hasSecret = channel.outputs && channel.outputs.some(
-    (o) => SECRET_OUTPUT_FIELDS.some((field) => o[field] !== undefined)
-  );
-  if (!hasSecret) return channel;
-  return Object.assign({}, channel, {
-    outputs: channel.outputs.map((o) => {
-      const safe = Object.assign({}, o);
-      SECRET_OUTPUT_FIELDS.forEach((field) => delete safe[field]);
-      return safe;
-    }),
-  });
-}
-
 // The logged-in account's channel for :id, or null - another account's
 // channel is treated exactly like one that doesn't exist.
 function ownChannel(db, req) {
@@ -91,7 +72,7 @@ router.get('/', requireAuth, (req, res) => {
   const channels = Object.values(db.channels).filter((c) => c.owner === account).sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt)
   );
-  res.json(channels.map(redactChannel));
+  res.json(channels);
 });
 
 // Admin: create a channel
@@ -109,8 +90,7 @@ router.post('/', requireAuth, (req, res) => {
     streamKey: generateStreamKey(),
     isLive: false,
     lastLiveAt: null,
-    // Shared across every output (embed page metadata + YouTube broadcast
-    // title/description) - see the /:id/metadata route below.
+    // Embed page metadata - see the /:id/metadata route below.
     title: '',
     description: '',
     coverImages: [],
@@ -119,17 +99,14 @@ router.post('/', requireAuth, (req, res) => {
     liveThumbnails: [],
     activeLiveThumbnail: null,
     liveThumbnailNames: {},
-    // Every relay destination (YouTube, custom RTMP, and future types) lives
-    // in this one array, distinguished by `type` - see validateOutputInput
-    // below for 'rtmp' outputs and youtube.js's handleOAuthCallback for how
-    // 'youtube' outputs get added (through the OAuth flow, not this array
-    // being posted to directly).
+    // Every output (custom RTMP relays and the public watch link) lives in
+    // this one array, distinguished by `type` - see the /:id/outputs routes.
     outputs: [],
     createdAt: new Date().toISOString(),
   };
   db.channels[id] = channel;
   writeDb(db);
-  res.status(201).json(redactChannel(channel));
+  res.status(201).json(channel);
 });
 
 // Admin: fetch a single channel (includes stream key, admin-only)
@@ -137,7 +114,7 @@ router.get('/:id', requireAuth, (req, res) => {
   const db = readDb();
   const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
-  res.json(redactChannel(channel));
+  res.json(channel);
 });
 
 // Admin: rename a channel
@@ -152,7 +129,7 @@ router.patch('/:id', requireAuth, (req, res) => {
 
   channel.name = name;
   writeDb(db);
-  res.json(redactChannel(channel));
+  res.json(channel);
 });
 
 // Admin: toggle whether this channel records. Named website-settings from
@@ -177,12 +154,11 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
     channel.recordingEnabled = req.body.recordingEnabled;
   }
   writeDb(db);
-  res.json(redactChannel(channel));
+  res.json(channel);
 });
 
-// Admin: update the shared title/description used both for the embed page's
-// metadata (title tag, meta/OG description, on-screen overlay) and as the
-// YouTube broadcast's title/description.
+// Admin: update the title/description used for the embed page's metadata
+// (title tag, meta/OG description, on-screen overlay).
 router.patch('/:id/metadata', requireAuth, (req, res) => {
   const db = readDb();
   const channel = ownChannel(db, req);
@@ -201,7 +177,7 @@ router.patch('/:id/metadata', requireAuth, (req, res) => {
     channel.description = req.body.description.trim();
   }
   writeDb(db);
-  res.json(redactChannel(channel));
+  res.json(channel);
 });
 
 const MAX_OUTPUTS = 10;
@@ -246,9 +222,6 @@ function validateOutputInput(body, { partial } = {}) {
 //   routes/watch.js) - no fields needed beyond the type itself, and a
 //   channel can only have one (there's nothing to differentiate a second
 //   one - it'd point at the exact same URL).
-// (YouTube outputs are added via the OAuth flow in youtubeAuth.js/youtube.js,
-// not through this route, since they need a Google sign-in redirect rather
-// than a plain form submission.)
 router.post('/:id/outputs', requireAuth, (req, res) => {
   const db = readDb();
   const channel = ownChannel(db, req);
@@ -274,7 +247,7 @@ router.post('/:id/outputs', requireAuth, (req, res) => {
     };
     channel.outputs.push(output);
     writeDb(db);
-    return res.status(201).json(redactChannel(channel));
+    return res.status(201).json(channel);
   }
 
   const { errors, update } = validateOutputInput(req.body || {});
@@ -290,12 +263,12 @@ router.post('/:id/outputs', requireAuth, (req, res) => {
   };
   channel.outputs.push(output);
   writeDb(db);
-  res.status(201).json(redactChannel(channel));
+  res.status(201).json(channel);
 });
 
 // Admin: update an output. RTMP outputs can have their name/URL/key edited;
-// a YouTube or public-link output can only be switched on/off here (there's
-// nothing else about either of those a form could meaningfully edit).
+// a public-link output can only be switched on/off here (there's nothing
+// else about it a form could meaningfully edit).
 router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();
   const channel = ownChannel(db, req);
@@ -304,10 +277,10 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const output = (channel.outputs || []).find((o) => o.id === req.params.outputId);
   if (!output) return res.status(404).json({ error: 'Output not found' });
 
-  if (output.type === 'youtube' || output.type === 'public-link') {
+  if (output.type === 'public-link') {
     if (typeof req.body.enabled === 'boolean') output.enabled = req.body.enabled;
     writeDb(db);
-    return res.json(redactChannel(channel));
+    return res.json(channel);
   }
 
   const { errors, update } = validateOutputInput(req.body || {}, { partial: true });
@@ -315,11 +288,10 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
 
   Object.assign(output, update);
   writeDb(db);
-  res.json(redactChannel(channel));
+  res.json(channel);
 });
 
-// Admin: remove an output (for a YouTube output, this also disconnects it -
-// see youtubeAuth.js's disconnect route, which does the same thing).
+// Admin: remove an output
 router.delete('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();
   const channel = ownChannel(db, req);
@@ -330,7 +302,7 @@ router.delete('/:id/outputs/:outputId', requireAuth, (req, res) => {
   if (channel.outputs.length === before) return res.status(404).json({ error: 'Output not found' });
 
   writeDb(db);
-  res.json(redactChannel(channel));
+  res.json(channel);
 });
 
 // Admin: delete a channel
@@ -357,7 +329,7 @@ router.post('/:id/regenerate-key', requireAuth, (req, res) => {
   channel.streamKey = generateStreamKey();
   channel.isLive = false;
   writeDb(db);
-  res.json(redactChannel(channel));
+  res.json(channel);
 });
 
 // Registers upload/list/delete/activate/rename routes for a channel image
@@ -388,7 +360,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
       ch[listField].push(req.file.filename);
       if (!ch[activeField]) ch[activeField] = req.file.filename;
       writeDb(fresh);
-      res.json(redactChannel(ch));
+      res.json(ch);
     });
   });
 
@@ -411,7 +383,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
     if (fs.existsSync(p)) fs.unlinkSync(p);
 
     writeDb(db);
-    res.json(redactChannel(channel));
+    res.json(channel);
   });
 
   // Set which image in the gallery is currently in use.
@@ -427,7 +399,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
 
     channel[activeField] = filename;
     writeDb(db);
-    res.json(redactChannel(channel));
+    res.json(channel);
   });
 
   // Set (or clear, with an empty name) the display name shown for one image -
@@ -452,7 +424,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
     }
 
     writeDb(db);
-    res.json(redactChannel(channel));
+    res.json(channel);
   });
 }
 

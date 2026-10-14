@@ -549,7 +549,6 @@
   var addOutputBtn = document.getElementById('add-output-btn');
   var addOutputModalBackdrop = document.getElementById('add-output-modal-backdrop');
   var addOutputTypeRow = document.getElementById('add-output-type-row');
-  var addOutputTypeYoutubeBtn = document.getElementById('add-output-type-youtube');
   var addOutputTypeRtmpBtn = document.getElementById('add-output-type-rtmp');
   var addOutputTypePublicLinkBtn = document.getElementById('add-output-type-public-link');
   var addOutputRtmpForm = document.getElementById('add-output-rtmp-form');
@@ -749,8 +748,8 @@
   }
 
   // Polled on an interval - only touches live/offline state, never the rest
-  // of the form, so it can't clobber in-progress typing (e.g. a YouTube
-  // title or a half-filled "add output" form) while the user is editing.
+  // of the form, so it can't clobber in-progress typing (e.g. a title or a
+  // half-filled "add output" form) while the user is editing.
   function pollLiveStatus() {
     if (!currentChannelId) return;
     fetch('/api/channels/' + currentChannelId + '/status', { cache: 'no-store' })
@@ -880,17 +879,16 @@
     detailOutputsEmpty.classList.toggle('hidden', outputs.length > 0);
     addOutputTypePublicLinkBtn.disabled = outputs.some(function (o) { return o.type === 'public-link'; });
     outputs.forEach(function (output) {
-      var isYoutube = output.type === 'youtube';
       var isPublicLink = output.type === 'public-link';
       // Never rendered as visible text (screen shares, screenshots) - the
       // token in this URL is a real access-control secret now, same trust
       // level as a stream key, so it only ever leaves via the Copy button.
       var publicLinkUrl = embedOrigin() + '/watch/' + channel.id + '/' + output.token;
       var node = outputRowTemplate.content.firstElementChild.cloneNode(true);
-      node.querySelector('.output-name').textContent = isYoutube ? 'YouTube' : isPublicLink ? 'Public Link' : output.name;
-      node.querySelector('.output-url').textContent = isYoutube
-        ? 'Connected as ' + output.channelTitle
-        : isPublicLink ? 'Anyone with the link can watch - click Copy link to share it' : output.rtmpUrl;
+      node.querySelector('.output-name').textContent = isPublicLink ? 'Public Link' : output.name;
+      node.querySelector('.output-url').textContent = isPublicLink
+        ? 'Anyone with the link can watch - click Copy link to share it'
+        : output.rtmpUrl;
 
       var toggle = node.querySelector('.output-toggle');
       toggle.checked = !!output.enabled;
@@ -907,7 +905,7 @@
       });
 
       var editBtn = node.querySelector('.output-edit-btn');
-      if (!isYoutube && !isPublicLink) {
+      if (!isPublicLink) {
         editBtn.classList.remove('hidden');
         editBtn.addEventListener('click', function () {
           editingOutputId = output.id;
@@ -935,9 +933,8 @@
       }
 
       node.querySelector('.output-delete-btn').addEventListener('click', function () {
-        var message = isYoutube
-          ? 'Disconnect YouTube account "' + output.channelTitle + '"?'
-          : isPublicLink ? 'Remove the public link? The current link will stop working.'
+        var message = isPublicLink
+          ? 'Remove the public link? The current link will stop working.'
           : 'Remove output "' + output.name + '"?';
         if (!confirm(message)) return;
         api('/api/channels/' + channel.id + '/outputs/' + output.id, { method: 'DELETE' })
@@ -1266,13 +1263,6 @@
     addOutputModalBackdrop.addEventListener('click', function (e) {
       if (e.target === addOutputModalBackdrop) closeAddOutputModal();
     });
-    // Absent from the DOM entirely on production (see stripYoutubeOnProduction
-    // in devBanner.js) - this is a dev-site-only feature there.
-    if (addOutputTypeYoutubeBtn) {
-      addOutputTypeYoutubeBtn.addEventListener('click', function () {
-        window.location.href = '/api/youtube/connect?channelId=' + encodeURIComponent(currentChannelId);
-      });
-    }
     addOutputTypeRtmpBtn.addEventListener('click', function () {
       addOutputTypeRow.classList.add('hidden');
       addOutputRtmpForm.classList.remove('hidden');
@@ -1336,11 +1326,6 @@
     dashboardView.classList.remove('hidden');
     api('/api/config').then(function (cfg) {
       config = cfg;
-      // Both absent from the DOM entirely on production - only present (and
-      // possibly still hidden pending real credentials) on the dev site.
-      if (addOutputTypeYoutubeBtn) addOutputTypeYoutubeBtn.classList.toggle('hidden', !cfg.youtubeEnabled);
-      var youtubePrivacyNotice = document.getElementById('add-output-youtube-privacy-notice');
-      if (youtubePrivacyNotice) youtubePrivacyNotice.classList.toggle('hidden', !cfg.youtubeEnabled);
       // The page itself still works via a direct link/bookmark (showing the
       // same disabled notice as always - see route()'s 'recordings' branch) -
       // just no point advertising it in the nav when there's nothing to see.

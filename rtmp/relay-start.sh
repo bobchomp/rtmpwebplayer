@@ -1,11 +1,10 @@
 #!/bin/sh
 # Invoked by nginx-rtmp's exec_publish directive with the stream key as $1.
-# Polls the backend for every currently-enabled relay target (YouTube plus
-# any custom RTMP outputs) and spawns one copy-only ffmpeg relay per target.
-# Polls repeatedly for ~12s since YouTube's broadcast takes a few seconds to
-# become ready while custom outputs are ready instantly - each poll only
-# starts targets that aren't already running, so it's safe to see the same
-# target again on a later poll.
+# Polls the backend for every currently-enabled custom RTMP output and
+# spawns one copy-only ffmpeg relay per target. Polls a few times over ~12s
+# so a slow first response doesn't lose the relay - each poll only starts
+# targets that aren't already running, so it's safe to see the same target
+# again on a later poll.
 set -u
 
 STREAM_KEY="$1"

@@ -39,8 +39,8 @@ rtmp {
             on_publish http://backend:4000/api/rtmp/on_publish?secret=${WEBHOOK_SECRET};
             on_publish_done http://backend:4000/api/rtmp/on_publish_done?secret=${WEBHOOK_SECRET};
 
-            # Optionally relays the stream on to YouTube - the scripts check
-            # with the backend themselves for whether/where to relay.
+            # Optionally relays the stream on to custom RTMP outputs - the
+            # scripts check with the backend themselves for whether/where to relay.
             exec_publish /usr/local/bin/relay-start.sh $name;
             exec_publish_done /usr/local/bin/relay-stop.sh $name;
 
