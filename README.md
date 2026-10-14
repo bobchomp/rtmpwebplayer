@@ -349,17 +349,14 @@ stream goes:
   starts, so there's no way for a viewer to stop it from there - volume
   and fullscreen are unaffected, and the initial "click to watch" button
   still works as normal.
-- Everything else - YouTube and custom RTMP destinations - is added via the
-  **+ Add output** button and shows up in the same list below "Your
-  Website", each with its own on/off toggle and a Delete button. There's no
-  limit on how many of each type a channel can have (up to 10 outputs
-  total), so you can relay to several YouTube channels and/or several
-  custom RTMP destinations at once.
+- Everything else - custom RTMP destinations and the Public Link - is added
+  via the **+ Add output** button and shows up in the same list below "Your
+  Website", each with its own on/off toggle and a Delete button. A channel
+  can have up to 10 outputs, so you can relay to several custom RTMP
+  destinations at once.
   - **Custom RTMP**: picking this in the popup asks for a name, RTMP URL,
     and stream key (the same fields Restream or any platform gives you for
     a "custom RTMP" destination - Twitch, Facebook, another server, etc).
-  - **YouTube**: see the dedicated section below - picking this in the
-    popup takes you straight to Google's sign-in.
   - **Public Link**: adds a direct, shareable watch link for this channel
     (`/watch/<channel-id>/<random-token>`) - the same player as the embed,
     just full-page instead of in an iframe, for pasting into WhatsApp,
@@ -514,7 +511,7 @@ rather than the toggle silently having no effect.
 ### How it works, if you're curious
 
 nginx-rtmp records the raw incoming stream (via the same `exec_publish`
-mechanism the YouTube relay uses) to a shared volume as MPEG-TS,
+mechanism the custom RTMP relays use) to a shared volume as MPEG-TS,
 stream-copied - no re-encoding, so it costs almost nothing in CPU. Once the
 stream ends, the backend remuxes that into a proper, seekable MP4 (again a
 stream copy, not a re-encode - fast and cheap either way), uploads it to R2,
@@ -524,72 +521,6 @@ related is left sitting on your droplet's own disk once it succeeds.
 Optionally, set `RECORDING_RETENTION_DAYS` in `.env` to automatically delete
 recordings older than that many days - leave it unset to keep everything
 until you delete it yourself.
-
-## Relaying to YouTube
-
-**Dev-site-only by design.** YouTube relaying only ever runs on the
-dev/staging deployment (see "Dev/staging deployment" below) - the production
-site mounts none of its routes and shows none of its UI, regardless of
-whether `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are set anywhere. This
-isn't a temporary state pending Google verification - it's the intended
-setup, since the church's actual use case never needed a public-facing
-YouTube relay on the main site.
-
-Unlike a plain RTMP destination, YouTube needs an account connected via
-OAuth - after that it creates a live broadcast with your channel's title
-automatically every time you go live, no need to touch YouTube Studio or
-paste stream keys manually. Each YouTube connection is independent, so a
-channel can relay to several different YouTube channels at once (or a
-custom RTMP destination and a YouTube one simultaneously) - just click
-"+ Add output" again for each one.
-
-### One-time Google Cloud setup
-
-1. Create a project at [console.cloud.google.com](https://console.cloud.google.com)
-2. **APIs & Services → Library** - enable the **YouTube Data API v3**
-3. **APIs & Services → OAuth consent screen** (Google's newer UI splits this
-   across a few pages):
-   - **Audience**: user type External; add your own Google account under
-     **Test users** (this avoids Google's full public-app verification
-     process, which isn't needed for personal use)
-   - **Data access**: add the scope `.../auth/youtube`
-4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**,
-   application type **Web application**, with an authorized redirect URI of:
-   ```
-   https://dev.<PUBLIC_HOST>/api/youtube/callback
-   ```
-5. Add the resulting Client ID/Secret to the **dev deployment's** `.env` as
-   `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` (see
-   "Dev/staging deployment" below - this only ever takes effect there, never
-   on production), then `docker compose up -d --build` in that folder.
-
-### Using it
-
-- On a channel's detail page, click **+ Add output**, then **YouTube** in
-  the popup - this takes you to Google's sign-in, and connects that
-  account to this channel specifically.
-- The new output shows up in the outputs list as "YouTube - Connected as
-  <your channel name>", with its own on/off toggle (takes effect
-  immediately). Title and description for the broadcast come from that
-  channel's shared **Edit title & description** popup, not a separate
-  YouTube-only field.
-- When the channel goes live, the app automatically creates a YouTube live
-  broadcast (one per enabled YouTube output, if you've connected more than
-  one) with that title/description and relays the incoming stream to it
-  (`ffmpeg -c copy` - repackaged, not re-encoded, so it's cheap on CPU). The
-  broadcast goes live on YouTube automatically once it detects healthy
-  incoming data, and completes automatically when the stream ends - no
-  manual steps in YouTube Studio either way.
-- Deleting a YouTube output (same Delete button as any other output) also
-  disconnects that account - other outputs are unaffected.
-
-### How it works, if you're curious
-
-`nginx-rtmp`'s `exec_publish`/`exec_publish_done` hooks (see
-`rtmp/relay-start.sh` / `relay-stop.sh`) ask the backend for a relay target
-whenever a channel goes live, and spawn/kill the `ffmpeg` relay accordingly.
-The backend creates the actual YouTube broadcast+stream via the YouTube
-Data API the moment a YouTube-enabled channel starts publishing.
 
 ## Dev/staging deployment
 
@@ -604,10 +535,8 @@ that would mean a second set of certificates and more RAM used on a droplet
 that's already budgeted tightly (see `docker-compose.yml`'s own comment on
 that). Everything else - the app code, the data, whether it's even running
 at all - is fully independent, including which commit it's on. Use it to
-test changes (including anything that needs a real OAuth grant, like
-recording a demo video for Google's verification) without touching the live
-site, and without dev always having to mirror exactly what's live in
-production.
+test changes without touching the live site, and without dev always having
+to mirror exactly what's live in production.
 
 ### One-time setup
 
@@ -626,9 +555,7 @@ production.
    `AUTH0_CLIENT_SECRET` and `RESTREAM_CLIENT_ID`/`RESTREAM_CLIENT_SECRET`
    reuse the same values as production (same Auth0 tenant/Restream app) -
    just add this domain's own callback URL to each of their allowed
-   redirect URIs, since the domain differs. `GOOGLE_CLIENT_ID`/
-   `GOOGLE_CLIENT_SECRET`/`GOOGLE_REDIRECT_URI` are what enable YouTube
-   relaying (dev-only by design) - see "One-time Google Cloud setup" above.
+   redirect URIs, since the domain differs.
 5. In Cloudflare DNS, add an **A record** for `dev.stream.rossmackenzie.co.uk`
    pointing at the same droplet IP as `stream.rossmackenzie.co.uk`.
 6. `docker compose up -d --build`

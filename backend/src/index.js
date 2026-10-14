@@ -12,14 +12,13 @@ const rtmpHooks = require('./routes/rtmpHooks');
 const hlsProxy = require('./routes/hlsProxy');
 const embed = require('./routes/embed');
 const watch = require('./routes/watch');
-const youtubeAuth = require('./routes/youtubeAuth');
 const restreamAuth = require('./routes/restreamAuth');
 const statsRoutes = require('./routes/stats');
 const recordings = require('./recordings');
 const geoip = require('./geoip');
 const { renderStatusPage } = require('./statusPage');
 const { requireAuth } = require('./authMiddleware');
-const { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripStatusLinkOnDevSite, stripYoutubeOnProduction } = require('./devBanner');
+const { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripStatusLinkOnDevSite } = require('./devBanner');
 
 // Anyone who knows the session secret can forge an admin session cookie, so
 // refuse to start rather than fall back to a guessable one.
@@ -87,11 +86,6 @@ app.get('/api/config', (req, res) => {
     // (or an unproxied hostname) so the dashboard shows a working RTMP URL.
     rtmpHost: process.env.RTMP_PUBLIC_HOST || process.env.PUBLIC_HOST || req.hostname,
     rtmpPort: process.env.RTMP_PORT || 1935,
-    // YouTube relaying is a dev-site-only feature by design (see
-    // /api/youtube below, only mounted here too) - gated on IS_DEV_SITE
-    // itself, not just credential presence, so it stays off on production
-    // even if GOOGLE_CLIENT_ID/SECRET were ever accidentally set there.
-    youtubeEnabled: IS_DEV_SITE && !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
     // See recordings.js's recordingsAvailable() - true unless RECORDINGS_ENABLED=false
     // or R2 isn't configured. rtmpHooks.js's /recording-enabled is the real
     // enforcement point; this just lets the dashboard warn up front instead
@@ -111,10 +105,6 @@ app.use('/api', authRoutes);
 app.use('/auth', auth0Routes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/rtmp', rtmpHooks);
-// Dev-site-only (see stripYoutubeOnProduction below and rtmpHooks.js) - not
-// mounted at all on production, so a request to any /api/youtube/* route
-// there gets a plain 404 rather than revealing the route exists.
-if (IS_DEV_SITE) app.use('/api/youtube', youtubeAuth);
 app.use('/api/restream', restreamAuth);
 app.use('/api/stats', statsRoutes);
 app.use('/live', hlsProxy);
@@ -126,7 +116,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 // Loaded (and, on the dev stack, banner-injected) once at startup rather than
 // per-request - none of this changes while the process is running.
 function loadHtmlPage(filename) {
-  return stripYoutubeOnProduction(withDevBanner(fs.readFileSync(path.join(PUBLIC_DIR, filename), 'utf8')));
+  return withDevBanner(fs.readFileSync(path.join(PUBLIC_DIR, filename), 'utf8'));
 }
 
 const homepageHtml = stripStatusLinkOnDevSite(stripDevSiteLinkOnDevSite(loadHtmlPage('index.html')));
@@ -148,8 +138,7 @@ const NO_CACHE = 'no-cache';
 app.get('/', (req, res) => res.type('html').set('Cache-Control', NO_CACHE).send(homepageHtml));
 
 // The admin dashboard lives at its own path (not '/') so the site's actual
-// homepage can be a genuine public page describing the app - required by
-// Google's OAuth branding verification, which flags a homepage that's
+// homepage can be a genuine public page describing the app rather than
 // nothing but a login form. The login form itself lives at yet another path
 // (not folded into the dashboard) so it's a real page of its own rather than
 // a view swapped in by client-side JS.
