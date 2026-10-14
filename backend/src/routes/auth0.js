@@ -50,14 +50,18 @@ router.get('/callback', async (req, res) => {
     const tokens = await auth0.exchangeCodeForTokens(code);
     const userInfo = await auth0.getUserInfo(tokens.access_token);
 
-    const allowedEmail = process.env.ADMIN_EMAIL.trim().toLowerCase();
+    // ADMIN_EMAIL may list several comma-separated addresses; every one of
+    // them gets full admin access.
+    const allowedEmails = process.env.ADMIN_EMAIL.split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
     const gotEmail = (userInfo.email || '').trim().toLowerCase();
 
     // email_verified matters here specifically because Auth0's own
     // email/password connection lets someone sign up claiming any email
     // address before proving they control it - without this check, an
-    // attacker could self-register with ADMIN_EMAIL and log straight in.
-    if (!userInfo.email_verified || gotEmail !== allowedEmail) {
+    // attacker could self-register with an ADMIN_EMAIL address and log straight in.
+    if (!userInfo.email_verified || !gotEmail || !allowedEmails.includes(gotEmail)) {
       return res.redirect('/login?error=' + encodeURIComponent('That account is not authorized for this dashboard.'));
     }
 

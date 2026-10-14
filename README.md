@@ -101,7 +101,10 @@ protect on its own.
    social connection instead if you'd rather not create a separate password
    at all.
 8. Set `ADMIN_EMAIL` in `.env` to the email address of the account you'll
-   actually sign in with. This is the real gatekeeper - Auth0 only confirms
+   actually sign in with - or several, comma-separated
+   (`you@example.com,them@example.com`), to let more than one person in.
+   Every listed address gets full admin access; there are no lesser roles.
+   This is the real gatekeeper - Auth0 only confirms
    an email is genuinely yours (via `email_verified`), this app is what
    decides that email is allowed in at all. Anyone else who successfully
    authenticates through Auth0 (a different Google account, a new
