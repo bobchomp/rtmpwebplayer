@@ -22,14 +22,15 @@ section below before trying to rebuild anything like it.
 - Scope: `channels.read stream.read` (set in `restream.js`'s `OAUTH_SCOPE`).
   There is no dedicated "analytics" scope - viewer analytics come back
   under `stream.read`.
-- Only the **refresh token** is persisted (`db.restream.refreshToken`,
-  set by `routes/restreamAuth.js`'s `/callback`). Every API call first
+- Only the **refresh token** is persisted, one per dashboard account
+  (`db.restreamAccounts[<account email>].refreshToken`, set by
+  `routes/restreamAuth.js`'s `/callback`). Every API call first
   exchanges it for a fresh access token (`restreamSession.js`'s
   `getAccessToken()` -> `restream.js`'s `refreshAccessToken()`) rather than
   caching an access token with its own expiry to track.
 - Connect/disconnect/status live at `routes/restreamAuth.js` -
-  `/connect`, `/callback`, `/disconnect`, `/status`. Account-wide, so
-  there's nothing per-channel to configure here.
+  `/connect`, `/callback`, `/disconnect`, `/status`. Per dashboard account,
+  not per channel; imports only match an account's own channels.
 
 ## Base URL and endpoints used
 

@@ -1,5 +1,9 @@
 require('dotenv').config();
 
+// Before any other module loads: some (recordings.js) start background jobs
+// on require that read channel ownership.
+require('./accounts').migrateOwnership();
+
 const express = require('express');
 const session = require('express-session');
 const path = require('path');

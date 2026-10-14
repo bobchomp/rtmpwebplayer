@@ -4,14 +4,15 @@ const crypto = require('crypto');
 const { requireAuth } = require('../authMiddleware');
 const { readDb, writeDb } = require('../db');
 const restream = require('../restream');
+const { currentAccount } = require('../accounts');
 
 const router = express.Router();
 
-// Account-wide, not per-channel - unlike the YouTube relay (which connects
-// a specific Google account to a specific local channel), there's only one
-// Restream account in the picture here, and it isn't tied to any single
-// local channel (see restreamMatch.js for how an imported event gets
-// attributed to one anyway).
+// One Restream connection per dashboard account (db.restreamAccounts,
+// keyed by the account's email), not per channel - unlike the YouTube relay,
+// which connects a Google account to one specific channel. See
+// restreamMatch.js for how an imported event gets attributed to one of that
+// account's channels.
 router.get('/connect', requireAuth, (req, res) => {
   if (!process.env.RESTREAM_CLIENT_ID || !process.env.RESTREAM_CLIENT_SECRET || !process.env.RESTREAM_REDIRECT_URI) {
     return res.status(500).send('RESTREAM_CLIENT_ID / RESTREAM_CLIENT_SECRET / RESTREAM_REDIRECT_URI are not configured on the server.');
@@ -34,7 +35,8 @@ router.get('/callback', requireAuth, async (req, res) => {
   try {
     const tokens = await restream.exchangeCodeForTokens(code);
     const db = readDb();
-    db.restream = {
+    db.restreamAccounts = db.restreamAccounts || {};
+    db.restreamAccounts[currentAccount(req)] = {
       refreshToken: tokens.refresh_token,
       connectedAt: new Date().toISOString(),
     };
@@ -47,14 +49,15 @@ router.get('/callback', requireAuth, async (req, res) => {
 
 router.post('/disconnect', requireAuth, (req, res) => {
   const db = readDb();
-  delete db.restream;
+  if (db.restreamAccounts) delete db.restreamAccounts[currentAccount(req)];
   writeDb(db);
   res.json({ ok: true });
 });
 
 router.get('/status', requireAuth, (req, res) => {
   const db = readDb();
-  res.json({ connected: !!(db.restream && db.restream.refreshToken), connectedAt: db.restream ? db.restream.connectedAt : null });
+  const connection = db.restreamAccounts && db.restreamAccounts[currentAccount(req)];
+  res.json({ connected: !!(connection && connection.refreshToken), connectedAt: connection ? connection.connectedAt : null });
 });
 
 module.exports = router;

@@ -240,6 +240,7 @@ async function processFinishedRecording({ channel, rawFilePath }) {
   const mp4Path = rawFilePath.replace(/\.ts$/, '.mp4');
 
   processingJobs.set(rawFilePath, {
+    owner: channel.owner,
     channelId: channel.id,
     channelName: channel.name,
     stage: 'remuxing',
@@ -283,6 +284,7 @@ async function processFinishedRecording({ channel, rawFilePath }) {
     const rows = readAll();
     rows.push({
       id,
+      owner: channel.owner,
       channelId: channel.id,
       channelName: channel.name,
       title: channel.title || channel.name,

@@ -12,6 +12,8 @@
 //   2. plays.json website rows - fuzzier (depends on someone having
 //      actually watched during the stream), used only when nothing in
 //      recordings.json overlaps.
+// Only the importing account's own recordings and plays are considered, so
+// a stream can never be attributed to another account's channel.
 // Neither is guaranteed to have anything for a given event - the caller
 // (restreamImport.js) is expected to flag that case for a manual pick
 // rather than silently guessing.
@@ -23,8 +25,8 @@ function windowsOverlap(aStart, aEnd, bStart, bEnd) {
   return aStart <= bEnd && aEnd >= bStart;
 }
 
-function matchViaRecordings(eventStartMs, eventEndMs) {
-  const overlapping = recordings.listRecordings().filter((r) => {
+function matchViaRecordings(owner, eventStartMs, eventEndMs) {
+  const overlapping = recordings.listRecordings().filter((r) => r.owner === owner).filter((r) => {
     const recStart = new Date(r.startedAt).getTime();
     const recEnd = r.finishedAt ? new Date(r.finishedAt).getTime() : recStart;
     return windowsOverlap(recStart, recEnd, eventStartMs, eventEndMs);
@@ -42,9 +44,9 @@ function matchViaRecordings(eventStartMs, eventEndMs) {
   return overlapping[0].channelId;
 }
 
-function matchViaPlays(eventStartMs, eventEndMs) {
+function matchViaPlays(owner, eventStartMs, eventEndMs) {
   const rows = plays
-    .listPlays({ from: new Date(eventStartMs).toISOString(), to: new Date(eventEndMs).toISOString() })
+    .listPlays({ owner, from: new Date(eventStartMs).toISOString(), to: new Date(eventEndMs).toISOString() })
     .filter((p) => p.platform === 'website');
   if (!rows.length) return null;
 
@@ -63,10 +65,10 @@ function matchViaPlays(eventStartMs, eventEndMs) {
 
 // Returns a channelId, or null if nothing in either source overlaps this
 // event's window - the caller should treat null as "ask the admin".
-function matchChannelForEvent({ startedAt, finishedAt }) {
+function matchChannelForEvent({ owner, startedAt, finishedAt }) {
   const startMs = new Date(startedAt).getTime();
   const endMs = finishedAt ? new Date(finishedAt).getTime() : startMs;
-  return matchViaRecordings(startMs, endMs) || matchViaPlays(startMs, endMs);
+  return matchViaRecordings(owner, startMs, endMs) || matchViaPlays(owner, startMs, endMs);
 }
 
 module.exports = { matchChannelForEvent };

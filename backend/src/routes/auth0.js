@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 
 const auth0 = require('../auth0');
+const { adminEmails } = require('../accounts');
 
 const router = express.Router();
 
@@ -50,11 +51,9 @@ router.get('/callback', async (req, res) => {
     const tokens = await auth0.exchangeCodeForTokens(code);
     const userInfo = await auth0.getUserInfo(tokens.access_token);
 
-    // ADMIN_EMAIL may list several comma-separated addresses; every one of
-    // them gets full admin access.
-    const allowedEmails = process.env.ADMIN_EMAIL.split(',')
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
+    // ADMIN_EMAIL may list several comma-separated addresses; each is its
+    // own separate account (see accounts.js).
+    const allowedEmails = adminEmails();
     const gotEmail = (userInfo.email || '').trim().toLowerCase();
 
     // email_verified matters here specifically because Auth0's own
@@ -68,6 +67,7 @@ router.get('/callback', async (req, res) => {
     req.session.regenerate((err) => {
       if (err) return res.redirect('/login?error=' + encodeURIComponent('Login failed - please try again.'));
       req.session.isAdmin = true;
+      req.session.account = gotEmail;
       res.redirect('/dashboard');
     });
   } catch (err) {

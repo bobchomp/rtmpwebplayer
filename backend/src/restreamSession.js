@@ -1,17 +1,18 @@
-// Turns the stored Restream refresh token into a fresh access token - used
-// by the import flow (restreamImport.js) via routes/stats.js, and by the
-// OAuth connect/disconnect/status routes (routes/restreamAuth.js). See
-// docs/restream-api-notes.md for what's known about the API itself.
+// Turns an account's stored Restream refresh token into a fresh access
+// token - used by the import flow (restreamImport.js) via routes/stats.js.
+// Each account connects its own Restream (db.restreamAccounts[email], see
+// routes/restreamAuth.js). See docs/restream-api-notes.md for the API itself.
 
 const { readDb } = require('./db');
 const restream = require('./restream');
 
-async function getAccessToken() {
+async function getAccessToken(account) {
   const db = readDb();
-  if (!db.restream || !db.restream.refreshToken) {
+  const connection = db.restreamAccounts && db.restreamAccounts[account];
+  if (!connection || !connection.refreshToken) {
     throw new Error('Restream is not connected - connect it first from the Stats page.');
   }
-  const tokens = await restream.refreshAccessToken(db.restream.refreshToken);
+  const tokens = await restream.refreshAccessToken(connection.refreshToken);
   return tokens.access_token;
 }
 

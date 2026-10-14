@@ -6,6 +6,7 @@ const { readDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
 const restreamImport = require('../restreamImport');
+const { adminEmails, currentAccount, ownsChannel } = require('../accounts');
 const statsTemplateExport = require('../statsTemplateExport');
 
 const router = express.Router();
@@ -45,6 +46,7 @@ function withDisplayFields(rows) {
 
 function exportRows(req) {
   return withDisplayFields(plays.listPlays({
+    owner: currentAccount(req),
     channelId: req.query.channelId || undefined,
     from: req.query.from || undefined,
     to: req.query.to || undefined,
@@ -59,7 +61,7 @@ function exportFilterSummary(req) {
   if (req.query.channelId) {
     const db = readDb();
     const channel = db.channels[req.query.channelId];
-    parts.push(channel ? channel.name : 'Unknown channel');
+    parts.push(ownsChannel(channel, currentAccount(req)) ? channel.name : 'Unknown channel');
   } else {
     parts.push('All channels');
   }
@@ -99,11 +101,14 @@ router.post('/track', (req, res) => {
 
 router.get('/', requireAuth, (req, res) => {
   const db = readDb();
+  const account = currentAccount(req);
   const channels = Object.values(db.channels)
+    .filter((c) => c.owner === account)
     .map((c) => ({ id: c.id, name: c.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const rows = withDisplayFields(plays.listPlays({
+    owner: account,
     channelId: req.query.channelId || undefined,
     from: req.query.from || undefined,
     to: req.query.to || undefined,
@@ -127,7 +132,7 @@ router.delete('/', requireAuth, (req, res) => {
     : [];
   if (!ids.length) return res.status(400).json({ error: 'ids is required' });
 
-  const deletedCount = plays.deletePlays(ids);
+  const deletedCount = plays.deletePlays(ids, currentAccount(req));
   res.json({ deletedCount });
 });
 
@@ -140,7 +145,7 @@ router.post('/restream/preview', requireAuth, async (req, res) => {
   if (!from || !to) return res.status(400).json({ error: 'from and to are required' });
 
   try {
-    const items = await restreamImport.previewImport({ from, to });
+    const items = await restreamImport.previewImport({ account: currentAccount(req), from, to });
     res.json({ items });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -154,7 +159,7 @@ router.post('/restream/import', requireAuth, (req, res) => {
   if (!items.length) return res.status(400).json({ error: 'items is required' });
 
   try {
-    const result = restreamImport.commitImport(items);
+    const result = restreamImport.commitImport(items, currentAccount(req));
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -173,9 +178,12 @@ const AUTO_IMPORT_MAX_DAYS = 60;
 
 // For an external scheduler (see README's "Automatic weekly import"), so it
 // authenticates with RESTREAM_IMPORT_SECRET instead of an admin session, and
-// is switched off (404) when that's unset. Imports every matched stream in
-// the window without a preview - unmatched ones are skipped and counted, to
-// be assigned by hand from the Stats page.
+// is switched off (404) when that's unset. Runs the import for every
+// account with Restream connected, each against its own channels only.
+// Imports every matched stream in the window without a preview - unmatched
+// ones are skipped and counted, to be assigned by hand from the Stats page.
+// One account failing doesn't stop the others; any failure makes the whole
+// response a 500 so the scheduler reports it.
 router.post('/restream/auto-import', async (req, res) => {
   const expected = process.env.RESTREAM_IMPORT_SECRET;
   if (!expected) return res.status(404).json({ error: 'Not found' });
@@ -192,15 +200,31 @@ router.post('/restream/auto-import', async (req, res) => {
   const to = new Date();
   const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
 
-  try {
-    const items = await restreamImport.previewImport({ from: from.toISOString(), to: to.toISOString() });
-    const result = restreamImport.commitImport(items);
-    console.log(`[restream-auto-import] ${days}-day window: imported ${result.importedCount} row(s).`);
-    res.json(Object.assign({ from: from.toISOString(), to: to.toISOString(), days }, result));
-  } catch (err) {
-    console.error(`[restream-auto-import] Failed: ${err.message}`);
-    res.status(500).json({ error: err.message });
+  const db = readDb();
+  const connected = adminEmails().filter((account) => {
+    const connection = db.restreamAccounts && db.restreamAccounts[account];
+    return !!(connection && connection.refreshToken);
+  });
+  if (!connected.length) {
+    return res.status(500).json({ error: 'No account has Restream connected - connect it from the Stats page.' });
   }
+
+  const accounts = [];
+  for (const account of connected) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const items = await restreamImport.previewImport({ account, from: from.toISOString(), to: to.toISOString() });
+      const result = restreamImport.commitImport(items, account);
+      console.log(`[restream-auto-import] ${account}, ${days}-day window: imported ${result.importedCount} row(s).`);
+      accounts.push(Object.assign({ account }, result));
+    } catch (err) {
+      console.error(`[restream-auto-import] ${account} failed: ${err.message}`);
+      accounts.push({ account, error: err.message });
+    }
+  }
+
+  const failed = accounts.some((a) => a.error);
+  res.status(failed ? 500 : 200).json({ from: from.toISOString(), to: to.toISOString(), days, accounts });
 });
 
 router.get('/export.csv', requireAuth, (req, res) => {
@@ -263,7 +287,7 @@ router.get('/export-template.xlsx', requireAuth, async (req, res) => {
 
   const db = readDb();
   const channel = db.channels[channelId];
-  if (!channel) return res.status(404).json({ error: 'Channel not found' });
+  if (!ownsChannel(channel, currentAccount(req))) return res.status(404).json({ error: 'Channel not found' });
 
   const workbook = await statsTemplateExport.buildTemplateWorkbook({
     channelId,

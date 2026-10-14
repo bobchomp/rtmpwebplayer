@@ -1372,6 +1372,7 @@
 
   api('/api/me').then(function (data) {
     if (data.authenticated) {
+      document.getElementById('footer-account').textContent = '\u00b7 Signed in as ' + data.email;
       enterDashboard();
     } else {
       window.location.href = '/login';

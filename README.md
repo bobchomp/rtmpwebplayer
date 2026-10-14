@@ -102,13 +102,35 @@ protect on its own.
    at all.
 8. Set `ADMIN_EMAIL` in `.env` to the email address of the account you'll
    actually sign in with - or several, comma-separated
-   (`you@example.com,them@example.com`), to let more than one person in.
-   Every listed address gets full admin access; there are no lesser roles.
-   This is the real gatekeeper - Auth0 only confirms
+   (`you@example.com,them@example.com`), one per account (see "Accounts"
+   below). This is the real gatekeeper - Auth0 only confirms
    an email is genuinely yours (via `email_verified`), this app is what
    decides that email is allowed in at all. Anyone else who successfully
    authenticates through Auth0 (a different Google account, a new
    Username-Password signup, etc.) gets rejected after that check.
+
+### Accounts
+
+Each address in `ADMIN_EMAIL` is its own, fully separate account. An
+account only ever sees its own channels, and the stats, exports, recordings
+and Restream connection that belong to them - another account's channels
+don't appear anywhere, and asking for one by its ID gets "not found". The
+dashboard footer shows which account you're signed in as. Embed players,
+share links and RTMP ingest are public per channel and work the same for
+every account.
+
+To add an account, create its login in Auth0 (**User Management → Users →
+Create User**, then have the person verify their email), append its address
+to `ADMIN_EMAIL`, and redeploy the backend. It starts empty. Removing an
+address from `ADMIN_EMAIL` locks that account out but keeps its data, which
+comes back if the address is re-added. An account is identified by its
+email, so changing someone's address means their data stays with the old
+one.
+
+Data from before accounts existed (channels, stats, recordings and the
+Restream connection) belongs to the **first** address in `ADMIN_EMAIL`,
+assigned automatically the first time the app starts. Keep your own address
+first.
 
 ## 3. Run it
 
@@ -452,13 +474,16 @@ The same import can run on a schedule from an external cron service such
 as [cron-job.org](https://cron-job.org), so Monday's stats are already in
 without anyone clicking through the preview. Each run imports the last 14
 days, which also refreshes the previous week's streams whose YouTube counts
-kept climbing. Streams it can't match to a channel are skipped and counted
-in the response; assign those by hand from the normal import preview.
+kept climbing. One run imports for every account that has Restream
+connected, each into its own channels only, so a single cron job covers
+everyone. Streams it can't match to one of that account's channels are
+skipped and counted in the response; assign those by hand from the normal
+import preview.
 
 1. Generate a secret on the server with `openssl rand -hex 32`, add it to
    `.env` as `RESTREAM_IMPORT_SECRET`, and redeploy the backend.
-2. Restream must already be connected from the Stats page - the scheduled
-   run reuses that connection.
+2. Each account that wants scheduled imports connects its own Restream from
+   its Stats page - the scheduled run reuses those connections.
 3. In cron-job.org, create a job:
    - **URL:** `https://<PUBLIC_HOST>/api/stats/restream/auto-import`
    - **Schedule:** Mondays, at whatever time suits
@@ -469,8 +494,10 @@ in the response; assign those by hand from the normal import preview.
 
 Add `?days=N` to the URL (1-60) to import a different window. The endpoint
 returns `404` while `RESTREAM_IMPORT_SECRET` is unset, `401` for a wrong
-secret, and `500` with the reason if the import itself fails (for example,
-Restream needing to be reconnected).
+secret, and a per-account breakdown under `accounts`. If any account's
+import fails (for example, its Restream needing to be reconnected), the
+others still run, and the response is a `500` naming the account and the
+reason, so cron-job.org's failure notification fires.
 
 ## Recording streams
 
