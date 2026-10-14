@@ -9,6 +9,7 @@ const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
 const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
+const { currentAccount, ownsChannel } = require('../accounts');
 
 const router = express.Router();
 
@@ -76,10 +77,18 @@ function redactChannel(channel) {
   });
 }
 
+// The logged-in account's channel for :id, or null - another account's
+// channel is treated exactly like one that doesn't exist.
+function ownChannel(db, req) {
+  const channel = db.channels[req.params.id];
+  return ownsChannel(channel, currentAccount(req)) ? channel : null;
+}
+
 // Admin: list channels (includes stream keys, admin-only)
 router.get('/', requireAuth, (req, res) => {
   const db = readDb();
-  const channels = Object.values(db.channels).sort((a, b) =>
+  const account = currentAccount(req);
+  const channels = Object.values(db.channels).filter((c) => c.owner === account).sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt)
   );
   res.json(channels.map(redactChannel));
@@ -95,6 +104,7 @@ router.post('/', requireAuth, (req, res) => {
   const id = crypto.randomUUID();
   const channel = {
     id,
+    owner: currentAccount(req),
     name,
     streamKey: generateStreamKey(),
     isLive: false,
@@ -125,7 +135,7 @@ router.post('/', requireAuth, (req, res) => {
 // Admin: fetch a single channel (includes stream key, admin-only)
 router.get('/:id', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
   res.json(redactChannel(channel));
 });
@@ -137,7 +147,7 @@ router.patch('/:id', requireAuth, (req, res) => {
   if (name.length > 100) return res.status(400).json({ error: 'Name too long' });
 
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   channel.name = name;
@@ -150,7 +160,7 @@ router.patch('/:id', requireAuth, (req, res) => {
 // always available now, there's no way to disable them per channel).
 router.patch('/:id/website-settings', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   // Opt-in per channel - record-start.sh (in the rtmp container) checks this
@@ -175,7 +185,7 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
 // YouTube broadcast's title/description.
 router.patch('/:id/metadata', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   if (typeof req.body.title === 'string') {
@@ -241,7 +251,7 @@ function validateOutputInput(body, { partial } = {}) {
 // than a plain form submission.)
 router.post('/:id/outputs', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   channel.outputs = channel.outputs || [];
@@ -288,7 +298,7 @@ router.post('/:id/outputs', requireAuth, (req, res) => {
 // nothing else about either of those a form could meaningfully edit).
 router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   const output = (channel.outputs || []).find((o) => o.id === req.params.outputId);
@@ -312,7 +322,7 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
 // see youtubeAuth.js's disconnect route, which does the same thing).
 router.delete('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   const before = (channel.outputs || []).length;
@@ -326,7 +336,7 @@ router.delete('/:id/outputs/:outputId', requireAuth, (req, res) => {
 // Admin: delete a channel
 router.delete('/:id', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   (channel.coverImages || []).concat(channel.liveThumbnails || []).forEach((filename) => {
@@ -341,7 +351,7 @@ router.delete('/:id', requireAuth, (req, res) => {
 // Admin: rotate the stream key (invalidates the old one immediately)
 router.post('/:id/regenerate-key', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   channel.streamKey = generateStreamKey();
@@ -360,7 +370,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
   // until explicitly activated.
   router.post(`/:id/${routeSegment}`, requireAuth, (req, res) => {
     const db = readDb();
-    const channel = db.channels[req.params.id];
+    const channel = ownChannel(db, req);
     if (!channel) return res.status(404).json({ error: 'Not found' });
 
     upload.single('image')(req, res, (err) => {
@@ -368,7 +378,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
       const fresh = readDb();
-      const ch = fresh.channels[req.params.id];
+      const ch = ownChannel(fresh, req);
       if (!ch) {
         fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
         return res.status(404).json({ error: 'Not found' });
@@ -378,7 +388,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
       ch[listField].push(req.file.filename);
       if (!ch[activeField]) ch[activeField] = req.file.filename;
       writeDb(fresh);
-      res.json(ch);
+      res.json(redactChannel(ch));
     });
   });
 
@@ -386,7 +396,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
   // active image (the player's own default-placeholder chain takes over).
   router.delete(`/:id/${routeSegment}/:filename`, requireAuth, (req, res) => {
     const db = readDb();
-    const channel = db.channels[req.params.id];
+    const channel = ownChannel(db, req);
     if (!channel) return res.status(404).json({ error: 'Not found' });
 
     const filename = req.params.filename;
@@ -407,7 +417,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
   // Set which image in the gallery is currently in use.
   router.post(`/:id/${routeSegment}/:filename/activate`, requireAuth, (req, res) => {
     const db = readDb();
-    const channel = db.channels[req.params.id];
+    const channel = ownChannel(db, req);
     if (!channel) return res.status(404).json({ error: 'Not found' });
 
     const filename = req.params.filename;
@@ -425,7 +435,7 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
   // thumbnails in the popup can tell them apart by name instead of guessing.
   router.post(`/:id/${routeSegment}/:filename/name`, requireAuth, (req, res) => {
     const db = readDb();
-    const channel = db.channels[req.params.id];
+    const channel = ownChannel(db, req);
     if (!channel) return res.status(404).json({ error: 'Not found' });
 
     const filename = req.params.filename;
@@ -477,7 +487,7 @@ router.get('/:id/status', (req, res) => {
 // from anything public.
 router.get('/:id/viewers', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   res.set('Cache-Control', 'no-store');
@@ -489,7 +499,8 @@ router.get('/:id/viewers', requireAuth, (req, res) => {
 // in the dashboard's recordings view.
 router.get('/recordings/all', requireAuth, (req, res) => {
   const db = readDb();
-  const rows = recordings.listRecordings().map((r) => ({
+  const account = currentAccount(req);
+  const rows = recordings.listRecordings().filter((r) => r.owner === account).map((r) => ({
     ...r,
     channelName: (db.channels[r.channelId] && db.channels[r.channelId].name) || 'Deleted channel',
   }));
@@ -501,7 +512,8 @@ router.get('/recordings/all', requireAuth, (req, res) => {
 // progress rather than the finished list just silently gaining a new row
 // 5-30 minutes after a stream ends with no visibility in between.
 router.get('/recordings/processing', requireAuth, (req, res) => {
-  res.json(recordings.listProcessingJobs());
+  const account = currentAccount(req);
+  res.json(recordings.listProcessingJobs().filter((job) => job.owner === account));
 });
 
 // Admin-only - polled by the channel detail page while a recording is
@@ -510,7 +522,7 @@ router.get('/recordings/processing', requireAuth, (req, res) => {
 // currently recording, or it already finished) - see recordingSessions.js.
 router.get('/:id/recording-session', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   res.json(recordingSessions.getStatus(channel.streamKey));
@@ -520,7 +532,7 @@ router.get('/:id/recording-session', requireAuth, (req, res) => {
 // recording" buttons. Body: { continue: boolean }.
 router.post('/:id/recording-session/decision', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   const shouldContinue = !!(req.body && req.body.continue);
@@ -532,7 +544,7 @@ router.post('/:id/recording-session/decision', requireAuth, (req, res) => {
 // live in a private R2 bucket, so this is the only way to get at them.
 router.get('/:id/recordings', requireAuth, (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   res.json(recordings.listRecordings(channel.id));
@@ -543,8 +555,12 @@ router.get('/:id/recordings', requireAuth, (req, res) => {
 // it's R2's bandwidth serving it, not the droplet's.
 router.get('/:id/recordings/:recordingId/url', requireAuth, async (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  if (!recordings.listRecordings(channel.id).some((r) => r.id === req.params.recordingId)) {
+    return res.status(404).json({ error: 'Recording not found' });
+  }
 
   try {
     const url = await recordings.getPlaybackUrl(req.params.recordingId, { download: req.query.download === '1' });
@@ -557,8 +573,12 @@ router.get('/:id/recordings/:recordingId/url', requireAuth, async (req, res) => 
 
 router.delete('/:id/recordings/:recordingId', requireAuth, async (req, res) => {
   const db = readDb();
-  const channel = db.channels[req.params.id];
+  const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
+
+  if (!recordings.listRecordings(channel.id).some((r) => r.id === req.params.recordingId)) {
+    return res.status(404).json({ error: 'Recording not found' });
+  }
 
   try {
     const deleted = await recordings.deleteRecording(req.params.recordingId);

@@ -30,8 +30,8 @@ function viewsForChannel(byChannel, channelId) {
   return entry ? Number(entry.viewsTotal) || 0 : 0;
 }
 
-async function previewImport({ from, to }) {
-  const accessToken = await getAccessToken();
+async function previewImport({ account, from, to }) {
+  const accessToken = await getAccessToken(account);
   const allEvents = await restream.listEventHistory(accessToken, { from, to });
   const db = readDb();
 
@@ -80,7 +80,7 @@ async function previewImport({ from, to }) {
     }
     if (!youtubeViews && !facebookViews) continue; // nothing relevant to this event
 
-    const matchedChannelId = matchChannelForEvent({ startedAt, finishedAt });
+    const matchedChannelId = matchChannelForEvent({ owner: account, startedAt, finishedAt });
     const matchedChannel = matchedChannelId ? db.channels[matchedChannelId] : null;
 
     results.push({
@@ -106,14 +106,17 @@ async function previewImport({ from, to }) {
 // single number - the commit button used to give no feedback at all beyond
 // "no error was thrown", which made a silent 0-rows-written commit
 // indistinguishable from a successful one in the UI.
-function commitImport(items) {
+// Only channels owned by `account` are accepted, so a hand-picked channelId
+// in the posted items can't place rows on another account's channel.
+function commitImport(items, account) {
   const db = readDb();
   const rows = [];
   let skippedNoChannel = 0;
   let skippedNoViews = 0;
 
   items.forEach((item) => {
-    const channel = item.channelId ? db.channels[item.channelId] : null;
+    const candidate = item.channelId ? db.channels[item.channelId] : null;
+    const channel = candidate && candidate.owner === account ? candidate : null;
     if (!channel) {
       skippedNoChannel += 1;
       console.warn(`[restream-import] Skipping event ${item.restreamEventId} - no channel (channelId=${item.channelId})`);
@@ -134,6 +137,7 @@ function commitImport(items) {
     // this is left blank rather than similarly mislabeling every row with
     // the channel's current description.
     const common = {
+      owner: account,
       channelId: channel.id,
       channelName: channel.name,
       title: item.restreamTitle || channel.name,

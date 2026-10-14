@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { requireAuth } = require('../authMiddleware');
 const { readDb } = require('../db');
 const youtube = require('../youtube');
+const { currentAccount, ownsChannel } = require('../accounts');
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get('/connect', requireAuth, (req, res) => {
   const channelId = req.query.channelId;
   if (!channelId) return res.status(400).send('channelId is required.');
   const db = readDb();
-  if (!db.channels[channelId]) return res.status(404).send('Channel not found.');
+  if (!ownsChannel(db.channels[channelId], currentAccount(req))) return res.status(404).send('Channel not found.');
 
   const state = crypto.randomBytes(16).toString('hex');
   // Stashed in the session (rather than passed through Google's redirect)

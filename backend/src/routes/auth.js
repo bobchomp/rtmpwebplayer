@@ -7,7 +7,8 @@ const router = express.Router();
 // by both the dashboard (to gate the app) and login.js (to skip the login
 // screen if a session already exists).
 router.get('/me', (req, res) => {
-  res.json({ authenticated: !!(req.session && req.session.isAdmin) });
+  const authenticated = !!(req.session && req.session.isAdmin && req.session.account);
+  res.json({ authenticated, email: authenticated ? req.session.account : null });
 });
 
 module.exports = router;

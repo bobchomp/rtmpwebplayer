@@ -127,6 +127,7 @@ function recordPlay({ channelId, ip, userAgent }) {
   const geo = geoip.lookupIp(ip);
   plays.push({
     id: crypto.randomUUID(),
+    owner: channel.owner,
     channelId,
     channelName: channel.name,
     title: channel.title || channel.name,
@@ -180,10 +181,13 @@ function upsertImportedPlays(rows) {
 
 // Reads straight from the in-memory array - always fully up to date
 // regardless of the flush timer, since that's only about disk durability.
-function listPlays({ channelId, from, to } = {}) {
+function listPlays({ owner, channelId, from, to } = {}) {
   ensureLoaded();
   let rows = plays.slice();
 
+  if (owner) {
+    rows = rows.filter((p) => p.owner === owner);
+  }
   if (channelId) {
     rows = rows.filter((p) => p.channelId === channelId);
   }
@@ -221,11 +225,11 @@ function countActiveViewers(channelId) {
 // than waiting for the usual timer) since this is a deliberate, infrequent
 // action where the admin expects it to actually be gone, not just removed
 // from the in-memory view until the next periodic flush happens to run.
-function deletePlays(ids) {
+function deletePlays(ids, owner) {
   ensureLoaded();
   const idSet = new Set(ids);
   const before = plays.length;
-  plays = plays.filter((p) => !idSet.has(p.id));
+  plays = plays.filter((p) => !(idSet.has(p.id) && p.owner === owner));
   const deletedCount = before - plays.length;
   if (deletedCount > 0) {
     dirty = true;
