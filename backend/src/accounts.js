@@ -89,4 +89,4 @@ function migrateOwnership() {
   }
 }
 
-module.exports = { adminEmails, primaryAccount, currentAccount, ownsChannel, migrateOwnership };
+module.exports = { adminEmails, currentAccount, ownsChannel, migrateOwnership };

@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// Kept identical to scripts/load-test.js at the repo root (the copy you'd
-// run from a full clone) - update both together.
 //
 // Simulates N concurrent viewers hitting a real, running instance of this
 // app (production or dev) to see how it holds up - meant to be run from
@@ -23,13 +21,13 @@
 // Stream Test page once logged in.
 //
 // Usage:
-//   node scripts/load-test.js
+//   node load-test.js
 // and answer the prompts (password, channel, viewers, duration, ramp) as
 // they come up. The site is always https://stream.rossmackenzie.co.uk - no
 // need to type it.
 //
 // Prefer flags instead (e.g. for scripting)? Any of these skip their prompt:
-//   node scripts/load-test.js --yes --password <password> --channel <channel-id> --viewers 400 --duration 180 --ramp 30
+//   node load-test.js --yes --password <password> --channel <channel-id> --viewers 400 --duration 180 --ramp 30
 // --yes skips the welcome banner/confirmation, the rest skip their own
 // prompt as before (a wrong --password still exits immediately rather than
 // falling back to asking). Add --url <base-url> to point it at somewhere

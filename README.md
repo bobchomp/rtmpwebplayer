@@ -255,20 +255,20 @@ window.
 
 ### Load testing against the real server
 
-`scripts/load-test.js` simulates many concurrent viewers against a real,
+`load-test.js` simulates many concurrent viewers against a real,
 running instance (production or dev) - not full video playback, but the
 same request pattern a real embed player makes (status polling, manifest +
 segment fetches, heartbeat pings), which is what actually stresses the
 backend and CDN. Run it from your own computer, not the droplet itself, and
 have a real (or looping test) stream live on the target channel first.
 
-Don't want to clone the whole repo just for this? Log into the dashboard and
-open **Stream Test** in the nav - it has a download button for just this
-script plus the same instructions below, no repo needed. (Behind the admin
-login deliberately, since it's real traffic against the live site.)
+Log into the dashboard and open **Stream Test** (in the footer) - it has a
+download button for the script plus the same instructions below. (Behind
+the admin login deliberately, since it's real traffic against the live
+site.) It lives at `backend/src/downloads/load-test.js` in the repo.
 
 ```bash
-node scripts/load-test.js
+node load-test.js
 ```
 
 It'll ask for the channel ID, viewer count, duration, and ramp-up one at a
@@ -276,7 +276,7 @@ time (the site itself is hardcoded to production, no need to type it). To
 skip the prompts - e.g. for scripting - pass them as flags instead:
 
 ```bash
-node scripts/load-test.js --channel <channel-id> --viewers 400 --duration 180 --ramp 30
+node load-test.js --channel <channel-id> --viewers 400 --duration 180 --ramp 30
 ```
 
 Add `--url <base-url>` to point it at somewhere other than production (e.g. dev).
@@ -592,8 +592,8 @@ to mirror exactly what's live in production.
 
 ### Day to day
 
-Both folders have their own `deploy.sh`, `toggle-dev.sh`/`start-dev.sh`/
-`stop-dev.sh` scripts. `toggle-dev.sh` (run from the dev folder) stops the
+Both folders have their own `deploy.sh`; the dev folder also has
+`toggle-dev.sh`/`start-dev.sh`/`stop-dev.sh`. `toggle-dev.sh` stops the
 dev site if it's running, or starts it if it's stopped - whichever applies
 (checking first whether dev is currently live, same as `deploy.sh`'s own
 check, if it's about to stop it) - worth doing when you're not actively

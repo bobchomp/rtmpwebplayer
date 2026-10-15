@@ -101,7 +101,7 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// Admin-only download of scripts/load-test.js (see the Stream Test dashboard
+// Admin-only download of downloads/load-test.js (see the Stream Test dashboard
 // page) - not under express.static, so it's never reachable without a login.
 app.get('/api/tools/load-test.js', requireAuth, (req, res) => {
   res.download(path.join(__dirname, 'downloads', 'load-test.js'), 'load-test.js');
