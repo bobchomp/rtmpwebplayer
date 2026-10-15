@@ -37,7 +37,7 @@
 </nav>
 
 <h1>Privacy Policy</h1>
-<p class="updated">Last updated: 28 July 2026</p>
+<p class="updated">Last updated: 15 October 2026</p>
 
 <p>This policy explains how stream.rossmackenzie.co.uk ("the Site") handles information. The Site is used to broadcast live services and events, and lets administrators manage and record those broadcasts.</p>
 
@@ -45,7 +45,7 @@
 <p>There are two kinds of people who use the Site:</p>
 <ul>
   <li><strong>Viewers</strong> - anyone watching a live stream or recording through the embedded player or a public watch link. No account or sign-up is needed to watch.</li>
-  <li><strong>Administrators</strong> - a small number of people we authorise to manage channels, streams, and recordings via a password-protected dashboard.</li>
+  <li><strong>Administrators</strong> - a small number of people we authorise to manage channels, streams, and recordings via a dashboard that requires signing in.</li>
 </ul>
 
 <h2>Information we collect from viewers</h2>
@@ -58,8 +58,12 @@
 
 <h2>Information we collect from administrators</h2>
 <ul>
-  <li>A username and password to access the management dashboard.</li>
+  <li>Administrators sign in through our login provider, Auth0, which confirms who they are and tells us their email address. We use that address only to check they're authorised, and to keep each administrator's channels and data separate from everyone else's. We never see or store their password.</li>
+  <li>If an administrator chooses to connect their Restream account, we store an access credential that lets us read the view counts of their past streams. We use it for nothing else, and they can disconnect it at any time.</li>
 </ul>
+
+<h2>Cookies</h2>
+<p>We don't set cookies or store anything in viewers' browsers. Administrators get a single cookie that keeps them signed in to the dashboard, and the dashboard remembers a small display preference in their browser.</p>
 
 <h2>Recordings</h2>
 <p>Administrators can optionally turn on recording for a channel. When enabled, the stream is recorded and stored in private cloud storage, accessible only to administrators for playback or download. Recordings are automatically deleted after the retention period the administrator has configured, or can be deleted manually at any time.</p>
@@ -67,6 +71,8 @@
 <h2>Who we share information with</h2>
 <ul>
   <li><strong>Cloudflare</strong> - our hosting/CDN provider, and (if recording is enabled) our storage provider for recorded video files.</li>
+  <li><strong>Auth0</strong> - handles administrator sign-in. Viewers never interact with it.</li>
+  <li><strong>Restream</strong> - only for administrators who connect their Restream account, and only to read their own streams' view counts. Nothing about viewers is sent to Restream.</li>
 </ul>
 <p>We do not sell personal information to anyone.</p>
 
@@ -74,10 +80,11 @@
 <ul>
   <li>Viewer analytics (approximate location, watch timestamps) are retained indefinitely for internal reporting unless an administrator deletes them.</li>
   <li>Recordings are retained for the period an administrator configures, then automatically deleted, or deleted sooner on request.</li>
+  <li>An administrator's sign-in lasts up to 7 days. A connected Restream credential is kept until the administrator disconnects it.</li>
 </ul>
 
 <h2>Security</h2>
-<p>Access credentials and other secrets are stored only on our server and are never sent to or stored in visitors' browsers. The management dashboard is password-protected and restricted to authorised administrators.</p>
+<p>Access credentials and other secrets are stored only on our server and are never sent to or stored in visitors' browsers. The management dashboard requires signing in and is restricted to authorised administrators.</p>
 
 <h2>Children's privacy</h2>
 <p>The Site is not directed at children, and we do not knowingly collect personal information from children beyond the anonymous viewing analytics described above.</p>
