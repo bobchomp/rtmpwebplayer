@@ -32,6 +32,12 @@
     opts = opts || {};
     opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
     return fetch(url, opts).then(function (res) {
+      // Session ended (expired, logged out elsewhere) - go back to login
+      // rather than letting every action fail with "Unauthorized".
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return new Promise(function () {});
+      }
       if (!res.ok) {
         return res.json().catch(function () { return {}; }).then(function (body) {
           throw new Error(body.error || ('Request failed: ' + res.status));
