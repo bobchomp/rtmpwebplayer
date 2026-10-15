@@ -29,6 +29,10 @@ router.get('/login', (req, res) => {
   // way back) so the callback can tell a real Auth0 redirect apart from
   // someone just hitting /auth/callback directly with a guessed state.
   req.session.auth0State = state;
+  // Anyone can open this URL, so a not-yet-logged-in session only needs to
+  // outlive the trip to Auth0 and back - callback's regenerate() gives a
+  // real login the full lifetime.
+  if (!req.session.isAdmin) req.session.cookie.maxAge = 10 * 60 * 1000;
   res.redirect(auth0.getAuthUrl(state));
 });
 
