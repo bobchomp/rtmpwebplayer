@@ -383,6 +383,17 @@ setInterval(() => {
 // manually reprocess it (see rtmpHooks.js's /recording-done for the normal,
 // non-orphaned path this mirrors).
 const RAW_DIR = '/recordings/raw';
+
+// record-start.sh writes /recordings/raw/<streamKey>/<epoch seconds>.ts -
+// anything else posted to /recording-done is refused rather than processed
+// or deleted.
+function isRawRecordingPath(filePath, streamKey) {
+  if (typeof filePath !== 'string' || typeof streamKey !== 'string') return false;
+  if (!/^[A-Za-z0-9_-]+$/.test(streamKey)) return false;
+  const resolved = path.resolve(filePath);
+  return path.dirname(resolved) === path.join(RAW_DIR, streamKey)
+    && /^\d+\.ts$/.test(path.basename(resolved));
+}
 // Long enough that a file still being actively appended to every few
 // seconds by a live recording is never mistaken for an abandoned one -
 // short enough that a genuinely finished/stuck one doesn't sit around
@@ -471,4 +482,5 @@ module.exports = {
   reconcileOrphanedRecordings,
   remuxWithLoudnessNormalization,
   recordingsAvailable,
+  isRawRecordingPath,
 };

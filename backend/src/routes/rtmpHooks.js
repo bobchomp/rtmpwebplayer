@@ -170,6 +170,10 @@ router.post('/recording-done', (req, res) => {
 
   if (streamKey) recordingSessions.endSession(streamKey);
   if (!streamKey || !rawFilePath) return;
+  if (!recordings.isRawRecordingPath(rawFilePath, streamKey)) {
+    console.warn(`[recording-done] Ignoring unexpected file path: ${rawFilePath}`);
+    return;
+  }
 
   const db = readDb();
   const channel = findChannelByKey(db, streamKey);
