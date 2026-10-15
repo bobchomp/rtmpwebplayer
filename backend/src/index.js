@@ -6,6 +6,7 @@ require('./accounts').migrateOwnership();
 
 const express = require('express');
 const session = require('express-session');
+const { FileSessionStore } = require('./sessionStore');
 const path = require('path');
 const fs = require('fs');
 
@@ -65,6 +66,7 @@ app.use(
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    store: new FileSessionStore(),
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
