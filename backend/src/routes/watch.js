@@ -1,18 +1,11 @@
 const express = require('express');
-const crypto = require('crypto');
 
 const { readDb } = require('../db');
+const { secretMatches } = require('../safeCompare');
 const { buildPlayerHtml } = require('../playerPage');
 const { withDevBanner } = require('../devBanner');
 
 const router = express.Router();
-
-function safeEqual(a, b) {
-  const bufA = Buffer.from(String(a));
-  const bufB = Buffer.from(String(b));
-  if (bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
-}
 
 // A direct, shareable link to a channel's stream (for pasting into
 // WhatsApp/Facebook/email/etc) - separate from the /embed route, which is
@@ -32,7 +25,7 @@ router.get('/:channelId/:token', (req, res) => {
   if (!channel) return res.status(404).send('This stream is not available here.');
 
   const output = (channel.outputs || []).find((o) => o.type === 'public-link');
-  if (!output || !output.enabled || !output.token || !safeEqual(req.params.token, output.token)) {
+  if (!output || !output.enabled || !output.token || !secretMatches(req.params.token, output.token)) {
     return res.status(404).send('This stream is not available here.');
   }
 

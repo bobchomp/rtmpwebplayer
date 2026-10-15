@@ -1,7 +1,16 @@
+# /api/rtmp/* is the rtmp container's internal webhook API (it calls the
+# backend directly over the Docker network), so it's never served publicly.
+(internal_only) {
+	@internal path /api/rtmp/*
+	respond @internal 404
+}
+
 {$PUBLIC_HOST} {
+	import internal_only
 	reverse_proxy backend:4000
 }
 
 dev.stream.rossmackenzie.co.uk {
+	import internal_only
 	reverse_proxy dev-backend:4000
 }
