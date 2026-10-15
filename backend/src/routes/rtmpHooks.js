@@ -3,12 +3,14 @@ const fs = require('fs');
 const { readDb, writeDb } = require('../db');
 const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
+const { secretMatches } = require('../safeCompare');
 
 const router = express.Router();
 
+// These webhooks are only ever called by the rtmp container over the
+// internal Docker network; Caddy also refuses /api/rtmp/* from outside.
 function checkSecret(req, res) {
-  const expected = process.env.WEBHOOK_SECRET;
-  if (!expected || req.query.secret !== expected) {
+  if (!secretMatches(req.query.secret, process.env.WEBHOOK_SECRET)) {
     res.status(403).send('Forbidden');
     return false;
   }

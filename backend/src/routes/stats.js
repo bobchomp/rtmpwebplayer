@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const express = require('express');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit-table');
@@ -6,6 +5,7 @@ const { readDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
 const restreamImport = require('../restreamImport');
+const { secretMatches } = require('../safeCompare');
 const { adminEmails, currentAccount, ownsChannel } = require('../accounts');
 const statsTemplateExport = require('../statsTemplateExport');
 
@@ -165,13 +165,6 @@ router.post('/restream/import', requireAuth, (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-function secretMatches(provided, expected) {
-  // Hashing first gives equal-length buffers, which timingSafeEqual requires.
-  const a = crypto.createHash('sha256').update(String(provided)).digest();
-  const b = crypto.createHash('sha256').update(String(expected)).digest();
-  return crypto.timingSafeEqual(a, b);
-}
 
 const AUTO_IMPORT_DEFAULT_DAYS = 14;
 const AUTO_IMPORT_MAX_DAYS = 60;
