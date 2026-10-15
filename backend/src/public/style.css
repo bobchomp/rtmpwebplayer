@@ -198,8 +198,6 @@ button.danger:hover { background: var(--ember-tint); }
 }
 .login-btn:hover { background: var(--accent-strong); }
 
-.inline-form { display: flex; gap: 8px; }
-.inline-form input { flex: 1; }
 
 .error { color: var(--ember); font-size: 13px; }
 .hint { color: var(--slate); font-size: 13px; }

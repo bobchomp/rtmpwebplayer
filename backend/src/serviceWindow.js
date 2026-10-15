@@ -47,4 +47,4 @@ function serviceKey(date) {
   return `${londonDateKey(date)}-${half(date)}`;
 }
 
-module.exports = { LONDON_TZ, AM_PM_CUTOFF_HOUR, londonHour, londonDateKey, londonDateLabel, half, serviceKey };
+module.exports = { londonDateLabel, half, serviceKey };

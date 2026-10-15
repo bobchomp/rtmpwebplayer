@@ -225,4 +225,4 @@ async function buildTemplateWorkbook({ channelId, channelName }) {
   return workbook;
 }
 
-module.exports = { buildServiceRows, buildTemplateWorkbook };
+module.exports = { buildTemplateWorkbook };

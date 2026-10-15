@@ -71,4 +71,4 @@ function isDirectNavigation(req) {
   return req.headers['sec-fetch-dest'] === 'document';
 }
 
-module.exports = { getAllowedDomains, frameAncestorsHeader, isRefererAllowed, isDirectNavigation };
+module.exports = { frameAncestorsHeader, isRefererAllowed, isDirectNavigation };
