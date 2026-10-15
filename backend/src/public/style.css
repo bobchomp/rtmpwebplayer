@@ -423,6 +423,8 @@ button.danger:hover { background: var(--ember-tint); }
 
 .stats-restream-panel { padding: 14px 20px; }
 .stats-restream-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* The Import button's logo makes it taller; buttons in this row share its height. */
+.stats-restream-row > button, .stats-restream-row > a.secondary { align-self: stretch; display: inline-flex; align-items: center; justify-content: center; min-width: 180px; }
 
 .restream-import-box { max-width: 720px; width: 100%; }
 .restream-import-dates { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 4px 0 12px; }
