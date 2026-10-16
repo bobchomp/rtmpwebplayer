@@ -83,6 +83,21 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 
 app.get('/healthz', (req, res) => res.send('ok'));
 
+// For the status site's "Video Playback" check: whether the backend can reach
+// the rtmp container's internal HLS server, which serves every viewer's video.
+// Any HTTP answer counts as up (a bare /hls/ is a 403 from nginx); only an
+// unreachable or hung server is down. Works whether or not anything is live.
+app.get('/healthz/video', async (req, res) => {
+  const hlsBase = process.env.HLS_INTERNAL_URL || 'http://rtmp:8080';
+  res.set('Cache-Control', 'no-store');
+  try {
+    await fetch(`${hlsBase}/hls/`, { signal: AbortSignal.timeout(5000) });
+    res.send('ok');
+  } catch (err) {
+    res.status(503).send('video server unreachable');
+  }
+});
+
 app.get('/api/config', (req, res) => {
   res.json({
     publicHost: process.env.PUBLIC_HOST || req.hostname,
