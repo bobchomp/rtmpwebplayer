@@ -287,17 +287,21 @@ that the heartbeat pings will show up in that channel's real Stats page.
 
 ## Status page
 
-`stream.rossmackenzie.co.uk/status` (production only, linked from the
-homepage footer) shows live up/down status and 30-day uptime for the site's
-core components - Website, Dashboard, and Live Streaming (RTMP ingest).
-
-The actual checking happens entirely outside this app, on
+The public status page is **https://status.stream.rossmackenzie.co.uk** -
+Upptime's own status site, built and hosted entirely outside this app from
 [bobchomp/rtmpwebplayer-status](https://github.com/bobchomp/rtmpwebplayer-status)
-via [Upptime](https://upptime.js.org) - a GitHub Actions cron checks each
-endpoint every 5 minutes, commits the results as git history, and
-auto-opens/closes a GitHub Issue per incident. `backend/src/statusPage.js`
-just fetches that repo's `history/summary.json` (cached 60s) and renders it
-in this app's own style - no GitHub Pages, no separate hosting.
+on GitHub Pages, so it stays up even when the droplet doesn't. The homepage
+footer and the dashboard's Status button link there, and
+`stream.rossmackenzie.co.uk/status` redirects there for older links
+(production only - it reports on production's endpoints).
+
+[Upptime](https://upptime.js.org) runs as GitHub Actions in that repo: it
+checks the Website, Dashboard and Live Streaming (RTMP ingest) every 5
+minutes, commits the results as git history, opens/closes a GitHub Issue per
+incident, and rebuilds the site. Its look (colours, fonts, logo) comes from
+`assets/rtmpwebplayer-theme.css` and the `status-website` section of
+`.upptimerc.yml`; the intro links to DigitalOcean's and Cloudflare's own
+status pages for the providers this runs on.
 
 To change what's monitored, edit `.upptimerc.yml` in that repo (a push to it
 re-triggers the Setup CI workflow automatically). Note the RTMP ingest check
@@ -305,22 +309,10 @@ points at the droplet's raw IP, not the Cloudflare-proxied hostname -
 Cloudflare only forwards HTTP(S), so a TCP check against the proxied
 hostname on port 1935 would falsely report down.
 
-The page also shows a **Dependencies** section for DigitalOcean and
-Cloudflare - fetched live from their own public Statuspage.io APIs
-(`/api/v2/summary.json`), not tracked via Upptime. That's deliberate: Upptime
-only checks HTTP status codes, and a status API always returns `200` even
-mid-outage - the real signal is the `status.indicator` field in the
-response body, which needs an app-level fetch to actually read. If either
-fetch fails, that row just shows "Unknown" rather than breaking the page.
-
-Clicking a dependency opens its current incidents *and* active scheduled
-maintenance in a popup on this page, rather than sending the visitor to
-DigitalOcean's or Cloudflare's own site - both come from the same
-`summary.json` fetch alongside the overall status, pre-rendered
-server-side and embedded as JSON for the popup script to read, so there's
-no extra request on click. Maintenance matters here too: `status.indicator`
-reflects it as well as incidents, so a "Minor issues" pill can have an
-empty incidents list if the actual cause is maintenance in progress.
+The site's DNS record (`status.stream` CNAME to `bobchomp.github.io`) must
+stay **DNS only** in Cloudflare: Cloudflare's free certificate doesn't cover
+a second-level subdomain like this one, and GitHub Pages issues its own
+certificate for it.
 
 ## Cost estimate
 
