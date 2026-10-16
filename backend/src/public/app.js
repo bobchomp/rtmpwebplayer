@@ -1002,7 +1002,12 @@
           node.querySelector('.recording-processing-channel').textContent = job.channelName;
           var stageLabel = node.querySelector('.recording-processing-stage');
           var fill = node.querySelector('.recording-processing-bar-fill');
-          if (job.stage === 'uploading' && typeof job.progressPercent === 'number') {
+          if (job.stage === 'failed') {
+            var when = job.recordingStartedAt ? 'Recorded ' + formatPlayDate(job.recordingStartedAt) + ' - ' : '';
+            stageLabel.textContent = when + "Couldn't be saved after " + job.attempts + ' attempts' +
+              (job.error ? ' (' + job.error + ')' : '') + '. The raw file is still on the server.';
+            node.querySelector('.recording-processing-bar-track').classList.add('hidden');
+          } else if (job.stage === 'uploading' && typeof job.progressPercent === 'number') {
             stageLabel.textContent = 'Uploading - ' + job.progressPercent + '%';
             fill.style.width = job.progressPercent + '%';
           } else {

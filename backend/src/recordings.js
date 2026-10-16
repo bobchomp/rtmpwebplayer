@@ -31,6 +31,28 @@ const R2_UPLOAD_PART_SIZE = 8 * 1024 * 1024;
 // crash-looping. Marker lives next to the raw file so it survives restarts.
 const RETRY_COOLDOWN_MS = 10 * 60 * 1000;
 const FAILURE_MARKER_SUFFIX = '.failed-attempt';
+// After this many failed attempts a recording is left alone (raw file kept,
+// since it's the only copy) and shown as failed on the Recordings page,
+// rather than being retried every 10 minutes forever.
+const MAX_ATTEMPTS = 3;
+
+// Marker content is JSON { attempts, error }; older markers held just a
+// timestamp, which counts as one attempt.
+function readFailureMarker(markerPath) {
+  let raw;
+  try {
+    raw = fs.readFileSync(markerPath, 'utf8');
+  } catch (err) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') return { attempts: Number(parsed.attempts) || 1, error: parsed.error || '' };
+  } catch (err) {
+    // legacy plain-timestamp marker
+  }
+  return { attempts: 1, error: '' };
+}
 
 function ensureFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -189,9 +211,17 @@ async function remuxWithLoudnessNormalization(inputPath, outputPath) {
 // mid-upload - there's no correctness dependency on this surviving a crash,
 // it's status, not data.
 const processingJobs = new Map();
+// Recordings that hit MAX_ATTEMPTS, keyed by raw file path - rebuilt by the
+// reconciliation sweep after a restart, since it revisits every raw file.
+const failedJobs = new Map();
 
 function listProcessingJobs() {
-  return Array.from(processingJobs.values()).sort((a, b) => a.startedAt - b.startedAt);
+  failedJobs.forEach((job, rawFilePath) => {
+    if (!fs.existsSync(rawFilePath)) failedJobs.delete(rawFilePath);
+  });
+  return Array.from(processingJobs.values())
+    .concat(Array.from(failedJobs.values()))
+    .sort((a, b) => a.startedAt - b.startedAt);
 }
 
 // Called once a recording's raw .ts file is fully written (see
@@ -225,6 +255,11 @@ async function processFinishedRecording({ channel, rawFilePath }) {
   if (processingJobs.has(rawFilePath)) return;
 
   const failureMarkerPath = `${rawFilePath}${FAILURE_MARKER_SUFFIX}`;
+  const marker = readFailureMarker(failureMarkerPath);
+  if (marker && marker.attempts >= MAX_ATTEMPTS) {
+    failedJobs.set(rawFilePath, failedJobEntry(channel, rawFilePath, marker));
+    return;
+  }
   try {
     const markerStat = fs.statSync(failureMarkerPath);
     if (Date.now() - markerStat.mtimeMs < RETRY_COOLDOWN_MS) return;
@@ -307,9 +342,30 @@ async function processFinishedRecording({ channel, rawFilePath }) {
       `Failed to process recording for channel ${channel.id} - raw file kept for retry: ${rawFilePath}`,
       err.message
     );
-    fs.writeFileSync(failureMarkerPath, String(Date.now()));
+    const attempts = ((marker && marker.attempts) || 0) + 1;
+    const failure = { attempts, error: err.message };
+    fs.writeFileSync(failureMarkerPath, JSON.stringify(failure));
     processingJobs.delete(rawFilePath);
+    if (attempts >= MAX_ATTEMPTS) {
+      console.error(`Giving up on recording ${rawFilePath} after ${attempts} failed attempts - raw file kept; delete it by hand once dealt with.`);
+      failedJobs.set(rawFilePath, failedJobEntry(channel, rawFilePath, failure));
+    }
   }
+}
+
+function failedJobEntry(channel, rawFilePath, failure) {
+  const startedAtMatch = path.basename(rawFilePath).match(/^(\d+)\.ts$/);
+  return {
+    owner: channel.owner,
+    channelId: channel.id,
+    channelName: channel.name,
+    stage: 'failed',
+    progressPercent: null,
+    attempts: failure.attempts,
+    error: failure.error,
+    recordingStartedAt: startedAtMatch ? new Date(Number(startedAtMatch[1]) * 1000).toISOString() : null,
+    startedAt: startedAtMatch ? Number(startedAtMatch[1]) * 1000 : Date.now(),
+  };
 }
 
 // Short-lived (10 min) signed URL - the browser fetches the video straight
