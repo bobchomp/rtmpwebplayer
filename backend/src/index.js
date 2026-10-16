@@ -21,7 +21,6 @@ const restreamAuth = require('./routes/restreamAuth');
 const statsRoutes = require('./routes/stats');
 const recordings = require('./recordings');
 const geoip = require('./geoip');
-const { renderStatusPage } = require('./statusPage');
 const { requireAuth } = require('./authMiddleware');
 const { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripStatusLinkOnDevSite } = require('./devBanner');
 
@@ -154,14 +153,13 @@ app.get(['/login', '/login/'], (req, res) => res.type('html').set('Cache-Control
 
 app.get('/privacy.html', (req, res) => res.type('html').set('Cache-Control', NO_CACHE).send(privacyHtml));
 
-// Production-only - it reports on production's own endpoints specifically
-// (see bobchomp/rtmpwebplayer-status), so showing it on the dev site would
-// just be confusing (a dev visitor would see production's status, not
-// anything about the stack they're actually looking at).
+// The status page is Upptime's own site on GitHub Pages (see
+// bobchomp/rtmpwebplayer-status), so it stays reachable when this server
+// isn't; /status just points there for old links. Production-only - it
+// reports on production's endpoints, not the dev stack.
+const STATUS_PAGE_URL = 'https://status.stream.rossmackenzie.co.uk';
 if (!IS_DEV_SITE) {
-  app.get('/status', async (req, res) => {
-    res.type('html').set('Cache-Control', NO_CACHE).send(await renderStatusPage());
-  });
+  app.get(['/status', '/status/'], (req, res) => res.redirect(302, STATUS_PAGE_URL));
 }
 
 app.use(express.static(PUBLIC_DIR, { setHeaders: (res) => res.set('Cache-Control', NO_CACHE) }));
