@@ -35,6 +35,9 @@ services:
     mem_limit: 200m
     environment:
       IS_DEV_SITE: "true"
+      # Locks the whole dev site behind this PIN (see backend/src/devPin.js).
+      # Leave unset to leave the site open.
+      DEV_SITE_PIN: ${DEV_SITE_PIN:-}
       # Reuses the same Auth0 application/tenant as production (same person
       # logs into both) - just needs this domain's own callback URL added
       # to that application's Allowed Callback URLs list in the Auth0

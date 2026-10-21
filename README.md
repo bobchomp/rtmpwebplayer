@@ -582,6 +582,17 @@ to mirror exactly what's live in production.
    port from production's 1935) and visit
    `https://dev.stream.rossmackenzie.co.uk/dashboard` to manage it.
 
+### PIN lock
+
+Set `DEV_SITE_PIN` in dev's `.env` and the whole dev site asks for that PIN
+before showing anything, Auth0 login included. Once entered, it's remembered
+in that browser for 30 days. Five wrong tries locks an IP out for 15
+minutes. Changing the PIN signs every browser out of the PIN. Leave it unset
+for an open site. It only applies to the dev site, never production. The
+only things that skip it are nginx-rtmp's internal webhooks, `/healthz`, and
+the stylesheet/fonts/favicon the PIN page itself uses. That means dev embeds
+on other websites show the PIN page too.
+
 ### Day to day
 
 Both folders have their own `deploy.sh`; the dev folder also has

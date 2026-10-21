@@ -22,6 +22,7 @@ const statsRoutes = require('./routes/stats');
 const recordings = require('./recordings');
 const geoip = require('./geoip');
 const { requireAuth } = require('./authMiddleware');
+const { devPinGate } = require('./devPin');
 const { IS_DEV_SITE, withDevBanner, stripDevSiteLinkOnDevSite, stripStatusLinkOnDevSite } = require('./devBanner');
 
 // Anyone who knows the session secret can forge an admin session cookie, so
@@ -58,6 +59,9 @@ const SERVER_STARTED_AT = new Date().toISOString();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // nginx-rtmp posts form-encoded webhooks
+
+// Dev site only (no-op on production): everything below needs the PIN.
+app.use(devPinGate);
 
 app.use(
   session({
