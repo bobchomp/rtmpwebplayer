@@ -5,6 +5,7 @@ const { requireAuth } = require('../authMiddleware');
 const { readDb, writeDb } = require('../db');
 const restream = require('../restream');
 const { currentAccount } = require('../accounts');
+const { canSendTitles } = require('../restreamTitleSync');
 
 const router = express.Router();
 
@@ -39,6 +40,9 @@ router.get('/callback', requireAuth, async (req, res) => {
     db.restreamAccounts[currentAccount(req)] = {
       refreshToken: tokens.refresh_token,
       connectedAt: new Date().toISOString(),
+      // What this connection was granted - older connections predate
+      // channels.write and need reconnecting before titles can be sent.
+      scope: restream.OAUTH_SCOPE,
     };
     writeDb(db);
     res.redirect('/dashboard#/stats');
@@ -57,7 +61,11 @@ router.post('/disconnect', requireAuth, (req, res) => {
 router.get('/status', requireAuth, (req, res) => {
   const db = readDb();
   const connection = db.restreamAccounts && db.restreamAccounts[currentAccount(req)];
-  res.json({ connected: !!(connection && connection.refreshToken), connectedAt: connection ? connection.connectedAt : null });
+  res.json({
+    connected: !!(connection && connection.refreshToken),
+    connectedAt: connection ? connection.connectedAt : null,
+    canSendTitles: canSendTitles(connection),
+  });
 });
 
 module.exports = router;

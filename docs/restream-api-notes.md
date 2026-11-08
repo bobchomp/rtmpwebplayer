@@ -19,7 +19,10 @@ section below before trying to rebuild anything like it.
 
 - OAuth2, authorization-code flow. `RESTREAM_CLIENT_ID` /
   `RESTREAM_CLIENT_SECRET` / `RESTREAM_REDIRECT_URI` env vars.
-- Scope: `channels.read stream.read` (set in `restream.js`'s `OAUTH_SCOPE`).
+- Scope: `channels.read channels.write stream.read` (set in `restream.js`'s
+  `OAUTH_SCOPE`). `channels.write` was added for title sync (below);
+  connections made before that need reconnecting, tracked by the `scope`
+  stored on each `db.restreamAccounts` entry.
   There is no dedicated "analytics" scope - viewer analytics come back
   under `stream.read`.
 - Only the **refresh token** is persisted, one per dashboard account
@@ -91,18 +94,20 @@ milliseconds.
   API, so imported rows leave that blank rather than mislabeling it with
   the channel's current one.
 
-## Dead ends - don't retry without reading this first
+## Title sync
 
-**Per-channel title sync to Restream was attempted and fully removed.**
-The goal was to push this app's channel title/description to Restream so
-it'd show up on Restream's own "Show" screen. That screen turns out to run
-on a **completely separate, undocumented, private backend**
-(`website-backend.restream.io`) that the public Developer API - the one
-covered by this whole document, and the only one an OAuth app can reach -
-has no access to at all. The public API's `channels.read`/`stream.read`
-scopes only cover what's documented above; there is no way to push
-metadata that affects what Restream's Studio/Show UI displays. Confirmed
-by inspecting Restream's own web app's network traffic, not just API
-docs. Don't re-attempt this without first finding an actual, documented,
-OAuth-reachable way to write to a Show - as of this writing, there isn't
-one.
+`restreamTitleSync.js` sends a channel's title and description to every
+active Restream destination via **`PATCH /user/channel-meta/{channelId}`**
+(`{ "title", "description" }`, empty body on success, needs
+`channels.write`). Destinations and their `active` flag come from
+**`GET /user/channel/all`** (a bare array of `{ id, streamingPlatformId,
+url, displayName, active }`). It's opt-in per channel
+(`channel.restreamTitleSync`) and runs when the channel goes live, when the
+title is saved, and when the setting is switched on. The result is stored
+on the channel as `restreamTitleSyncStatus` and shown on the channel page.
+
+An earlier attempt was removed because it targeted Restream's own "Show"
+screen, which runs on a private backend (`website-backend.restream.io`)
+the API can't reach. channel-meta doesn't change that screen either - it
+sets what each destination platform (YouTube, Facebook) shows, which is
+what viewers actually see.

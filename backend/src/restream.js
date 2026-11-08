@@ -18,9 +18,10 @@
 const BASE = process.env.RESTREAM_API_BASE || 'https://api.restream.io';
 const AUTH_BASE = BASE;
 const API_BASE = `${BASE}/v2`;
-// Only what this app needs: read the account's destination channels, and
-// read stream/viewer analytics. There's no dedicated "analytics" scope.
-const OAUTH_SCOPE = 'channels.read stream.read';
+// Only what this app needs: read the account's destination channels, set
+// their titles (channels.write, see updateChannelMeta), and read
+// stream/viewer analytics. There's no dedicated "analytics" scope.
+const OAUTH_SCOPE = 'channels.read channels.write stream.read';
 
 function getAuthUrl(state) {
   const params = new URLSearchParams({
@@ -70,6 +71,21 @@ async function apiGet(accessToken, path) {
   });
   if (!res.ok) throw new Error(`Restream API request to ${path} failed: ${res.status} ${await res.text()}`);
   return res.json();
+}
+
+// Restream answers a successful PATCH with an empty body, so this doesn't
+// try to parse one.
+async function apiPatch(accessToken, path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = new Error(`Restream API request to ${path} failed: ${res.status} ${await res.text()}`);
+    err.status = res.status;
+    throw err;
+  }
 }
 
 // Channels are identified by a numeric platformId, not a platform name -
@@ -149,6 +165,23 @@ async function listChannels(accessToken) {
   return apiGet(accessToken, '/user/channels');
 }
 
+// Same destinations as listChannels, from the documented /user/channel/all
+// endpoint, which also says whether each one is switched on in Restream
+// (`active`). Returns [{ id, streamingPlatformId, url, displayName, active }].
+async function listChannelsWithStatus(accessToken) {
+  const res = await apiGet(accessToken, '/user/channel/all');
+  if (Array.isArray(res)) return res;
+  return (res && res.channels) || [];
+}
+
+// Sets the title (and optionally description) Restream sends to one
+// destination, e.g. the YouTube broadcast title. Needs channels.write.
+async function updateChannelMeta(accessToken, channelId, { title, description }) {
+  const body = { title };
+  if (description) body.description = description;
+  await apiPatch(accessToken, `/user/channel-meta/${encodeURIComponent(channelId)}`, body);
+}
+
 // Per-event viewer analytics: { total: {...}, byChannel: { "<channelId>":
 // { mean, max, viewsTotal, peakTime, watchedTime, viewersPerMinute } } }.
 // Returns a 404 (thrown as an error by apiGet) if the event has no
@@ -164,6 +197,9 @@ module.exports = {
   refreshAccessToken,
   listEventHistory,
   listChannels,
+  listChannelsWithStatus,
+  updateChannelMeta,
   getEventAnalytics,
+  OAUTH_SCOPE,
   platformFromUrl,
 };

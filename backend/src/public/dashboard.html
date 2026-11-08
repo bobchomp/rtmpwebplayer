@@ -400,6 +400,20 @@
           </div>
         </div>
 
+        <div class="panel recording-toggle-panel">
+          <div class="output-row">
+            <div class="output-info">
+              <span class="output-name">Send title to Restream</span>
+              <span class="hint">Sets this channel's title and description on every active Restream destination (YouTube, Facebook...) when it goes live, and again whenever you save them.</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="detail-restream-title-toggle">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <p class="hint hidden" id="restream-title-status"></p>
+        </div>
+
         <div class="panel warning-banner hidden" id="recording-continue-banner">
           <p><b>This recording has been running a long time.</b> Continuing will keep using server disk space for as long as it keeps going. If the disk fills up, the whole app will break for everyone - not just this stream. If you don't respond within a few minutes, recording will stop automatically (the live stream itself is never affected either way).</p>
           <div class="warning-banner-actions">

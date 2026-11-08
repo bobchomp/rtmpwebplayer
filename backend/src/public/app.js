@@ -589,6 +589,8 @@
   var THUMB_POPUP_REMEMBER_MS = 2 * 60 * 60 * 1000;
 
   var detailRecordingToggle = document.getElementById('detail-recording-toggle');
+  var detailRestreamTitleToggle = document.getElementById('detail-restream-title-toggle');
+  var restreamTitleStatus = document.getElementById('restream-title-status');
   var recordingRowTemplate = document.getElementById('recording-row-template');
 
   var recordingContinueBanner = document.getElementById('recording-continue-banner');
@@ -859,6 +861,34 @@
       .catch(function (err) { alert(err.message); });
   }
 
+  function showRestreamTitleStatus(text, isError) {
+    restreamTitleStatus.textContent = text;
+    restreamTitleStatus.classList.toggle('hidden', !text);
+    restreamTitleStatus.classList.toggle('error', !!isError);
+    restreamTitleStatus.classList.toggle('hint', !isError);
+  }
+
+  function renderRestreamTitleSync(channel) {
+    detailRestreamTitleToggle.checked = !!channel.restreamTitleSync;
+    var status = channel.restreamTitleSyncStatus;
+    api('/api/restream/status').then(function (restreamStatus) {
+      detailRestreamTitleToggle.disabled = !restreamStatus.connected && !channel.restreamTitleSync;
+      if (!restreamStatus.connected) {
+        showRestreamTitleStatus('Connect Restream on the Stats page to use this.', !!channel.restreamTitleSync);
+      } else if (!restreamStatus.canSendTitles) {
+        showRestreamTitleStatus('Restream needs reconnecting to allow this: on the Stats page, click Disconnect, then Connect again.', !!channel.restreamTitleSync);
+      } else if (!channel.restreamTitleSync || !status) {
+        showRestreamTitleStatus('', false);
+      } else if (status.ok) {
+        var when = new Date(status.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        var where = status.destinations && status.destinations.length ? status.destinations.join(', ') : status.sent + ' destination(s)';
+        showRestreamTitleStatus('Sent ' + status.title + ' to ' + where + ' on ' + when + '.' + (status.warning ? ' Some failed: ' + status.warning : ''), !!status.warning);
+      } else {
+        showRestreamTitleStatus('Couldn\'t send the title to Restream: ' + status.error, true);
+      }
+    }).catch(function () {});
+  }
+
   function renderChannelDetail(channel) {
     var isEditingName = detailNameInput.classList.contains('hidden') === false;
     if (!isEditingName) detailName.textContent = channel.name;
@@ -878,6 +908,7 @@
     currentChannelMetadata = { title: channel.title || '', description: channel.description || '' };
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
+    renderRestreamTitleSync(channel);
     recordingContinueBanner.classList.add('hidden'); // reset on nav - pollLiveStatus re-shows it if still warranted
 
     var outputs = channel.outputs || [];
@@ -1179,6 +1210,21 @@
         .catch(function (err) {
           alert(err.message);
           detailRecordingToggle.checked = !detailRecordingToggle.checked;
+        });
+    });
+
+    detailRestreamTitleToggle.addEventListener('change', function () {
+      detailRestreamTitleToggle.disabled = true;
+      if (detailRestreamTitleToggle.checked) showRestreamTitleStatus('Sending title to Restream...', false);
+      api('/api/channels/' + currentChannelId + '/restream-title-sync', {
+        method: 'PATCH',
+        body: JSON.stringify({ enabled: detailRestreamTitleToggle.checked }),
+      })
+        .then(refreshChannelDetail)
+        .catch(function (err) {
+          alert(err.message);
+          detailRestreamTitleToggle.checked = !detailRestreamTitleToggle.checked;
+          detailRestreamTitleToggle.disabled = false;
         });
     });
 

@@ -10,6 +10,7 @@ const plays = require('../plays');
 const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
 const { currentAccount, ownsChannel } = require('../accounts');
+const { syncChannelTitle } = require('../restreamTitleSync');
 
 const router = express.Router();
 
@@ -158,8 +159,9 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
 });
 
 // Admin: update the title/description used for the embed page's metadata
-// (title tag, meta/OG description, on-screen overlay).
-router.patch('/:id/metadata', requireAuth, (req, res) => {
+// (title tag, meta/OG description, on-screen overlay) - and, if the channel
+// has "Send title to Restream" on, on its Restream destinations too.
+router.patch('/:id/metadata', requireAuth, async (req, res) => {
   const db = readDb();
   const channel = ownChannel(db, req);
   if (!channel) return res.status(404).json({ error: 'Not found' });
@@ -177,7 +179,23 @@ router.patch('/:id/metadata', requireAuth, (req, res) => {
     channel.description = req.body.description.trim();
   }
   writeDb(db);
-  res.json(channel);
+  if (channel.restreamTitleSync) await syncChannelTitle(channel.id);
+  res.json(readDb().channels[channel.id]);
+});
+
+// Admin: switch "Send title to Restream" on/off. Switching it on sends the
+// current title straight away, so the dashboard can show whether it worked.
+router.patch('/:id/restream-title-sync', requireAuth, async (req, res) => {
+  const db = readDb();
+  const channel = ownChannel(db, req);
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+  if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'enabled must be true or false' });
+
+  channel.restreamTitleSync = req.body.enabled;
+  if (!channel.restreamTitleSync) delete channel.restreamTitleSyncStatus;
+  writeDb(db);
+  if (channel.restreamTitleSync) await syncChannelTitle(channel.id);
+  res.json(readDb().channels[channel.id]);
 });
 
 const MAX_OUTPUTS = 10;
