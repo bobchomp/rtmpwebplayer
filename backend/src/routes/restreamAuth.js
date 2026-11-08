@@ -6,6 +6,7 @@ const { readDb, writeDb } = require('../db');
 const restream = require('../restream');
 const { currentAccount } = require('../accounts');
 const { canSendTitles } = require('../restreamTitleSync');
+const { getAccessToken } = require('../restreamSession');
 
 const router = express.Router();
 
@@ -62,6 +63,46 @@ router.post('/disconnect', requireAuth, (req, res) => {
   if (db.restreamAccounts) delete db.restreamAccounts[currentAccount(req)];
   writeDb(db);
   res.json({ ok: true });
+});
+
+// The account's Restream destinations, for the on/off switches on each
+// channel page. These are account-wide - Restream has no idea which of this
+// app's channels is streaming to it.
+router.get('/channels', requireAuth, async (req, res) => {
+  try {
+    const accessToken = await getAccessToken(currentAccount(req));
+    const [destinations, platforms] = await Promise.all([
+      restream.listChannelsWithStatus(accessToken),
+      restream.listPlatforms().catch(() => []),
+    ]);
+    const platformNames = {};
+    platforms.forEach((p) => { platformNames[p.id] = p.name === 'Youtube' ? 'YouTube' : p.name; });
+    res.json(destinations.map((d) => ({
+      id: d.id,
+      displayName: d.displayName || '',
+      platform: platformNames[d.streamingPlatformId] || 'Restream destination',
+      url: d.url || '',
+      active: d.active !== false,
+    })));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+router.patch('/channels/:channelId', requireAuth, async (req, res) => {
+  if (typeof req.body.active !== 'boolean') return res.status(400).json({ error: 'active must be true or false' });
+  if (!/^\d+$/.test(req.params.channelId)) return res.status(400).json({ error: 'Invalid channel id' });
+  const db = readDb();
+  if (!canSendTitles(db.restreamAccounts && db.restreamAccounts[currentAccount(req)])) {
+    return res.status(400).json({ error: 'Restream needs reconnecting to allow this - click Reconnect in the Restream section.' });
+  }
+  try {
+    const accessToken = await getAccessToken(currentAccount(req));
+    await restream.setChannelActive(accessToken, req.params.channelId, req.body.active);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
 });
 
 router.get('/status', requireAuth, (req, res) => {

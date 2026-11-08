@@ -452,6 +452,7 @@
           <hr class="output-divider">
 
           <div id="detail-outputs-list"></div>
+          <div id="detail-restream-channels-list"></div>
           <p class="hint hidden" id="detail-outputs-empty">No other outputs yet - click "+ Add output" above to relay to another destination.</p>
         </div>
 
@@ -559,6 +560,19 @@
     <button class="secondary copy-btn output-copy-btn hidden">Copy link</button>
     <button class="secondary output-edit-btn hidden">Edit</button>
     <button class="secondary danger output-delete-btn">Delete</button>
+  </div>
+</template>
+
+<template id="restream-channel-row-template">
+  <div class="output-row custom-output-row">
+    <div class="output-info">
+      <span class="output-name"></span>
+      <span class="hint restream-channel-platform"></span>
+    </div>
+    <label class="switch">
+      <input type="checkbox" class="restream-channel-toggle">
+      <span class="switch-track"></span>
+    </label>
   </div>
 </template>
 

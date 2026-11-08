@@ -594,6 +594,8 @@
   var detailRestreamStatusText = document.getElementById('detail-restream-status-text');
   var detailRestreamConnectBtn = document.getElementById('detail-restream-connect-btn');
   var detailRestreamDisconnectBtn = document.getElementById('detail-restream-disconnect-btn');
+  var detailRestreamChannelsList = document.getElementById('detail-restream-channels-list');
+  var restreamChannelRowTemplate = document.getElementById('restream-channel-row-template');
   var recordingRowTemplate = document.getElementById('recording-row-template');
 
   var recordingContinueBanner = document.getElementById('recording-continue-banner');
@@ -885,11 +887,51 @@
     }
   }
 
+  // Restream destinations, listed with the other outputs. They belong to the
+  // whole Restream account, so switching one off affects every channel.
+  function renderRestreamChannels(restreamStatus) {
+    detailRestreamChannelsList.innerHTML = '';
+    if (!restreamStatus.connected) return;
+    api('/api/restream/channels').then(function (destinations) {
+      detailRestreamChannelsList.innerHTML = '';
+      if (destinations.length) detailOutputsEmpty.classList.add('hidden');
+      destinations.forEach(function (destination) {
+        var row = restreamChannelRowTemplate.content.firstElementChild.cloneNode(true);
+        row.querySelector('.output-name').textContent = destination.displayName || destination.platform;
+        row.querySelector('.restream-channel-platform').textContent = destination.platform + ' via Restream'
+          + (restreamStatus.canSendTitles ? '' : ' - click Reconnect in the Restream section to switch on/off here');
+        var toggle = row.querySelector('.restream-channel-toggle');
+        toggle.checked = destination.active;
+        toggle.disabled = !restreamStatus.canSendTitles;
+        toggle.addEventListener('change', function () {
+          toggle.disabled = true;
+          api('/api/restream/channels/' + destination.id, {
+            method: 'PATCH',
+            body: JSON.stringify({ active: toggle.checked }),
+          })
+            .catch(function (err) {
+              alert(err.message);
+              toggle.checked = !toggle.checked;
+            })
+            .then(function () { toggle.disabled = false; });
+        });
+        detailRestreamChannelsList.appendChild(row);
+      });
+    }).catch(function (err) {
+      detailRestreamChannelsList.innerHTML = '';
+      var p = document.createElement('p');
+      p.className = 'error';
+      p.textContent = 'Couldn\'t load your Restream channels: ' + err.message;
+      detailRestreamChannelsList.appendChild(p);
+    });
+  }
+
   function renderRestreamTitleSync(channel) {
     detailRestreamTitleToggle.checked = !!channel.restreamTitleSync;
     var status = channel.restreamTitleSyncStatus;
     api('/api/restream/status').then(function (restreamStatus) {
       renderDetailRestreamConnection(restreamStatus, channel.id);
+      renderRestreamChannels(restreamStatus);
       detailRestreamTitleToggle.disabled = !restreamStatus.connected && !channel.restreamTitleSync;
       if (!restreamStatus.connected) {
         showRestreamTitleStatus('Connect Restream in the Restream section to use this.', !!channel.restreamTitleSync);

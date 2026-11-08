@@ -176,6 +176,25 @@ async function listChannelsWithStatus(accessToken) {
   return (res && res.channels) || [];
 }
 
+// Switches a destination on or off in the Restream dashboard, i.e. whether
+// it gets the stream next time. Needs channels.write.
+async function setChannelActive(accessToken, channelId, active) {
+  await apiPatch(accessToken, `/user/channel/${encodeURIComponent(channelId)}`, { active });
+}
+
+// Restream's public list of platforms ({ id, name, url, image }), used to
+// label destinations. No login needed; cached since it rarely changes.
+let platformsCache = null;
+let platformsCachedAt = 0;
+async function listPlatforms() {
+  if (platformsCache && Date.now() - platformsCachedAt < 24 * 60 * 60 * 1000) return platformsCache;
+  const res = await fetch(`${API_BASE}/platform/all`);
+  if (!res.ok) throw new Error(`Restream API request to /platform/all failed: ${res.status}`);
+  platformsCache = await res.json();
+  platformsCachedAt = Date.now();
+  return platformsCache;
+}
+
 // Sets the title (and optionally description) Restream sends to one
 // destination, e.g. the YouTube broadcast title. Needs channels.write.
 async function updateChannelMeta(accessToken, channelId, { title, description }) {
@@ -207,6 +226,8 @@ module.exports = {
   listChannelsWithStatus,
   updateChannelMeta,
   getChannelMeta,
+  setChannelActive,
+  listPlatforms,
   getEventAnalytics,
   OAUTH_SCOPE,
   platformFromUrl,
