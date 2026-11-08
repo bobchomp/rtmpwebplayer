@@ -897,9 +897,9 @@
       if (destinations.length) detailOutputsEmpty.classList.add('hidden');
       destinations.forEach(function (destination) {
         var row = restreamChannelRowTemplate.content.firstElementChild.cloneNode(true);
-        row.querySelector('.output-name').textContent = destination.displayName || destination.platform;
-        row.querySelector('.restream-channel-platform').textContent = destination.platform + ' via Restream'
-          + (restreamStatus.canSendTitles ? '' : ' - click Reconnect in the Restream section to switch on/off here');
+        row.querySelector('.output-name').textContent = destination.platform + ' via Restream';
+        row.querySelector('.restream-channel-platform').textContent = (destination.displayName || '')
+          + (restreamStatus.canSendTitles ? '' : (destination.displayName ? ' - ' : '') + 'click Reconnect in the Restream section to switch on/off here');
         var toggle = row.querySelector('.restream-channel-toggle');
         toggle.checked = destination.active;
         toggle.disabled = !restreamStatus.canSendTitles;
