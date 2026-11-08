@@ -50,6 +50,7 @@ async function sendTitles(channel) {
   const title = channel.title || channel.name;
   const sentTo = [];
   const failures = [];
+  const mismatches = [];
   for (const destination of destinations) {
     // Accounts often use the same name on every platform, so say which.
     const platform = { youtube: 'YouTube', facebook: 'Facebook' }[restream.platformFromUrl(destination.url)];
@@ -59,11 +60,17 @@ async function sendTitles(channel) {
       // eslint-disable-next-line no-await-in-loop
       await restream.updateChannelMeta(accessToken, destination.id, { title, description: channel.description });
       sentTo.push(name);
+      // Read it back, since Restream answers the update with an empty body
+      // and its own screens don't always show the result.
+      // eslint-disable-next-line no-await-in-loop
+      const stored = await restream.getChannelMeta(accessToken, destination.id).catch(() => null);
+      if (stored && stored.title !== title) mismatches.push(`${name} reports "${stored.title}"`);
     } catch (err) {
       if (!titlesNotSupported(err)) failures.push(`${name}: ${describeError(err)}`);
     }
   }
   if (!sentTo.length) throw new Error(failures.join(' ') || 'None of your active Restream destinations support titles.');
+  if (mismatches.length) failures.push(`Restream didn't keep the new title: ${mismatches.join(', ')}.`);
   return { sent: sentTo.length, destinations: sentTo, warning: failures.length ? failures.join(' ') : null };
 }
 

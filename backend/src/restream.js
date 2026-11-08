@@ -184,6 +184,11 @@ async function updateChannelMeta(accessToken, channelId, { title, description })
   await apiPatch(accessToken, `/user/channel-meta/${encodeURIComponent(channelId)}`, body);
 }
 
+// What Restream has stored for one destination: { title }.
+async function getChannelMeta(accessToken, channelId) {
+  return apiGet(accessToken, `/user/channel-meta/${encodeURIComponent(channelId)}`);
+}
+
 // Per-event viewer analytics: { total: {...}, byChannel: { "<channelId>":
 // { mean, max, viewsTotal, peakTime, watchedTime, viewersPerMinute } } }.
 // Returns a 404 (thrown as an error by apiGet) if the event has no
@@ -201,6 +206,7 @@ module.exports = {
   listChannels,
   listChannelsWithStatus,
   updateChannelMeta,
+  getChannelMeta,
   getEventAnalytics,
   OAUTH_SCOPE,
   platformFromUrl,
