@@ -25,7 +25,7 @@ function titlesNotSupported(err) {
 
 function describeError(err) {
   if (err.status === 401 || err.status === 403) {
-    return 'Restream refused the update. Disconnect and reconnect Restream on the Stats page to allow title updates.';
+    return 'Restream refused the update. Reconnect Restream (on the channel page or Stats page) to allow title updates.';
   }
   return err.message;
 }
@@ -34,10 +34,10 @@ async function sendTitles(channel) {
   const db = readDb();
   const connection = db.restreamAccounts && db.restreamAccounts[channel.owner];
   if (!connection || !connection.refreshToken) {
-    throw new Error('Restream is not connected - connect it on the Stats page.');
+    throw new Error('Restream is not connected - connect it on the channel page or Stats page.');
   }
   if (!canSendTitles(connection)) {
-    throw new Error('Restream needs reconnecting to allow title updates - Disconnect and Connect again on the Stats page.');
+    throw new Error('Restream needs reconnecting to allow title updates - click Reconnect in the Restream section of the channel page.');
   }
 
   const accessToken = await getAccessToken(channel.owner);

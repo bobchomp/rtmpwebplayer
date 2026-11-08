@@ -591,6 +591,9 @@
   var detailRecordingToggle = document.getElementById('detail-recording-toggle');
   var detailRestreamTitleToggle = document.getElementById('detail-restream-title-toggle');
   var restreamTitleStatus = document.getElementById('restream-title-status');
+  var detailRestreamStatusText = document.getElementById('detail-restream-status-text');
+  var detailRestreamConnectBtn = document.getElementById('detail-restream-connect-btn');
+  var detailRestreamDisconnectBtn = document.getElementById('detail-restream-disconnect-btn');
   var recordingRowTemplate = document.getElementById('recording-row-template');
 
   var recordingContinueBanner = document.getElementById('recording-continue-banner');
@@ -868,15 +871,30 @@
     restreamTitleStatus.classList.toggle('hint', !isError);
   }
 
+  function renderDetailRestreamConnection(restreamStatus, channelId) {
+    detailRestreamConnectBtn.href = '/api/restream/connect?return=' + encodeURIComponent('#/channel/' + channelId);
+    detailRestreamConnectBtn.textContent = restreamStatus.connected ? 'Reconnect' : 'Connect Restream';
+    detailRestreamConnectBtn.classList.toggle('hidden', restreamStatus.connected && restreamStatus.canSendTitles);
+    detailRestreamDisconnectBtn.classList.toggle('hidden', !restreamStatus.connected);
+    if (!restreamStatus.connected) {
+      detailRestreamStatusText.textContent = 'Not connected. Connect it to send titles to YouTube/Facebook and import their view counts.';
+    } else if (!restreamStatus.canSendTitles) {
+      detailRestreamStatusText.textContent = 'Connected, but needs reconnecting once to allow sending titles.';
+    } else {
+      detailRestreamStatusText.textContent = 'Connected.';
+    }
+  }
+
   function renderRestreamTitleSync(channel) {
     detailRestreamTitleToggle.checked = !!channel.restreamTitleSync;
     var status = channel.restreamTitleSyncStatus;
     api('/api/restream/status').then(function (restreamStatus) {
+      renderDetailRestreamConnection(restreamStatus, channel.id);
       detailRestreamTitleToggle.disabled = !restreamStatus.connected && !channel.restreamTitleSync;
       if (!restreamStatus.connected) {
-        showRestreamTitleStatus('Connect Restream on the Stats page to use this.', !!channel.restreamTitleSync);
+        showRestreamTitleStatus('Connect Restream in the Restream section to use this.', !!channel.restreamTitleSync);
       } else if (!restreamStatus.canSendTitles) {
-        showRestreamTitleStatus('Restream needs reconnecting to allow this: on the Stats page, click Disconnect, then Connect again.', !!channel.restreamTitleSync);
+        showRestreamTitleStatus('Restream needs reconnecting to allow this: click Reconnect in the Restream section.', !!channel.restreamTitleSync);
       } else if (!channel.restreamTitleSync || !status) {
         showRestreamTitleStatus('', false);
       } else if (status.ok) {
@@ -1226,6 +1244,13 @@
           detailRestreamTitleToggle.checked = !detailRestreamTitleToggle.checked;
           detailRestreamTitleToggle.disabled = false;
         });
+    });
+
+    detailRestreamDisconnectBtn.addEventListener('click', function () {
+      if (!confirm('Disconnect Restream? This affects all your channels. You can reconnect any time - already-imported stats stay put.')) return;
+      api('/api/restream/disconnect', { method: 'POST' })
+        .then(refreshChannelDetail)
+        .catch(function (err) { alert(err.message); });
     });
 
     recordingContinueBtn.addEventListener('click', function () { answerRecordingPrompt(true); });

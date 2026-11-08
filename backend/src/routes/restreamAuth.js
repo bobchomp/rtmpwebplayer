@@ -20,6 +20,10 @@ router.get('/connect', requireAuth, (req, res) => {
   }
   const state = crypto.randomBytes(16).toString('hex');
   req.session.restreamOAuthState = state;
+  // Where to send the browser afterwards: a dashboard route such as
+  // #/channel/<id>, so connecting from a channel page lands back there.
+  const returnTo = typeof req.query.return === 'string' && /^#\/[A-Za-z0-9/_-]*$/.test(req.query.return) ? req.query.return : '#/stats';
+  req.session.restreamReturnTo = returnTo;
   res.redirect(restream.getAuthUrl(state));
 });
 
@@ -45,7 +49,9 @@ router.get('/callback', requireAuth, async (req, res) => {
       scope: restream.OAUTH_SCOPE,
     };
     writeDb(db);
-    res.redirect('/dashboard#/stats');
+    const returnTo = req.session.restreamReturnTo || '#/stats';
+    delete req.session.restreamReturnTo;
+    res.redirect(`/dashboard${returnTo}`);
   } catch (err) {
     res.status(500).send(`Failed to connect Restream: ${err.message}`);
   }
