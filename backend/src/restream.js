@@ -82,8 +82,10 @@ async function apiPatch(accessToken, path, body) {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const err = new Error(`Restream API request to ${path} failed: ${res.status} ${await res.text()}`);
+    const text = await res.text();
+    const err = new Error(`Restream API request to ${path} failed: ${res.status} ${text}`);
     err.status = res.status;
+    try { err.name = JSON.parse(text).error.name || err.name; } catch (e) { /* not JSON */ }
     throw err;
   }
 }

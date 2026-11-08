@@ -17,6 +17,12 @@ function canSendTitles(connection) {
     && (connection.scope || '').split(' ').includes('channels.write'));
 }
 
+// Restream's answer for destinations that have nowhere to show a title,
+// such as a custom RTMP server - skipped rather than reported as failures.
+function titlesNotSupported(err) {
+  return err.status === 400 && /TitlesNotSupported/.test(err.name);
+}
+
 function describeError(err) {
   if (err.status === 401 || err.status === 403) {
     return 'Restream refused the update. Disconnect and reconnect Restream on the Stats page to allow title updates.';
@@ -45,16 +51,19 @@ async function sendTitles(channel) {
   const sentTo = [];
   const failures = [];
   for (const destination of destinations) {
-    const name = destination.displayName || String(destination.id);
+    // Accounts often use the same name on every platform, so say which.
+    const platform = { youtube: 'YouTube', facebook: 'Facebook' }[restream.platformFromUrl(destination.url)];
+    const baseName = destination.displayName || String(destination.id);
+    const name = platform ? `${baseName} (${platform})` : baseName;
     try {
       // eslint-disable-next-line no-await-in-loop
       await restream.updateChannelMeta(accessToken, destination.id, { title, description: channel.description });
       sentTo.push(name);
     } catch (err) {
-      failures.push(`${name}: ${describeError(err)}`);
+      if (!titlesNotSupported(err)) failures.push(`${name}: ${describeError(err)}`);
     }
   }
-  if (!sentTo.length) throw new Error(failures.join(' '));
+  if (!sentTo.length) throw new Error(failures.join(' ') || 'None of your active Restream destinations support titles.');
   return { sent: sentTo.length, destinations: sentTo, warning: failures.length ? failures.join(' ') : null };
 }
 
