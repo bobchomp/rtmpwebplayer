@@ -133,9 +133,11 @@ router.patch('/:id', requireAuth, (req, res) => {
   res.json(channel);
 });
 
-// Admin: toggle whether this channel records. Named website-settings from
-// when it also gated the embed page (removed - the embed/HLS proxy are
-// always available now, there's no way to disable them per channel).
+// Admin: toggle whether this channel records, and whether the "Your Website"
+// embed player shows it (embedEnabled; missing counts as on). The embed
+// switch was removed once and brought back under a new field name, so a
+// websiteEnabled:false left on disk by the old version can't switch anyone
+// off by surprise.
 router.patch('/:id/website-settings', requireAuth, (req, res) => {
   const db = readDb();
   const channel = ownChannel(db, req);
@@ -153,6 +155,9 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
 
   if (typeof req.body.recordingEnabled === 'boolean') {
     channel.recordingEnabled = req.body.recordingEnabled;
+  }
+  if (typeof req.body.embedEnabled === 'boolean') {
+    channel.embedEnabled = req.body.embedEnabled;
   }
   writeDb(db);
   res.json(channel);

@@ -545,6 +545,12 @@
   var detailRegenBtn = document.getElementById('detail-regen-btn');
   var detailEmbedCode = document.getElementById('detail-embed-code');
 
+  var detailWebsiteToggle = document.getElementById('detail-website-toggle');
+  var detailWebsiteHint = document.getElementById('detail-website-hint');
+  var websiteHtmlBtn = document.getElementById('website-html-btn');
+  var websiteHtmlModalBackdrop = document.getElementById('website-html-modal-backdrop');
+  var websiteHtmlCloseBtn = document.getElementById('website-html-close-btn');
+
   var editMetadataBtn = document.getElementById('edit-metadata-btn');
   var metadataModalBackdrop = document.getElementById('metadata-modal-backdrop');
   var metadataTitleInput = document.getElementById('metadata-title-input');
@@ -999,6 +1005,11 @@
 
     currentChannelMetadata = { title: channel.title || '', description: channel.description || '' };
 
+    detailWebsiteToggle.checked = channel.embedEnabled !== false;
+    detailWebsiteHint.textContent = channel.embedEnabled !== false
+      ? 'The player on your website - click Website HTML for the code to paste into your site'
+      : 'Off - your website\'s player says the livestream isn\'t available (you still see it here)';
+
     detailRecordingToggle.checked = !!channel.recordingEnabled;
     renderRestreamTitleSync(channel);
     recordingContinueBanner.classList.add('hidden'); // reset on nav - pollLiveStatus re-shows it if still warranted
@@ -1287,6 +1298,34 @@
         .then(refreshChannelDetail)
         .catch(function (err) { alert(err.message); });
     });
+
+    detailWebsiteToggle.addEventListener('change', function () {
+      if (!detailWebsiteToggle.checked
+        && !confirm('Switch off the player on your website? Visitors will see "The livestream isn\'t available here right now" until you switch it back on.')) {
+        detailWebsiteToggle.checked = true;
+        return;
+      }
+      api('/api/channels/' + currentChannelId + '/website-settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ embedEnabled: detailWebsiteToggle.checked }),
+      })
+        .then(refreshChannelDetail)
+        .catch(function (err) {
+          alert(err.message);
+          detailWebsiteToggle.checked = !detailWebsiteToggle.checked;
+        });
+    });
+
+    websiteHtmlBtn.addEventListener('click', function () {
+      websiteHtmlModalBackdrop.classList.remove('hidden');
+    });
+    websiteHtmlCloseBtn.addEventListener('click', function () {
+      websiteHtmlModalBackdrop.classList.add('hidden');
+    });
+    websiteHtmlModalBackdrop.addEventListener('click', function (e) {
+      if (e.target === websiteHtmlModalBackdrop) websiteHtmlModalBackdrop.classList.add('hidden');
+    });
+    wireCopyButtons(websiteHtmlModalBackdrop);
 
     detailRecordingToggle.addEventListener('change', function () {
       if (detailRecordingToggle.checked && !config.recordingsEnabled) {

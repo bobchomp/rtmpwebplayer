@@ -149,7 +149,8 @@ Log in, click **Create channel**, give it a name. You'll get:
 
 - An **RTMP URL** (shared across all channels: `rtmp://<host>:1935/live`)
 - A **stream key** (unique per channel, secret)
-- An **embed code** you can copy straight into your website
+- An **embed code** you can copy straight into your website (the channel
+  page's **Website HTML** button)
 
 ## 4. Point your encoder at it
 
@@ -166,7 +167,8 @@ flips to "live" for anyone viewing the embed too.
 
 ## 5. Embed the player
 
-Paste the embed code from the dashboard into your website's HTML, e.g.:
+Click **Website HTML** on the channel page and paste the code into your
+website's HTML, e.g.:
 
 ```html
 <iframe
@@ -356,9 +358,14 @@ streaming on the left, the outputs it fans out to on the right.
 The right panel on a channel's detail page lists everywhere that channel's
 stream goes:
 
-- **Your Website** - the embed player itself (see above). Always available
-  for every channel, with no on/off toggle - there's no way to disable the
-  embed page or its video URLs short of deleting the channel. The player's
+- **Your Website** - the embed player itself (see above). On by default;
+  switching it off makes the embed show "The livestream isn't available
+  here right now" to visitors (the channel's owner still sees the player,
+  so the dashboard preview keeps working) and stops the embed's video. The
+  Public Link is unaffected. Stored as `embedEnabled` - a deliberately new
+  field, since an earlier toggle (`websiteEnabled`) was removed after it
+  was left off by mistake, and old `websiteEnabled: false` values may still
+  be on disk. The player's
   pause/play control is always greyed out (never hidden) once playback
   starts, so there's no way for a viewer to stop it from there - volume
   and fullscreen are unaffected, and the initial "click to watch" button
