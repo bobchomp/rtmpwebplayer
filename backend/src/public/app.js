@@ -1008,7 +1008,7 @@
     detailWebsiteToggle.checked = channel.embedEnabled !== false;
     detailWebsiteHint.textContent = channel.embedEnabled !== false
       ? 'The player on your website - click Website HTML for the code to paste into your site'
-      : 'Off - your website\'s player says the livestream isn\'t available (you still see it here)';
+      : 'Off - your website\'s player shows as offline, as if you weren\'t streaming (you still see the stream here)';
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
     renderRestreamTitleSync(channel);
@@ -1301,7 +1301,7 @@
 
     detailWebsiteToggle.addEventListener('change', function () {
       if (!detailWebsiteToggle.checked
-        && !confirm('Switch off the player on your website? Visitors will see "The livestream isn\'t available here right now" until you switch it back on.')) {
+        && !confirm('Switch off the player on your website? It will show as offline to visitors, even while you\'re streaming, until you switch it back on.')) {
         detailWebsiteToggle.checked = true;
         return;
       }

@@ -359,10 +359,12 @@ The right panel on a channel's detail page lists everywhere that channel's
 stream goes:
 
 - **Your Website** - the embed player itself (see above). On by default;
-  switching it off makes the embed show "The livestream isn't available
-  here right now" to visitors (the channel's owner still sees the player,
-  so the dashboard preview keeps working) and stops the embed's video. The
-  Public Link is unaffected. Stored as `embedEnabled` - a deliberately new
+  switching it off makes the embed player look offline to visitors (cover
+  image, no video) even while you're streaming, so it doesn't look broken.
+  The channel's owner still sees the stream, so the dashboard preview keeps
+  working, and the Public Link is unaffected. Done by telling the embed's
+  status poll the channel isn't live and refusing its video requests (see
+  `embedHiddenFor()` in `embedSecurity.js`). Stored as `embedEnabled` - a deliberately new
   field, since an earlier toggle (`websiteEnabled`) was removed after it
   was left off by mistake, and old `websiteEnabled: false` values may still
   be on disk. The player's

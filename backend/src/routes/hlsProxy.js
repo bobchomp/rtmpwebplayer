@@ -1,18 +1,8 @@
 const express = require('express');
 const { Readable } = require('stream');
 const { readDb } = require('../db');
-const { isRefererAllowed, isDirectNavigation } = require('../embedSecurity');
+const { isRefererAllowed, isDirectNavigation, embedHiddenFor } = require('../embedSecurity');
 const { ownsChannel } = require('../accounts');
-
-// Whether this video request comes from the embed player (as opposed to the
-// Public Link's /watch page), going by the page that asked for it.
-function requestedByEmbed(req) {
-  try {
-    return new URL(req.get('referer') || '').pathname.startsWith('/embed/');
-  } catch (err) {
-    return false;
-  }
-}
 
 const router = express.Router();
 const HLS_INTERNAL_URL = process.env.HLS_INTERNAL_URL || 'http://rtmp:8080';
@@ -41,12 +31,8 @@ router.get('/:channelId/:file', async (req, res) => {
   const channel = db.channels[channelId];
   if (!channel) return res.status(404).send('Not found');
 
-  // "Your Website" switched off stops the embed player's video, but not the
-  // Public Link's, which is its own output with its own switch.
-  if (channel.embedEnabled === false && requestedByEmbed(req)
-    && !ownsChannel(channel, req.session && req.session.account)) {
-    return res.status(404).send('Not found');
-  }
+  // "Your Website" switched off: no video for the embed player.
+  if (embedHiddenFor(req, channel, ownsChannel)) return res.status(404).send('Not found');
 
   const target = `${HLS_INTERNAL_URL}/hls/${channel.streamKey}/${file}`;
 

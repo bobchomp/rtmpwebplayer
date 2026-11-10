@@ -11,6 +11,7 @@ const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
 const { currentAccount, ownsChannel } = require('../accounts');
 const { syncChannelTitle } = require('../restreamTitleSync');
+const { embedHiddenFor } = require('../embedSecurity');
 
 const router = express.Router();
 
@@ -467,10 +468,13 @@ router.get('/:id/status', (req, res) => {
   // this response if some other rule ever ends up matching /api/ paths, so
   // this needs to be explicit here too.
   res.set('Cache-Control', 'no-store');
+  // "Your Website" switched off: the embed player is told the channel is
+  // offline, so it shows the cover image rather than looking broken.
+  const hidden = embedHiddenFor(req, channel, ownsChannel);
   res.json({
     id: channel.id,
     name: channel.name,
-    isLive: channel.isLive,
+    isLive: hidden ? false : channel.isLive,
     lastLiveAt: channel.lastLiveAt,
     coverUrl: channel.activeCoverImage ? `/uploads/${channel.activeCoverImage}` : null,
     liveThumbnailUrl: channel.activeLiveThumbnail ? `/uploads/${channel.activeLiveThumbnail}` : null,

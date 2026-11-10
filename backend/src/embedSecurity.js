@@ -71,4 +71,23 @@ function isDirectNavigation(req) {
   return req.headers['sec-fetch-dest'] === 'document';
 }
 
-module.exports = { frameAncestorsHeader, isRefererAllowed, isDirectNavigation };
+// Whether a request (the player's status poll or a video file) comes from
+// the embed player rather than the Public Link's /watch page, going by the
+// page that asked for it. Used by the "Your Website" switch.
+function requestedByEmbed(req) {
+  try {
+    return new URL(req.get('referer') || '').pathname.startsWith('/embed/');
+  } catch (err) {
+    return false;
+  }
+}
+
+// "Your Website" switched off hides the stream from the embed player (it
+// looks offline), except for the channel's owner, so the dashboard preview
+// still works. The Public Link is a separate output and is unaffected.
+function embedHiddenFor(req, channel, ownsChannel) {
+  return channel.embedEnabled === false && requestedByEmbed(req)
+    && !ownsChannel(channel, req.session && req.session.account);
+}
+
+module.exports = { frameAncestorsHeader, isRefererAllowed, isDirectNavigation, embedHiddenFor };
