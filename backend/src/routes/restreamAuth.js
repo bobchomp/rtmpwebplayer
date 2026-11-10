@@ -82,7 +82,7 @@ router.get('/channels', requireAuth, async (req, res) => {
       displayName: d.displayName || '',
       platform: platformNames[d.streamingPlatformId] || 'Restream destination',
       url: d.url || '',
-      active: d.active !== false,
+      active: d.enabled,
     })));
   } catch (err) {
     res.status(502).json({ error: err.message });

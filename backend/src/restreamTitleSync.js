@@ -42,7 +42,7 @@ async function sendTitles(channel) {
 
   const accessToken = await getAccessToken(channel.owner);
   const destinations = (await restream.listChannelsWithStatus(accessToken))
-    .filter((d) => d.active !== false);
+    .filter((d) => d.enabled);
   if (!destinations.length) throw new Error('No active destinations on Restream.');
 
   // Titles are stored wrapped in quotes by convention (see channels.js), and

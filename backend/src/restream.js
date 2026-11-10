@@ -167,19 +167,38 @@ async function listChannels(accessToken) {
   return apiGet(accessToken, '/user/channels');
 }
 
-// Same destinations as listChannels, from the documented /user/channel/all
-// endpoint, which also says whether each one is switched on in Restream
-// (`active`). Returns [{ id, streamingPlatformId, url, displayName, active }].
+// Whether a destination is switched on in Restream. The docs call this
+// `active`, but the real API returns `enabled` (confirmed against a live
+// account) - accept either.
+function isChannelEnabled(channel) {
+  if (typeof channel.enabled === 'boolean') return channel.enabled;
+  if (typeof channel.active === 'boolean') return channel.active;
+  return true;
+}
+
+// Same destinations as listChannels, from /user/channel/all, which also says
+// whether each one is switched on. Returns [{ id, streamingPlatformId, url,
+// displayName, enabled }].
 async function listChannelsWithStatus(accessToken) {
   const res = await apiGet(accessToken, '/user/channel/all');
-  if (Array.isArray(res)) return res;
-  return (res && res.channels) || [];
+  const list = Array.isArray(res) ? res : (res && res.channels) || [];
+  return list.map((c) => ({ ...c, enabled: isChannelEnabled(c) }));
 }
 
 // Switches a destination on or off in the Restream dashboard, i.e. whether
 // it gets the stream next time. Needs channels.write.
+//
+// Sends the documented { active } body, then reads the channel back; since
+// the docs' field name was wrong for reading (see isChannelEnabled), it
+// retries with { enabled } if the change didn't stick.
 async function setChannelActive(accessToken, channelId, active) {
-  await apiPatch(accessToken, `/user/channel/${encodeURIComponent(channelId)}`, { active });
+  const path = `/user/channel/${encodeURIComponent(channelId)}`;
+  await apiPatch(accessToken, path, { active });
+  if (isChannelEnabled(await apiGet(accessToken, path)) === active) return;
+  await apiPatch(accessToken, path, { enabled: active });
+  if (isChannelEnabled(await apiGet(accessToken, path)) !== active) {
+    throw new Error(`Restream didn't switch this destination ${active ? 'on' : 'off'}.`);
+  }
 }
 
 // Restream's public list of platforms ({ id, name, url, image }), used to

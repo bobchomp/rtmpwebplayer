@@ -101,7 +101,11 @@ active Restream destination via **`PATCH /user/channel-meta/{channelId}`**
 (`{ "title", "description" }`, empty body on success, needs
 `channels.write`). Destinations and their `active` flag come from
 **`GET /user/channel/all`** (a bare array of `{ id, streamingPlatformId,
-url, displayName, active }`). It's opt-in per channel
+embedUrl, url, identifier, displayName, enabled }`). **The docs call the
+on/off flag `active`, but the real response has `enabled`** - see
+`isChannelEnabled()` in `restream.js`. Switching one on/off
+(`PATCH /user/channel/{id}`) sends the documented `{ active }` and falls back
+to `{ enabled }` if a read-back shows it didn't take. It's opt-in per channel
 (`channel.restreamTitleSync`) and runs when the channel goes live, when the
 title is saved, and when the setting is switched on. The result is stored
 on the channel as `restreamTitleSyncStatus` and shown on the channel page.
