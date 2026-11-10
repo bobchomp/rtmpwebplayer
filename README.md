@@ -397,6 +397,44 @@ stream goes:
     button, but deleting the output and adding a new one issues a fresh,
     unguessable link and immediately invalidates the old one.
 
+### Direct YouTube output
+
+**+ Add output → YouTube** signs in with Google and connects a YouTube
+channel to that app channel - no stream key to copy. Each time the channel
+goes live, the app creates a YouTube broadcast with its title, description
+and the privacy chosen on the output (Public/Unlisted/Private), sets the
+channel's active **Live thumbnail** as its thumbnail (converted to a 1280px
+JPEG; needs a phone-verified YouTube channel), and relays the stream to it.
+YouTube starts and ends the broadcast itself. Saving a new title or
+description while live updates the broadcast. The output's status line shows
+what happened, with a link to the broadcast while live. Switching the output
+on or off applies from the next time you go live.
+
+How it works: the output keeps one reusable YouTube stream (a fixed ingest
+URL/key, created on first use). On publish, `rtmpHooks.js` gives the output
+a fresh `session` id and `youtube.js` creates and binds a new broadcast;
+`/relay-targets` only lists the YouTube target once that's done, which is
+why `relay-start.sh` keeps polling for up to a minute. The Google refresh
+token is kept in `db.youtubeTokens[outputId]`, never on the output, so it
+never reaches the browser; deleting the output deletes it.
+
+One-time Google Cloud setup (one project serves both sites):
+
+1. At [console.cloud.google.com](https://console.cloud.google.com), enable
+   the **YouTube Data API v3**.
+2. **Google Auth Platform**: Audience External; Branding with the home page,
+   `/privacy.html` and `rossmackenzie.co.uk` as authorised domain (no logo -
+   a logo forces Google's review); Data access scope `.../auth/youtube`.
+3. **Clients → Create client**, Web application, with redirect URIs
+   `https://stream.<domain>/api/youtube/callback` and
+   `https://dev.stream.<domain>/api/youtube/callback`.
+4. **Audience → Publish app** (In production). In Testing mode Google expires
+   the connection every 7 days. Without Google's review, signing in shows a
+   one-time "Google hasn't verified this app" screen (Advanced → continue),
+   and the project is capped at 100 users ever.
+5. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI`
+   (that site's own callback URL) in each site's `.env`.
+
 ## Viewer stats
 
 Click **Stats** next to Log out to see who's watched each channel - one row

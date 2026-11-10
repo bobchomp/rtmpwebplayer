@@ -353,6 +353,10 @@ button.danger:hover { background: var(--ember-tint); }
 
 .add-output-type-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .add-output-type-row button { flex: 1; }
+.youtube-output { margin-bottom: 12px; }
+.outputs-panel .youtube-output .output-row { margin-bottom: 0; }
+.youtube-privacy-select { width: auto; flex-shrink: 0; padding: 7px 9px; font-size: 13px; }
+.youtube-output-status { margin: 4px 0 0; }
 
 
 .outputs-panel .output-row, .recordings-panel .output-row, .recording-toggle-panel .output-row, .modal-box .output-row {

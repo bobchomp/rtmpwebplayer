@@ -12,10 +12,11 @@ function ensureDb() {
 }
 
 // Transparently upgrades older channel shapes into the current unified
-// channel.outputs array. Also drops anything left from the removed YouTube
-// relay (old per-channel connection fields and 'youtube' outputs), so the
-// Google tokens they held stop being stored. Idempotent - a no-op on every
-// read after the first.
+// channel.outputs array. Also drops anything left from the first, removed
+// YouTube relay (old per-channel connection fields, and 'youtube' outputs
+// that kept their Google token on the output itself), so those tokens stop
+// being stored. Current YouTube outputs keep theirs in db.youtubeTokens - see
+// youtube.js. Idempotent - a no-op on every read after the first.
 const LEGACY_YOUTUBE_FIELDS = ['youtube', 'youtubeEnabled', 'youtubeBroadcastId', 'youtubeIngestAddress', 'youtubeStreamName'];
 
 function migrateChannel(channel) {
@@ -30,7 +31,7 @@ function migrateChannel(channel) {
   }
 
   LEGACY_YOUTUBE_FIELDS.forEach((field) => delete channel[field]);
-  channel.outputs = channel.outputs.filter((output) => output.type !== 'youtube');
+  channel.outputs = channel.outputs.filter((output) => !(output.type === 'youtube' && 'refreshToken' in output));
 
   return channel;
 }

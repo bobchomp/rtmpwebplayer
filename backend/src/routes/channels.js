@@ -12,6 +12,7 @@ const recordingSessions = require('../recordingSessions');
 const { currentAccount, ownsChannel } = require('../accounts');
 const { syncChannelTitle } = require('../restreamTitleSync');
 const { embedHiddenFor } = require('../embedSecurity');
+const youtube = require('../youtube');
 
 const router = express.Router();
 
@@ -186,6 +187,8 @@ router.patch('/:id/metadata', requireAuth, async (req, res) => {
   }
   writeDb(db);
   if (channel.restreamTitleSync) await syncChannelTitle(channel.id);
+  // Direct YouTube outputs: update the broadcast that's live right now, if any.
+  await youtube.updateBroadcastDetails(channel.id);
   res.json(readDb().channels[channel.id]);
 });
 
@@ -307,6 +310,20 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
     return res.json(channel);
   }
 
+  // YouTube outputs come from Google sign-in (routes/youtubeAuth.js); only
+  // the switch and the privacy of future broadcasts can be changed here.
+  if (output.type === 'youtube') {
+    if (typeof req.body.enabled === 'boolean') output.enabled = req.body.enabled;
+    if (req.body.privacyStatus !== undefined) {
+      if (!youtube.PRIVACY_STATUSES.includes(req.body.privacyStatus)) {
+        return res.status(400).json({ error: 'Privacy must be public, unlisted or private' });
+      }
+      output.privacyStatus = req.body.privacyStatus;
+    }
+    writeDb(db);
+    return res.json(channel);
+  }
+
   const { errors, update } = validateOutputInput(req.body || {}, { partial: true });
   if (errors.length) return res.status(400).json({ error: errors.join(', ') });
 
@@ -325,6 +342,8 @@ router.delete('/:id/outputs/:outputId', requireAuth, (req, res) => {
   channel.outputs = (channel.outputs || []).filter((o) => o.id !== req.params.outputId);
   if (channel.outputs.length === before) return res.status(404).json({ error: 'Output not found' });
 
+  // A YouTube output's Google token goes with it.
+  if (db.youtubeTokens) delete db.youtubeTokens[req.params.outputId];
   writeDb(db);
   res.json(channel);
 });
@@ -339,6 +358,7 @@ router.delete('/:id', requireAuth, (req, res) => {
     const p = path.join(UPLOADS_DIR, filename);
     if (fs.existsSync(p)) fs.unlinkSync(p);
   });
+  (channel.outputs || []).forEach((o) => { if (db.youtubeTokens) delete db.youtubeTokens[o.id]; });
   delete db.channels[req.params.id];
   writeDb(db);
   res.json({ ok: true });
@@ -589,3 +609,4 @@ router.delete('/:id/recordings/:recordingId', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.MAX_OUTPUTS = MAX_OUTPUTS;

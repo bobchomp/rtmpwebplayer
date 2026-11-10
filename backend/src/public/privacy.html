@@ -37,7 +37,7 @@
 </nav>
 
 <h1>Privacy Policy</h1>
-<p class="updated">Last updated: 7 November 2026</p>
+<p class="updated">Last updated: 10 November 2026</p>
 
 <p>This policy explains how stream.rossmackenzie.co.uk ("the Site") handles information. The Site is used to broadcast live services and events, and lets administrators manage and record those broadcasts.</p>
 
@@ -59,8 +59,20 @@
 <h2>Information we collect from administrators</h2>
 <ul>
   <li>Administrators sign in through our login provider, Auth0, which confirms who they are and tells us their email address. We use that address only to check they're authorised, and to keep each administrator's channels and data separate from everyone else's. We never see or store their password.</li>
-  <li>If an administrator chooses to connect their Restream account, we store an access credential that lets us read the view counts of their past streams. We use it for nothing else, and they can disconnect it at any time.</li>
+  <li>If an administrator chooses to connect their Restream account, we store an access credential that lets us read the view counts of their past streams, set the titles and descriptions of their streams, and switch their Restream destinations on or off. We use it for nothing else, and they can disconnect it at any time.</li>
+  <li>If an administrator chooses to connect a YouTube channel, we store an access credential issued by Google and the name of that YouTube channel. See "How we use Google user data" below.</li>
 </ul>
+
+<h2>How we use Google user data</h2>
+<p>When an administrator connects a YouTube channel, we ask Google for the <code>https://www.googleapis.com/auth/youtube</code> permission on their Google Account, and use it only to:</p>
+<ul>
+  <li>Read the name of their YouTube channel, to show which channel is connected.</li>
+  <li>Create a reusable live stream on that channel, and a new live broadcast each time they go live, with the title, description and privacy setting chosen in our dashboard.</li>
+  <li>Update that broadcast's title and description if the administrator changes them while live, and set its thumbnail to the image they chose in our dashboard.</li>
+</ul>
+<p>We don't read, change or delete their existing videos, comments, subscribers, analytics or anything else on their YouTube channel. We don't share this data with anyone else, and nobody reads or reviews it - it's only used automatically by our server for the actions above.</p>
+<p>The credential Google issues is stored only on our server and is never sent to any browser, including the administrator's own. It is deleted when the administrator removes the YouTube output from our dashboard, and they can also revoke it at any time from their <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account's third-party access settings</a>.</p>
+<p>This feature uses YouTube API Services. By connecting a YouTube channel, administrators agree to the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">YouTube Terms of Service</a>, and Google's handling of their data is covered by the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>. Our use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
 
 <h2>Cookies</h2>
 <p>We don't set cookies or store anything in viewers' browsers. Administrators get a single cookie that keeps them signed in to the dashboard, and the dashboard remembers a small display preference in their browser.</p>
@@ -72,7 +84,8 @@
 <ul>
   <li><strong>Cloudflare</strong> - our hosting/CDN provider, and (if recording is enabled) our storage provider for recorded video files.</li>
   <li><strong>Auth0</strong> - handles administrator sign-in. Viewers never interact with it.</li>
-  <li><strong>Restream</strong> - only for administrators who connect their Restream account, and only to read their own streams' view counts. Nothing about viewers is sent to Restream.</li>
+  <li><strong>Restream</strong> - only for administrators who connect their Restream account, to read their own streams' view counts and manage their own stream titles and destinations. Nothing about viewers is sent to Restream.</li>
+  <li><strong>Google (YouTube)</strong> - only for administrators who connect a YouTube channel, to publish their streams there. Nothing about viewers is sent to Google.</li>
 </ul>
 <p>We do not sell personal information to anyone.</p>
 
@@ -80,7 +93,7 @@
 <ul>
   <li>Viewer analytics (approximate location, watch timestamps) are retained indefinitely for internal reporting unless an administrator deletes them.</li>
   <li>Recordings are retained for the period an administrator configures, then automatically deleted, or deleted sooner on request.</li>
-  <li>An administrator's sign-in lasts up to 7 days. A connected Restream credential is kept until the administrator disconnects it.</li>
+  <li>An administrator's sign-in lasts up to 7 days. A connected Restream or YouTube credential is kept until the administrator disconnects it.</li>
 </ul>
 
 <h2>Security</h2>

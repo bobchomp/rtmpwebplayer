@@ -566,6 +566,8 @@
   var addOutputTypeRow = document.getElementById('add-output-type-row');
   var addOutputTypeRtmpBtn = document.getElementById('add-output-type-rtmp');
   var addOutputTypePublicLinkBtn = document.getElementById('add-output-type-public-link');
+  var addOutputTypeYoutubeBtn = document.getElementById('add-output-type-youtube');
+  var youtubeOutputRowTemplate = document.getElementById('youtube-output-row-template');
   var addOutputRtmpForm = document.getElementById('add-output-rtmp-form');
   var addOutputCancelBtn = document.getElementById('add-output-cancel-btn');
   var newOutputName = document.getElementById('new-output-name');
@@ -779,6 +781,7 @@
       .then(function (data) {
         if (!data) return;
         updatePreviewState(data.isLive, currentChannelId);
+        refreshYoutubeOutputs();
         if (data.isLive) {
           pollViewerCount();
           pollRecordingSession();
@@ -987,6 +990,74 @@
     }).catch(function () {});
   }
 
+  // A direct YouTube output: which YouTube channel it's connected to, the
+  // privacy new broadcasts get, its switch, and what happened last time.
+  function renderYoutubeOutput(channel, output) {
+    var node = youtubeOutputRowTemplate.content.firstElementChild.cloneNode(true);
+    node.dataset.youtubeOutputId = output.id;
+    node.querySelector('.youtube-output-channel').textContent = output.youtubeChannelTitle || 'Connected';
+
+    function save(body, onError) {
+      return api('/api/channels/' + channel.id + '/outputs/' + output.id, { method: 'PATCH', body: JSON.stringify(body) })
+        .then(refreshChannelDetail)
+        .catch(function (err) { alert(err.message); onError(); });
+    }
+
+    var privacy = node.querySelector('.youtube-privacy-select');
+    privacy.value = output.privacyStatus || 'public';
+    privacy.addEventListener('change', function () {
+      save({ privacyStatus: privacy.value }, function () { privacy.value = output.privacyStatus || 'public'; });
+    });
+
+    var toggle = node.querySelector('.output-toggle');
+    toggle.checked = !!output.enabled;
+    toggle.addEventListener('change', function () {
+      save({ enabled: toggle.checked }, function () { toggle.checked = !toggle.checked; });
+    });
+
+    var status = node.querySelector('.youtube-output-status');
+    if (output.lastStatus) {
+      status.classList.remove('hidden');
+      status.classList.toggle('error', !output.lastStatus.ok);
+      status.classList.toggle('hint', output.lastStatus.ok);
+      var when = new Date(output.lastStatus.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      status.textContent = output.lastStatus.message + ' (' + when + ')';
+      if (output.lastStatus.url && output.session) {
+        var link = document.createElement('a');
+        link.href = output.lastStatus.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'Watch on YouTube';
+        status.appendChild(document.createTextNode(' - '));
+        status.appendChild(link);
+      }
+    }
+
+    node.querySelector('.output-delete-btn').addEventListener('click', function () {
+      if (!confirm('Remove the YouTube output? This disconnects ' + (output.youtubeChannelTitle || 'the YouTube channel') + ' from this channel.')) return;
+      api('/api/channels/' + channel.id + '/outputs/' + output.id, { method: 'DELETE' })
+        .then(refreshChannelDetail)
+        .catch(function (err) { alert(err.message); });
+    });
+    return node;
+  }
+
+  // YouTube statuses change by themselves while going live, so the 5s poll
+  // re-renders just those rows (unless one is being interacted with).
+  function refreshYoutubeOutputs() {
+    if (!detailOutputsList.querySelector('[data-youtube-output-id]')) return;
+    var channelId = currentChannelId;
+    api('/api/channels/' + channelId).then(function (channel) {
+      if (channelId !== currentChannelId) return;
+      (channel.outputs || []).forEach(function (output) {
+        if (output.type !== 'youtube') return;
+        var existing = detailOutputsList.querySelector('[data-youtube-output-id="' + output.id + '"]');
+        if (!existing || existing.contains(document.activeElement)) return;
+        existing.replaceWith(renderYoutubeOutput(channel, output));
+      });
+    }).catch(function () {});
+  }
+
   function renderChannelDetail(channel) {
     var isEditingName = detailNameInput.classList.contains('hidden') === false;
     if (!isEditingName) detailName.textContent = channel.name;
@@ -1020,7 +1091,12 @@
     detailOutputsList.innerHTML = '';
     detailOutputsEmpty.classList.toggle('hidden', outputs.length > 0);
     addOutputTypePublicLinkBtn.disabled = outputs.some(function (o) { return o.type === 'public-link'; });
+    addOutputTypeYoutubeBtn.classList.toggle('hidden', !config.youtubeEnabled);
     outputs.forEach(function (output) {
+      if (output.type === 'youtube') {
+        detailOutputsList.appendChild(renderYoutubeOutput(channel, output));
+        return;
+      }
       var isPublicLink = output.type === 'public-link';
       // Never rendered as visible text (screen shares, screenshots) - the
       // token in this URL is a real access-control secret now, same trust
@@ -1463,6 +1539,10 @@
     addOutputTypeRtmpBtn.addEventListener('click', function () {
       addOutputTypeRow.classList.add('hidden');
       addOutputRtmpForm.classList.remove('hidden');
+    });
+    addOutputTypeYoutubeBtn.addEventListener('click', function () {
+      // Off to Google's sign-in; it comes back to this channel page.
+      window.location.href = '/api/youtube/connect?channelId=' + encodeURIComponent(currentChannelId);
     });
     addOutputTypePublicLinkBtn.addEventListener('click', function () {
       api('/api/channels/' + currentChannelId + '/outputs', {

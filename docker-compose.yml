@@ -54,6 +54,11 @@ services:
       RESTREAM_CLIENT_SECRET: ${RESTREAM_CLIENT_SECRET:-}
       RESTREAM_REDIRECT_URI: ${RESTREAM_REDIRECT_URI:-}
       RESTREAM_IMPORT_SECRET: ${RESTREAM_IMPORT_SECRET:-}
+      # Direct YouTube output - from the Google Cloud project's OAuth client
+      # (see README's "Direct YouTube output"). Leave unset to hide it.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       SESSION_SECRET: ${SESSION_SECRET}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
       PUBLIC_HOST: ${PUBLIC_HOST}

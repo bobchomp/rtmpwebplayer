@@ -5,6 +5,8 @@ const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
 const { secretMatches } = require('../safeCompare');
 const { syncChannelTitle } = require('../restreamTitleSync');
+const youtube = require('../youtube');
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -53,9 +55,26 @@ router.post('/on_publish', (req, res) => {
   const channel = findChannelByKey(db, streamKey);
   if (!channel) return res.status(403).send('Invalid stream key');
 
+  // Direct YouTube outputs: mark this publish with a fresh session id and
+  // start creating the broadcast now, so it's ready (and the relay released)
+  // within seconds. See youtube.startBroadcast().
+  const youtubeStarts = [];
+  (channel.outputs || []).forEach((output) => {
+    if (output.type !== 'youtube') return;
+    output.session = null;
+    output.broadcastId = null;
+    if (!output.enabled || !youtube.isConfigured()) return;
+    output.session = crypto.randomUUID();
+    output.lastStatus = { at: new Date().toISOString(), ok: true, message: 'Starting the YouTube broadcast...' };
+    youtubeStarts.push([output.id, output.session]);
+  });
+  if (youtubeStarts.length) writeDb(db);
+
   // Respond immediately so the publish isn't delayed - nginx is waiting on
   // this HTTP response to decide whether to accept the connection at all.
   res.status(200).send('OK');
+
+  youtubeStarts.forEach(([outputId, session]) => youtube.startBroadcast(channel.id, outputId, session));
 
   cancelPendingLive(channel.id);
   pendingLiveTimers[channel.id] = setTimeout(() => {
@@ -89,6 +108,15 @@ router.post('/on_publish_done', (req, res) => {
   if (channel) {
     cancelPendingLive(channel.id);
     channel.isLive = false;
+    // YouTube ends the broadcast itself once the video stops (enableAutoStop).
+    (channel.outputs || []).forEach((output) => {
+      if (output.type !== 'youtube' || !output.session) return;
+      output.session = null;
+      output.broadcastId = null;
+      if (output.lastStatus && output.lastStatus.ok) {
+        output.lastStatus = { ...output.lastStatus, at: new Date().toISOString(), message: 'Stream ended' };
+      }
+    });
     writeDb(db);
   }
   res.status(200).send('OK');
@@ -115,6 +143,10 @@ router.get('/relay-targets', (req, res) => {
     if (!output.enabled) return;
     if (output.type === 'rtmp' && output.rtmpUrl && output.streamKey) {
       lines.push(`${output.id}\t${output.rtmpUrl}/${output.streamKey}`);
+    } else if (output.type === 'youtube' && output.session && output.broadcastId && output.ingestUrl) {
+      // Only once this publish's broadcast is created and bound, so YouTube
+      // sees the video arrive for that broadcast and starts it.
+      lines.push(`${output.id}\t${output.ingestUrl}`);
     }
   });
 

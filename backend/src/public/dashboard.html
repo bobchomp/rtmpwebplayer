@@ -549,6 +549,28 @@
   </div>
 </template>
 
+<template id="youtube-output-row-template">
+  <div class="youtube-output">
+    <div class="output-row custom-output-row">
+      <div class="output-info">
+        <span class="output-name">YouTube (direct)</span>
+        <span class="hint youtube-output-channel"></span>
+      </div>
+      <select class="youtube-privacy-select" aria-label="Privacy of new broadcasts">
+        <option value="public">Public</option>
+        <option value="unlisted">Unlisted</option>
+        <option value="private">Private</option>
+      </select>
+      <label class="switch">
+        <input type="checkbox" class="output-toggle">
+        <span class="switch-track"></span>
+      </label>
+      <button class="secondary danger output-delete-btn">Delete</button>
+    </div>
+    <p class="hint youtube-output-status hidden"></p>
+  </div>
+</template>
+
 <template id="restream-channel-row-template">
   <div class="output-row custom-output-row">
     <div class="output-info">
@@ -685,6 +707,7 @@
     <div class="add-output-type-row" id="add-output-type-row">
       <button class="secondary" id="add-output-type-rtmp">Custom RTMP</button>
       <button class="secondary" id="add-output-type-public-link">Public Link</button>
+      <button class="secondary hidden" id="add-output-type-youtube">YouTube</button>
     </div>
     <form id="add-output-rtmp-form" class="hidden add-output-form">
       <input type="text" id="new-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>

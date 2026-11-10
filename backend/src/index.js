@@ -18,6 +18,8 @@ const hlsProxy = require('./routes/hlsProxy');
 const embed = require('./routes/embed');
 const watch = require('./routes/watch');
 const restreamAuth = require('./routes/restreamAuth');
+const youtubeAuth = require('./routes/youtubeAuth');
+const youtube = require('./youtube');
 const statsRoutes = require('./routes/stats');
 const recordings = require('./recordings');
 const geoip = require('./geoip');
@@ -115,6 +117,8 @@ app.get('/api/config', (req, res) => {
     // enforcement point; this just lets the dashboard warn up front instead
     // of a toggle silently doing nothing.
     recordingsEnabled: recordings.recordingsAvailable(),
+    // Shows "YouTube" in the Add output popup when Google keys are set.
+    youtubeEnabled: youtube.isConfigured(),
     serverStartedAt: SERVER_STARTED_AT,
   });
 });
@@ -130,6 +134,7 @@ app.use('/auth', auth0Routes);
 app.use('/api/channels', channelRoutes);
 app.use('/api/rtmp', rtmpHooks);
 app.use('/api/restream', restreamAuth);
+app.use('/api/youtube', youtubeAuth);
 app.use('/api/stats', statsRoutes);
 app.use('/live', hlsProxy);
 app.use('/embed', embed);

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Invoked by nginx-rtmp's exec_publish_done directive with the stream key as
 # $1. Stops every relay process started for this stream (one per enabled
-# custom RTMP output).
+# custom RTMP or YouTube output).
 set -u
 
 STREAM_KEY="$1"
