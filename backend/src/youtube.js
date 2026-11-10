@@ -178,6 +178,38 @@ async function ensureStream(accessToken, channelId, output) {
   });
 }
 
+// One reusable stream can have several broadcasts bound to it, and YouTube
+// starts whichever it picks when video arrives - so a broadcast left waiting
+// from an earlier stream would steal the video from the new one. These keep
+// only the current broadcast alive.
+const LIVE_STATES = ['live', 'liveStarting'];
+const WAITING_STATES = ['created', 'ready', 'testing', 'testStarting'];
+
+async function broadcastsOnStream(accessToken, streamId) {
+  const found = [];
+  for (const status of ['upcoming', 'active']) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await apiCall(accessToken, 'GET',
+      `/liveBroadcasts?part=id,status,contentDetails&maxResults=50&broadcastStatus=${status}`);
+    (res.items || []).forEach((b) => {
+      if (b.contentDetails && b.contentDetails.boundStreamId === streamId) found.push(b);
+    });
+  }
+  return found;
+}
+
+// Ends a broadcast that went live, or deletes one that never did (so it
+// doesn't linger as an empty "upcoming" video on the channel).
+async function endBroadcast(accessToken, broadcast) {
+  const state = broadcast.status && broadcast.status.lifeCycleStatus;
+  if (LIVE_STATES.includes(state)) {
+    await apiCall(accessToken, 'POST',
+      `/liveBroadcasts/transition?broadcastStatus=complete&id=${encodeURIComponent(broadcast.id)}&part=status`);
+  } else if (WAITING_STATES.includes(state)) {
+    await apiCall(accessToken, 'DELETE', `/liveBroadcasts?id=${encodeURIComponent(broadcast.id)}`);
+  }
+}
+
 function broadcastSnippet(channel, scheduledStartTime) {
   // YouTube limits: title 100 characters, description 5000; no < or >.
   const clean = (text) => String(text || '').replace(/[<>]/g, '');
@@ -232,21 +264,47 @@ async function startBroadcast(channelId, outputId, session) {
     if (!output || output.session !== session) return;
 
     output = await ensureStream(accessToken, channelId, output);
-    const broadcast = await apiCall(accessToken, 'POST', '/liveBroadcasts?part=snippet,status,contentDetails', {
-      snippet: broadcastSnippet(channel, new Date().toISOString()),
-      status: { privacyStatus: PRIVACY_STATUSES.includes(output.privacyStatus) ? output.privacyStatus : 'public', selfDeclaredMadeForKids: false },
-      contentDetails: { enableAutoStart: true, enableAutoStop: true, monitorStream: { enableMonitorStream: false } },
-    });
-    await apiCall(accessToken, 'POST',
-      `/liveBroadcasts/bind?id=${encodeURIComponent(broadcast.id)}&part=id&streamId=${encodeURIComponent(output.streamId)}`);
+
+    // A quick reconnect (OBS dropped out for a moment) carries on in the same
+    // broadcast if it's still live; anything else on this stream is ended or
+    // deleted so the video can only go to one broadcast.
+    const existing = await broadcastsOnStream(accessToken, output.streamId);
+    const recent = output.previousBroadcastId && output.previousEndedAt
+      && Date.now() - new Date(output.previousEndedAt).getTime() < RECONNECT_GRACE_MS;
+    const resumable = recent && existing.find((b) => b.id === output.previousBroadcastId
+      && LIVE_STATES.includes(b.status.lifeCycleStatus));
+    for (const b of existing) {
+      if (resumable && b.id === resumable.id) continue;
+      // eslint-disable-next-line no-await-in-loop
+      await endBroadcast(accessToken, b).catch((err) => console.error(`[youtube] Couldn't clear broadcast ${b.id}: ${err.message}`));
+    }
+
+    let broadcast = resumable;
+    if (!broadcast) {
+      broadcast = await apiCall(accessToken, 'POST', '/liveBroadcasts?part=snippet,status,contentDetails', {
+        snippet: broadcastSnippet(channel, new Date().toISOString()),
+        status: { privacyStatus: PRIVACY_STATUSES.includes(output.privacyStatus) ? output.privacyStatus : 'public', selfDeclaredMadeForKids: false },
+        contentDetails: { enableAutoStart: true, enableAutoStop: true, monitorStream: { enableMonitorStream: false } },
+      });
+      await apiCall(accessToken, 'POST',
+        `/liveBroadcasts/bind?id=${encodeURIComponent(broadcast.id)}&part=id&streamId=${encodeURIComponent(output.streamId)}`);
+    }
 
     db = readDb();
     channel = db.channels[channelId];
     const fresh = channel && channel.outputs.find((o) => o.id === outputId);
     if (!fresh || fresh.session !== session) return; // stream ended meanwhile
     // Setting broadcastId is what releases the relay - see relay-targets.
-    updateOutput(channelId, outputId, (o) => { o.broadcastId = broadcast.id; });
+    updateOutput(channelId, outputId, (o) => {
+      o.broadcastId = broadcast.id;
+      o.previousBroadcastId = null;
+      o.previousEndedAt = null;
+    });
 
+    if (resumable) {
+      setStatus(channelId, outputId, true, 'Reconnected - carrying on in the same YouTube broadcast', { url: `https://youtu.be/${broadcast.id}` });
+      return;
+    }
     const thumbnailProblem = await setThumbnail(accessToken, broadcast.id, channel);
     setStatus(channelId, outputId, true, thumbnailProblem ? `Live on YouTube - ${thumbnailProblem}` : 'Live on YouTube',
       { url: `https://youtu.be/${broadcast.id}` });
@@ -255,6 +313,30 @@ async function startBroadcast(channelId, outputId, session) {
     setStatus(channelId, outputId, false,
       err.reconnect ? 'YouTube needs reconnecting - delete this output and add YouTube again.' : err.message);
   }
+}
+
+// Called RECONNECT_GRACE_MS after the stream stops (see rtmpHooks.js). If it
+// hasn't come back by then, the broadcast is ended now rather than left to
+// YouTube's own auto-stop, and one that never went live is deleted.
+const RECONNECT_GRACE_MS = Number(process.env.YOUTUBE_RECONNECT_GRACE_MS) || 90 * 1000;
+
+async function finishBroadcast(channelId, outputId, broadcastId) {
+  const channel = readDb().channels[channelId];
+  const output = channel && (channel.outputs || []).find((o) => o.id === outputId);
+  if (!output || output.session || output.previousBroadcastId !== broadcastId) return; // live again, or already handled
+  try {
+    const accessToken = await accessTokenFor(outputId);
+    const res = await apiCall(accessToken, 'GET', `/liveBroadcasts?part=id,status&id=${encodeURIComponent(broadcastId)}`);
+    const broadcast = res.items && res.items[0];
+    if (broadcast) await endBroadcast(accessToken, broadcast);
+  } catch (err) {
+    console.error(`[youtube] Ending broadcast ${broadcastId}: ${err.message}`);
+  }
+  updateOutput(channelId, outputId, (o) => {
+    if (o.previousBroadcastId !== broadcastId) return;
+    o.previousBroadcastId = null;
+    o.previousEndedAt = null;
+  });
 }
 
 // Title/description edited mid-stream (and "Send title" style updates):
@@ -292,6 +374,8 @@ module.exports = {
   connect,
   forget,
   startBroadcast,
+  finishBroadcast,
   updateBroadcastDetails,
+  RECONNECT_GRACE_MS,
   PRIVACY_STATUSES,
 };

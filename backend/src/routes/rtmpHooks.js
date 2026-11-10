@@ -108,9 +108,16 @@ router.post('/on_publish_done', (req, res) => {
   if (channel) {
     cancelPendingLive(channel.id);
     channel.isLive = false;
-    // YouTube ends the broadcast itself once the video stops (enableAutoStop).
+    // YouTube broadcasts: kept for a short grace period so a quick reconnect
+    // carries on in the same one, then ended (see youtube.finishBroadcast).
+    const toFinish = [];
     (channel.outputs || []).forEach((output) => {
       if (output.type !== 'youtube' || !output.session) return;
+      if (output.broadcastId) {
+        output.previousBroadcastId = output.broadcastId;
+        output.previousEndedAt = new Date().toISOString();
+        toFinish.push([output.id, output.broadcastId]);
+      }
       output.session = null;
       output.broadcastId = null;
       if (output.lastStatus && output.lastStatus.ok) {
@@ -118,6 +125,9 @@ router.post('/on_publish_done', (req, res) => {
       }
     });
     writeDb(db);
+    toFinish.forEach(([outputId, broadcastId]) => {
+      setTimeout(() => youtube.finishBroadcast(channel.id, outputId, broadcastId), youtube.RECONNECT_GRACE_MS);
+    });
   }
   res.status(200).send('OK');
 });
