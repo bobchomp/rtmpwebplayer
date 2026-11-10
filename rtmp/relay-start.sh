@@ -22,8 +22,24 @@ while [ "$i" -lt 30 ]; do
       PIDFILE="${PIDDIR}/${STREAM_KEY}-${target_id}.pid"
       [ -f "$PIDFILE" ] && continue
 
-      ffmpeg -i "rtmp://127.0.0.1/live/${STREAM_KEY}" -c copy -f flv "$target_url" \
-        > "${PIDDIR}/${STREAM_KEY}-${target_id}.log" 2>&1 &
+      # Restarts ffmpeg if it drops (e.g. the destination briefly refuses
+      # the connection) for as long as the stream lasts; relay-stop.sh's
+      # TERM ends the loop and its current ffmpeg. analyzeduration/probesize
+      # give a late-starting picture time to be found, as a second line of
+      # defence behind nginx's wait_video.
+      : > "${PIDDIR}/${STREAM_KEY}-${target_id}.log"
+      (
+        trap 'kill "$child" 2>/dev/null; exit 0' TERM
+        child=
+        while :; do
+          ffmpeg -analyzeduration 15000000 -probesize 20000000 \
+            -i "rtmp://127.0.0.1/live/${STREAM_KEY}" -map 0:v -map 0:a? -c copy -f flv "$target_url" \
+            >> "${PIDDIR}/${STREAM_KEY}-${target_id}.log" 2>&1 &
+          child=$!
+          wait "$child"
+          sleep 3
+        done
+      ) &
       echo $! > "$PIDFILE"
     done
   fi

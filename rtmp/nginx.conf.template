@@ -29,6 +29,14 @@ rtmp {
             # to it, which just keep running indefinitely too.
             drop_idle_publisher 10s;
 
+            # Players here (the relay and recording ffmpegs) get nothing until
+            # the first video keyframe. Without this, an encoder whose picture
+            # starts a few seconds after its sound (a long keyframe interval)
+            # can leave a relay thinking the stream is audio-only - YouTube
+            # then refuses it and the broadcast sits on "Waiting".
+            wait_key on;
+            wait_video on;
+
             # Only this container may play RTMP directly; public playback goes
             # through HLS via the backend proxy, never raw RTMP.
             allow play 127.0.0.1;
