@@ -350,6 +350,28 @@ async function finishBroadcast(channelId, outputId, broadcastId) {
   });
 }
 
+// A different Live thumbnail picked mid-stream: set it on the broadcast
+// that's live right now, if any.
+async function updateBroadcastThumbnail(channelId) {
+  const channel = readDb().channels[channelId];
+  if (!channel || !channel.activeLiveThumbnail) return;
+  const outputs = (channel.outputs || []).filter((o) => o.type === 'youtube' && o.broadcastId);
+  for (const output of outputs) {
+    const url = `https://youtu.be/${output.broadcastId}`;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const accessToken = await accessTokenFor(output.id);
+      // eslint-disable-next-line no-await-in-loop
+      const problem = await setThumbnail(accessToken, output.broadcastId, channel);
+      if (problem) setStatus(channelId, output.id, false, `Live on YouTube, but the ${problem}`, { url });
+      else setStatus(channelId, output.id, true, 'Live on YouTube - thumbnail updated', { url });
+    } catch (err) {
+      console.error(`[youtube] Thumbnail update for ${channelId}/${output.id}: ${err.message}`);
+      setStatus(channelId, output.id, false, `Couldn't update the YouTube thumbnail: ${err.message}`, { url });
+    }
+  }
+}
+
 // Title/description edited mid-stream (and "Send title" style updates):
 // pushed to the current broadcast, if there is one.
 async function updateBroadcastDetails(channelId) {
@@ -387,6 +409,7 @@ module.exports = {
   startBroadcast,
   finishBroadcast,
   updateBroadcastDetails,
+  updateBroadcastThumbnail,
   RECONNECT_GRACE_MS,
   PRIVACY_STATUSES,
 };

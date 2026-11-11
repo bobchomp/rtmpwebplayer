@@ -402,9 +402,12 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
 
       ch[listField] = ch[listField] || [];
       ch[listField].push(req.file.filename);
-      if (!ch[activeField]) ch[activeField] = req.file.filename;
+      const becameActive = !ch[activeField];
+      if (becameActive) ch[activeField] = req.file.filename;
       writeDb(fresh);
-      res.json(ch);
+      if (!(becameActive && activeField === 'activeLiveThumbnail')) return res.json(ch);
+      // The channel's first Live thumbnail: also onto a live YouTube broadcast.
+      youtube.updateBroadcastThumbnail(ch.id).then(() => res.json(readDb().channels[ch.id]));
     });
   });
 
@@ -430,8 +433,9 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
     res.json(channel);
   });
 
-  // Set which image in the gallery is currently in use.
-  router.post(`/:id/${routeSegment}/:filename/activate`, requireAuth, (req, res) => {
+  // Set which image in the gallery is currently in use. A Live thumbnail
+  // picked while a direct YouTube output is live goes onto that broadcast too.
+  router.post(`/:id/${routeSegment}/:filename/activate`, requireAuth, async (req, res) => {
     const db = readDb();
     const channel = ownChannel(db, req);
     if (!channel) return res.status(404).json({ error: 'Not found' });
@@ -443,7 +447,9 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
 
     channel[activeField] = filename;
     writeDb(db);
-    res.json(channel);
+    if (activeField !== 'activeLiveThumbnail') return res.json(channel);
+    await youtube.updateBroadcastThumbnail(channel.id);
+    res.json(readDb().channels[channel.id]);
   });
 
   // Set (or clear, with an empty name) the display name shown for one image -

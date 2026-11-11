@@ -409,7 +409,8 @@ YouTube starts the broadcast itself when the video arrives. When the stream
 stops, the app ends the broadcast 15 seconds later (or deletes it if it never
 went live) instead of waiting minutes for YouTube to notice; reconnecting
 within those 15 seconds carries on in the same broadcast. Saving a new title or
-description while live updates the broadcast. The output's status line shows
+description, or picking a different Live thumbnail, while live updates the
+broadcast. The output's status line shows
 what happened, with a link to the broadcast while live. Switching the output
 on or off applies from the next time you go live.
 
