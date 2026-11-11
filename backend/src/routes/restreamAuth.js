@@ -5,8 +5,6 @@ const { requireAuth } = require('../authMiddleware');
 const { readDb, writeDb } = require('../db');
 const restream = require('../restream');
 const { currentAccount } = require('../accounts');
-const { canSendTitles } = require('../restreamTitleSync');
-const { getAccessToken } = require('../restreamSession');
 
 const router = express.Router();
 
@@ -21,10 +19,6 @@ router.get('/connect', requireAuth, (req, res) => {
   }
   const state = crypto.randomBytes(16).toString('hex');
   req.session.restreamOAuthState = state;
-  // Where to send the browser afterwards: a dashboard route such as
-  // #/channel/<id>, so connecting from a channel page lands back there.
-  const returnTo = typeof req.query.return === 'string' && /^#\/[A-Za-z0-9/_-]*$/.test(req.query.return) ? req.query.return : '#/stats';
-  req.session.restreamReturnTo = returnTo;
   res.redirect(restream.getAuthUrl(state));
 });
 
@@ -45,14 +39,9 @@ router.get('/callback', requireAuth, async (req, res) => {
     db.restreamAccounts[currentAccount(req)] = {
       refreshToken: tokens.refresh_token,
       connectedAt: new Date().toISOString(),
-      // What this connection was granted - older connections predate
-      // channels.write and need reconnecting before titles can be sent.
-      scope: restream.OAUTH_SCOPE,
     };
     writeDb(db);
-    const returnTo = req.session.restreamReturnTo || '#/stats';
-    delete req.session.restreamReturnTo;
-    res.redirect(`/dashboard${returnTo}`);
+    res.redirect('/dashboard#/stats');
   } catch (err) {
     res.status(500).send(`Failed to connect Restream: ${err.message}`);
   }
@@ -65,54 +54,10 @@ router.post('/disconnect', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// The account's Restream destinations, for the on/off switches on each
-// channel page. These are account-wide - Restream has no idea which of this
-// app's channels is streaming to it.
-router.get('/channels', requireAuth, async (req, res) => {
-  try {
-    const accessToken = await getAccessToken(currentAccount(req));
-    const [destinations, platforms] = await Promise.all([
-      restream.listChannelsWithStatus(accessToken),
-      restream.listPlatforms().catch(() => []),
-    ]);
-    const platformNames = {};
-    platforms.forEach((p) => { platformNames[p.id] = p.name === 'Youtube' ? 'YouTube' : p.name; });
-    res.json(destinations.map((d) => ({
-      id: d.id,
-      displayName: d.displayName || '',
-      platform: platformNames[d.streamingPlatformId] || 'Restream destination',
-      url: d.url || '',
-      active: d.enabled,
-    })));
-  } catch (err) {
-    res.status(502).json({ error: err.message });
-  }
-});
-
-router.patch('/channels/:channelId', requireAuth, async (req, res) => {
-  if (typeof req.body.active !== 'boolean') return res.status(400).json({ error: 'active must be true or false' });
-  if (!/^\d+$/.test(req.params.channelId)) return res.status(400).json({ error: 'Invalid channel id' });
-  const db = readDb();
-  if (!canSendTitles(db.restreamAccounts && db.restreamAccounts[currentAccount(req)])) {
-    return res.status(400).json({ error: 'Restream needs reconnecting to allow this - click Reconnect in the Restream section.' });
-  }
-  try {
-    const accessToken = await getAccessToken(currentAccount(req));
-    await restream.setChannelActive(accessToken, req.params.channelId, req.body.active);
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(502).json({ error: err.message });
-  }
-});
-
 router.get('/status', requireAuth, (req, res) => {
   const db = readDb();
   const connection = db.restreamAccounts && db.restreamAccounts[currentAccount(req)];
-  res.json({
-    connected: !!(connection && connection.refreshToken),
-    connectedAt: connection ? connection.connectedAt : null,
-    canSendTitles: canSendTitles(connection),
-  });
+  res.json({ connected: !!(connection && connection.refreshToken), connectedAt: connection ? connection.connectedAt : null });
 });
 
 module.exports = router;

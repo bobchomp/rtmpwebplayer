@@ -59,7 +59,7 @@
 <h2>Information we collect from administrators</h2>
 <ul>
   <li>Administrators sign in through our login provider, Auth0, which confirms who they are and tells us their email address. We use that address only to check they're authorised, and to keep each administrator's channels and data separate from everyone else's. We never see or store their password.</li>
-  <li>If an administrator chooses to connect their Restream account, we store an access credential that lets us read the view counts of their past streams, set the titles and descriptions of their streams, and switch their Restream destinations on or off. We use it for nothing else, and they can disconnect it at any time.</li>
+  <li>If an administrator chooses to connect their Restream account, we store an access credential that lets us read the view counts of their past streams. We use it for nothing else, and they can disconnect it at any time.</li>
   <li>If an administrator chooses to connect a YouTube channel, we store an access credential issued by Google and the name of that YouTube channel. See "How we use Google user data" below.</li>
 </ul>
 
@@ -84,7 +84,7 @@
 <ul>
   <li><strong>Cloudflare</strong> - our hosting/CDN provider, and (if recording is enabled) our storage provider for recorded video files.</li>
   <li><strong>Auth0</strong> - handles administrator sign-in. Viewers never interact with it.</li>
-  <li><strong>Restream</strong> - only for administrators who connect their Restream account, to read their own streams' view counts and manage their own stream titles and destinations. Nothing about viewers is sent to Restream.</li>
+  <li><strong>Restream</strong> - only for administrators who connect their Restream account, and only to read their own streams' view counts. Nothing about viewers is sent to Restream.</li>
   <li><strong>Google (YouTube)</strong> - only for administrators who connect a YouTube channel, to publish their streams there. Nothing about viewers is sent to Google.</li>
 </ul>
 <p>We do not sell personal information to anyone.</p>

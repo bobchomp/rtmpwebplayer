@@ -4,7 +4,6 @@ const { readDb, writeDb } = require('../db');
 const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
 const { secretMatches } = require('../safeCompare');
-const { syncChannelTitle } = require('../restreamTitleSync');
 const youtube = require('../youtube');
 const crypto = require('crypto');
 
@@ -89,8 +88,6 @@ router.post('/on_publish', (req, res) => {
       freshChannel.isLive = true;
       freshChannel.lastLiveAt = new Date().toISOString();
       writeDb(freshDb);
-      // Not awaited; never throws (failures are stored on the channel).
-      syncChannelTitle(channel.id);
     } catch (err) {
       console.error(`Failed to flip channel ${channel.id} live:`, err.message);
     }

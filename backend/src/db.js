@@ -31,6 +31,9 @@ function migrateChannel(channel) {
   }
 
   LEGACY_YOUTUBE_FIELDS.forEach((field) => delete channel[field]);
+  // Left by the removed "Send title to Restream" feature.
+  delete channel.restreamTitleSync;
+  delete channel.restreamTitleSyncStatus;
   channel.outputs = channel.outputs.filter((output) => !(output.type === 'youtube' && 'refreshToken' in output));
 
   return channel;

@@ -19,10 +19,7 @@ section below before trying to rebuild anything like it.
 
 - OAuth2, authorization-code flow. `RESTREAM_CLIENT_ID` /
   `RESTREAM_CLIENT_SECRET` / `RESTREAM_REDIRECT_URI` env vars.
-- Scope: `channels.read channels.write stream.read` (set in `restream.js`'s
-  `OAUTH_SCOPE`). `channels.write` was added for title sync (below);
-  connections made before that need reconnecting, tracked by the `scope`
-  stored on each `db.restreamAccounts` entry.
+- Scope: `channels.read stream.read` (set in `restream.js`'s `OAUTH_SCOPE`).
   There is no dedicated "analytics" scope - viewer analytics come back
   under `stream.read`.
 - Only the **refresh token** is persisted, one per dashboard account
@@ -94,24 +91,22 @@ milliseconds.
   API, so imported rows leave that blank rather than mislabeling it with
   the channel's current one.
 
-## Title sync
+## Writing to Restream - built, then removed by choice
 
-`restreamTitleSync.js` sends a channel's title and description to every
-active Restream destination via **`PATCH /user/channel-meta/{channelId}`**
-(`{ "title", "description" }`, empty body on success, needs
-`channels.write`). Destinations and their `active` flag come from
-**`GET /user/channel/all`** (a bare array of `{ id, streamingPlatformId,
-embedUrl, url, identifier, displayName, enabled }`). **The docs call the
-on/off flag `active`, but the real response has `enabled`** - see
-`isChannelEnabled()` in `restream.js`. Switching one on/off
-(`PATCH /user/channel/{id}`) sends the documented `{ active }` and falls back
-to `{ enabled }` if a read-back shows it didn't take. It's opt-in per channel
-(`channel.restreamTitleSync`) and runs when the channel goes live, when the
-title is saved, and when the setting is switched on. The result is stored
-on the channel as `restreamTitleSyncStatus` and shown on the channel page.
+Restream is now only used for importing view counts; streaming to YouTube
+goes direct (see `youtube.js`), with Facebook to follow. Before that, two
+write features were built and worked, then were removed because direct
+connections replace them. Notes in case they're ever wanted again:
 
-An earlier attempt was removed because it targeted Restream's own "Show"
-screen, which runs on a private backend (`website-backend.restream.io`)
-the API can't reach. channel-meta doesn't change that screen either - it
-sets what each destination platform (YouTube, Facebook) shows, which is
-what viewers actually see.
+- **Titles:** `PATCH /user/channel-meta/{channelId}` with `{ title,
+  description }` (needs `channels.write`, empty body on success) sets the
+  title each destination gets - Restream's per-channel titles, not the
+  stream's main title in its newer "Streams" screen, which the API can't
+  change. Custom RTMP destinations answer 400 `WebsiteTitlesNotSupportedError`.
+  `GET /user/channel-meta/{id}` reads it back.
+- **On/off:** `GET /user/channel/all` lists destinations with an on/off
+  flag that the real API calls **`enabled`** (the docs say `active`).
+  `PATCH /user/channel/{id}` switches one.
+- An earlier attempt at titles aimed at Restream's "Show" screen, which runs
+  on a private backend (`website-backend.restream.io`) the API can't reach -
+  that part really is a dead end.

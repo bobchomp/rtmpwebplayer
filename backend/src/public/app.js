@@ -23,7 +23,6 @@
   var config = { publicHost: window.location.hostname, rtmpHost: window.location.hostname, rtmpPort: 1935 };
   var listRefreshTimer = null;
   var detailPollTimer = null;
-  var restreamChannelsPollTimer = null;
   var recordingsPollTimer = null;
   var currentChannelId = null;
   var currentChannelMetadata = { title: '', description: '' };
@@ -90,7 +89,6 @@
   function route() {
     if (listRefreshTimer) { clearInterval(listRefreshTimer); listRefreshTimer = null; }
     if (detailPollTimer) { clearInterval(detailPollTimer); detailPollTimer = null; }
-    if (restreamChannelsPollTimer) { clearInterval(restreamChannelsPollTimer); restreamChannelsPollTimer = null; }
     if (recordingsPollTimer) { clearInterval(recordingsPollTimer); recordingsPollTimer = null; }
 
     var r = parseRoute();
@@ -108,7 +106,6 @@
       headerChannelActions.classList.remove('hidden');
       loadChannelDetail(r.channelId);
       detailPollTimer = setInterval(pollLiveStatus, 5000);
-      restreamChannelsPollTimer = setInterval(syncRestreamChannelStates, 20000);
     } else if (r.view === 'stats') {
       document.title = 'Stats - RTMP Web Player';
       statsView.classList.remove('hidden');
@@ -600,13 +597,6 @@
   var THUMB_POPUP_REMEMBER_MS = 2 * 60 * 60 * 1000;
 
   var detailRecordingToggle = document.getElementById('detail-recording-toggle');
-  var detailRestreamTitleToggle = document.getElementById('detail-restream-title-toggle');
-  var restreamTitleStatus = document.getElementById('restream-title-status');
-  var detailRestreamStatusText = document.getElementById('detail-restream-status-text');
-  var detailRestreamConnectBtn = document.getElementById('detail-restream-connect-btn');
-  var detailRestreamDisconnectBtn = document.getElementById('detail-restream-disconnect-btn');
-  var detailRestreamChannelsList = document.getElementById('detail-restream-channels-list');
-  var restreamChannelRowTemplate = document.getElementById('restream-channel-row-template');
   var recordingRowTemplate = document.getElementById('recording-row-template');
 
   var recordingContinueBanner = document.getElementById('recording-continue-banner');
@@ -878,118 +868,6 @@
       .catch(function (err) { alert(err.message); });
   }
 
-  function showRestreamTitleStatus(text, isError) {
-    restreamTitleStatus.textContent = text;
-    restreamTitleStatus.classList.toggle('hidden', !text);
-    restreamTitleStatus.classList.toggle('error', !!isError);
-    restreamTitleStatus.classList.toggle('hint', !isError);
-  }
-
-  function renderDetailRestreamConnection(restreamStatus, channelId) {
-    detailRestreamConnectBtn.href = '/api/restream/connect?return=' + encodeURIComponent('#/channel/' + channelId);
-    detailRestreamConnectBtn.textContent = restreamStatus.connected ? 'Reconnect' : 'Connect Restream';
-    detailRestreamConnectBtn.classList.toggle('hidden', restreamStatus.connected && restreamStatus.canSendTitles);
-    detailRestreamDisconnectBtn.classList.toggle('hidden', !restreamStatus.connected);
-    if (!restreamStatus.connected) {
-      detailRestreamStatusText.textContent = 'Not connected. Connect it to send titles to YouTube/Facebook and import their view counts.';
-    } else if (!restreamStatus.canSendTitles) {
-      detailRestreamStatusText.textContent = 'Connected, but needs reconnecting once to allow sending titles.';
-    } else {
-      detailRestreamStatusText.textContent = 'Connected.';
-    }
-  }
-
-  // Restream destinations, listed with the other outputs. They belong to the
-  // whole Restream account, so switching one off affects every channel.
-  var lastRestreamStatus = null;
-
-  // Picks up switches flipped in Restream itself (or another tab) without
-  // a reload: every 20s on the channel page, and when the tab regains focus.
-  // Rows are only rebuilt if destinations were added or removed; otherwise
-  // just their switches are updated, skipping any mid-request.
-  function syncRestreamChannelStates() {
-    if (!lastRestreamStatus || !lastRestreamStatus.connected || detailView.classList.contains('hidden')) return;
-    api('/api/restream/channels').then(function (destinations) {
-      var rows = detailRestreamChannelsList.querySelectorAll('[data-restream-channel-id]');
-      var sameSet = rows.length === destinations.length && destinations.every(function (d) {
-        return detailRestreamChannelsList.querySelector('[data-restream-channel-id="' + d.id + '"]');
-      });
-      if (!sameSet) return renderRestreamChannels(lastRestreamStatus);
-      destinations.forEach(function (d) {
-        var toggle = detailRestreamChannelsList.querySelector('[data-restream-channel-id="' + d.id + '"] .restream-channel-toggle');
-        if (toggle && !toggle.dataset.busy) toggle.checked = d.active;
-      });
-    }).catch(function () {});
-  }
-
-  window.addEventListener('focus', syncRestreamChannelStates);
-
-  function renderRestreamChannels(restreamStatus) {
-    lastRestreamStatus = restreamStatus;
-    detailRestreamChannelsList.innerHTML = '';
-    if (!restreamStatus.connected) return;
-    api('/api/restream/channels').then(function (destinations) {
-      detailRestreamChannelsList.innerHTML = '';
-      if (destinations.length) detailOutputsEmpty.classList.add('hidden');
-      destinations.forEach(function (destination) {
-        var row = restreamChannelRowTemplate.content.firstElementChild.cloneNode(true);
-        row.dataset.restreamChannelId = destination.id;
-        row.querySelector('.output-name').textContent = destination.platform + ' via Restream';
-        row.querySelector('.restream-channel-platform').textContent = (destination.displayName || '')
-          + (restreamStatus.canSendTitles ? '' : (destination.displayName ? ' - ' : '') + 'click Reconnect in the Restream section to switch on/off here');
-        var toggle = row.querySelector('.restream-channel-toggle');
-        toggle.checked = destination.active;
-        toggle.disabled = !restreamStatus.canSendTitles;
-        toggle.addEventListener('change', function () {
-          toggle.disabled = true;
-          toggle.dataset.busy = '1';
-          api('/api/restream/channels/' + destination.id, {
-            method: 'PATCH',
-            body: JSON.stringify({ active: toggle.checked }),
-          })
-            .catch(function (err) {
-              alert(err.message);
-              toggle.checked = !toggle.checked;
-            })
-            .then(function () {
-              toggle.disabled = false;
-              delete toggle.dataset.busy;
-            });
-        });
-        detailRestreamChannelsList.appendChild(row);
-      });
-    }).catch(function (err) {
-      detailRestreamChannelsList.innerHTML = '';
-      var p = document.createElement('p');
-      p.className = 'error';
-      p.textContent = 'Couldn\'t load your Restream channels: ' + err.message;
-      detailRestreamChannelsList.appendChild(p);
-    });
-  }
-
-  function renderRestreamTitleSync(channel) {
-    detailRestreamTitleToggle.checked = !!channel.restreamTitleSync;
-    var status = channel.restreamTitleSyncStatus;
-    api('/api/restream/status').then(function (restreamStatus) {
-      renderDetailRestreamConnection(restreamStatus, channel.id);
-      renderRestreamChannels(restreamStatus);
-      detailRestreamTitleToggle.disabled = !restreamStatus.connected && !channel.restreamTitleSync;
-      if (!restreamStatus.connected) {
-        showRestreamTitleStatus('Connect Restream in the Restream section to use this.', !!channel.restreamTitleSync);
-      } else if (!restreamStatus.canSendTitles) {
-        showRestreamTitleStatus('Restream needs reconnecting to allow this: click Reconnect in the Restream section.', !!channel.restreamTitleSync);
-      } else if (!channel.restreamTitleSync || !status) {
-        showRestreamTitleStatus('', false);
-      } else if (status.ok) {
-        var when = new Date(status.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        var where = status.destinations && status.destinations.length ? status.destinations.join(', ') : status.sent + ' destination(s)';
-        showRestreamTitleStatus('Sent ' + status.title + ' to ' + where + ' on ' + when + '.' + (status.warning ? ' Some failed: ' + status.warning : ''), !!status.warning);
-      } else {
-        showRestreamTitleStatus('Couldn\'t send the title to Restream: ' + status.error, true);
-      }
-    }).catch(function () {});
-  }
-
   // A direct YouTube output: which YouTube channel it's connected to, the
   // privacy new broadcasts get, its switch, and what happened last time.
   function renderYoutubeOutput(channel, output) {
@@ -1084,7 +962,6 @@
     websiteHtmlBtn.textContent = channel.embedEnabled !== false ? 'Website HTML' : 'Website HTML (off)';
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
-    renderRestreamTitleSync(channel);
     recordingContinueBanner.classList.add('hidden'); // reset on nav - pollLiveStatus re-shows it if still warranted
 
     var outputs = channel.outputs || [];
@@ -1420,28 +1297,6 @@
           alert(err.message);
           detailRecordingToggle.checked = !detailRecordingToggle.checked;
         });
-    });
-
-    detailRestreamTitleToggle.addEventListener('change', function () {
-      detailRestreamTitleToggle.disabled = true;
-      if (detailRestreamTitleToggle.checked) showRestreamTitleStatus('Sending title to Restream...', false);
-      api('/api/channels/' + currentChannelId + '/restream-title-sync', {
-        method: 'PATCH',
-        body: JSON.stringify({ enabled: detailRestreamTitleToggle.checked }),
-      })
-        .then(refreshChannelDetail)
-        .catch(function (err) {
-          alert(err.message);
-          detailRestreamTitleToggle.checked = !detailRestreamTitleToggle.checked;
-          detailRestreamTitleToggle.disabled = false;
-        });
-    });
-
-    detailRestreamDisconnectBtn.addEventListener('click', function () {
-      if (!confirm('Disconnect Restream? This affects all your channels. You can reconnect any time - already-imported stats stay put.')) return;
-      api('/api/restream/disconnect', { method: 'POST' })
-        .then(refreshChannelDetail)
-        .catch(function (err) { alert(err.message); });
     });
 
     recordingContinueBtn.addEventListener('click', function () { answerRecordingPrompt(true); });

@@ -18,10 +18,9 @@
 const BASE = process.env.RESTREAM_API_BASE || 'https://api.restream.io';
 const AUTH_BASE = BASE;
 const API_BASE = `${BASE}/v2`;
-// Only what this app needs: read the account's destination channels, set
-// their titles (channels.write, see updateChannelMeta), and read
-// stream/viewer analytics. There's no dedicated "analytics" scope.
-const OAUTH_SCOPE = 'channels.read channels.write stream.read';
+// Only what this app needs: read the account's destination channels, and
+// read stream/viewer analytics. There's no dedicated "analytics" scope.
+const OAUTH_SCOPE = 'channels.read stream.read';
 
 function getAuthUrl(state) {
   const params = new URLSearchParams({
@@ -71,23 +70,6 @@ async function apiGet(accessToken, path) {
   });
   if (!res.ok) throw new Error(`Restream API request to ${path} failed: ${res.status} ${await res.text()}`);
   return res.json();
-}
-
-// Restream answers a successful PATCH with an empty body, so this doesn't
-// try to parse one.
-async function apiPatch(accessToken, path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    const err = new Error(`Restream API request to ${path} failed: ${res.status} ${text}`);
-    err.status = res.status;
-    try { err.name = JSON.parse(text).error.name || err.name; } catch (e) { /* not JSON */ }
-    throw err;
-  }
 }
 
 // Channels are identified by a numeric platformId, not a platform name -
@@ -167,66 +149,6 @@ async function listChannels(accessToken) {
   return apiGet(accessToken, '/user/channels');
 }
 
-// Whether a destination is switched on in Restream. The docs call this
-// `active`, but the real API returns `enabled` (confirmed against a live
-// account) - accept either.
-function isChannelEnabled(channel) {
-  if (typeof channel.enabled === 'boolean') return channel.enabled;
-  if (typeof channel.active === 'boolean') return channel.active;
-  return true;
-}
-
-// Same destinations as listChannels, from /user/channel/all, which also says
-// whether each one is switched on. Returns [{ id, streamingPlatformId, url,
-// displayName, enabled }].
-async function listChannelsWithStatus(accessToken) {
-  const res = await apiGet(accessToken, '/user/channel/all');
-  const list = Array.isArray(res) ? res : (res && res.channels) || [];
-  return list.map((c) => ({ ...c, enabled: isChannelEnabled(c) }));
-}
-
-// Switches a destination on or off in the Restream dashboard, i.e. whether
-// it gets the stream next time. Needs channels.write.
-//
-// Sends the documented { active } body, then reads the channel back; since
-// the docs' field name was wrong for reading (see isChannelEnabled), it
-// retries with { enabled } if the change didn't stick.
-async function setChannelActive(accessToken, channelId, active) {
-  const path = `/user/channel/${encodeURIComponent(channelId)}`;
-  await apiPatch(accessToken, path, { active });
-  if (isChannelEnabled(await apiGet(accessToken, path)) === active) return;
-  await apiPatch(accessToken, path, { enabled: active });
-  if (isChannelEnabled(await apiGet(accessToken, path)) !== active) {
-    throw new Error(`Restream didn't switch this destination ${active ? 'on' : 'off'}.`);
-  }
-}
-
-// Restream's public list of platforms ({ id, name, url, image }), used to
-// label destinations. No login needed; cached since it rarely changes.
-let platformsCache = null;
-let platformsCachedAt = 0;
-async function listPlatforms() {
-  if (platformsCache && Date.now() - platformsCachedAt < 24 * 60 * 60 * 1000) return platformsCache;
-  const res = await fetch(`${API_BASE}/platform/all`);
-  if (!res.ok) throw new Error(`Restream API request to /platform/all failed: ${res.status}`);
-  platformsCache = await res.json();
-  platformsCachedAt = Date.now();
-  return platformsCache;
-}
-
-// Sets the title (and optionally description) Restream sends to one
-// destination, e.g. the YouTube broadcast title. Needs channels.write.
-async function updateChannelMeta(accessToken, channelId, { title, description }) {
-  const body = { title };
-  if (description) body.description = description;
-  await apiPatch(accessToken, `/user/channel-meta/${encodeURIComponent(channelId)}`, body);
-}
-
-// What Restream has stored for one destination: { title }.
-async function getChannelMeta(accessToken, channelId) {
-  return apiGet(accessToken, `/user/channel-meta/${encodeURIComponent(channelId)}`);
-}
-
 // Per-event viewer analytics: { total: {...}, byChannel: { "<channelId>":
 // { mean, max, viewsTotal, peakTime, watchedTime, viewersPerMinute } } }.
 // Returns a 404 (thrown as an error by apiGet) if the event has no
@@ -242,12 +164,6 @@ module.exports = {
   refreshAccessToken,
   listEventHistory,
   listChannels,
-  listChannelsWithStatus,
-  updateChannelMeta,
-  getChannelMeta,
-  setChannelActive,
-  listPlatforms,
   getEventAnalytics,
-  OAUTH_SCOPE,
   platformFromUrl,
 };
