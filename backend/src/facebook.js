@@ -51,7 +51,10 @@ async function graph(method, path, params = {}, accessToken) {
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.error) {
     const e = body.error || {};
-    const err = new Error(`Facebook API error (${res.status}): ${e.message || res.statusText}`);
+    // Facebook's messages can be as vague as "Permissions error", so the
+    // codes go along too - they're what its docs and support go by.
+    const codes = [e.code && `code ${e.code}`, e.error_subcode && `subcode ${e.error_subcode}`].filter(Boolean).join(', ');
+    const err = new Error(`Facebook API error (${res.status}): ${e.message || res.statusText}${codes ? ` (${codes})` : ''}`);
     // 190 = the token was revoked or has expired.
     if (e.code === 190) err.reconnect = true;
     throw err;
@@ -74,6 +77,16 @@ async function pagesForCode(code) {
     client_secret: process.env.FACEBOOK_APP_SECRET,
     fb_exchange_token: short.access_token,
   });
+  // Facebook lets people untick permissions on its sign-in screen; going
+  // live needs all of these, so say which is missing rather than failing
+  // later with a vague "Permissions error".
+  const perms = await graph('GET', '/me/permissions', {}, long.access_token);
+  const granted = (perms.data || []).filter((p) => p.status === 'granted').map((p) => p.permission);
+  const missing = SCOPE.split(',').filter((p) => !granted.includes(p));
+  if (missing.length) {
+    throw new Error(`Facebook didn't grant ${missing.join(', ')}. Add Facebook again and leave every permission switched on`
+      + `${process.env.FACEBOOK_CONFIG_ID ? ' - and check they are all ticked in the Meta app\'s Facebook Login for Business configuration' : ''}.`);
+  }
   const res = await graph('GET', '/me/accounts', { fields: 'id,name,access_token,tasks', limit: '100' }, long.access_token);
   return (res.data || [])
     // CREATE_CONTENT is the Page task going live needs.
