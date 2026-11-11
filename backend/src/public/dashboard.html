@@ -424,6 +424,17 @@
           </div>
 
 
+          <div class="output-row">
+            <div class="output-info">
+              <span class="output-name">Your Website</span>
+              <span class="hint" id="detail-website-hint"></span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="detail-website-toggle">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+
           <div id="detail-outputs-list"></div>
           <p class="hint hidden" id="detail-outputs-empty">No other outputs yet - click "+ Add output" above to relay to another destination.</p>
         </div>
@@ -529,7 +540,7 @@
   <div class="youtube-output">
     <div class="output-row custom-output-row">
       <div class="output-info">
-        <span class="output-name">YouTube (direct)</span>
+        <span class="output-name">YouTube</span>
         <span class="hint youtube-output-channel"></span>
       </div>
       <select class="youtube-privacy-select" aria-label="Privacy of new broadcasts">
@@ -575,16 +586,6 @@
 <div id="website-html-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal-box modal-box-wide">
     <h3>Website HTML</h3>
-    <div class="output-row">
-      <div class="output-info">
-        <span class="output-name">Show the stream on your website</span>
-        <span class="hint" id="detail-website-hint"></span>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="detail-website-toggle">
-        <span class="switch-track"></span>
-      </label>
-    </div>
     <p class="hint">Paste this into your website's HTML where you want the player. It can stay there permanently - it only loads video when someone presses play.</p>
     <div class="copy-row">
       <textarea class="embed-code" id="detail-embed-code" readonly rows="4"></textarea>

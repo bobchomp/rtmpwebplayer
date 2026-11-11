@@ -963,10 +963,8 @@
 
     detailWebsiteToggle.checked = channel.embedEnabled !== false;
     detailWebsiteHint.textContent = channel.embedEnabled !== false
-      ? 'On - your website\'s player shows the stream when you\'re live'
+      ? 'The player on your website - click Website HTML for the code to paste into your site'
       : 'Off - your website\'s player shows as offline, as if you weren\'t streaming (you still see the stream on this page)';
-    // The switch lives in the popup, so the button says when it's off.
-    websiteHtmlBtn.textContent = channel.embedEnabled !== false ? 'Website HTML' : 'Website HTML (off)';
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
     recordingContinueBanner.classList.add('hidden'); // reset on nav - pollLiveStatus re-shows it if still warranted
