@@ -17,6 +17,7 @@ const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
 const { readDb, writeDb } = require('./db');
+const { updateOutput, setStatus, RECONNECT_GRACE_MS } = require('./platformOutputs');
 
 // Overridable only so the whole client can be pointed at a local mock for
 // testing, like RESTREAM_API_BASE.
@@ -139,24 +140,6 @@ function forget(outputId) {
     delete db.youtubeTokens[outputId];
     writeDb(db);
   }
-}
-
-// Updates one YouTube output in place (re-reading the db, since these run
-// detached from any request and the network calls take a while).
-function updateOutput(channelId, outputId, mutate) {
-  const db = readDb();
-  const channel = db.channels[channelId];
-  const output = channel && (channel.outputs || []).find((o) => o.id === outputId);
-  if (!output) return null;
-  mutate(output, channel);
-  writeDb(db);
-  return output;
-}
-
-function setStatus(channelId, outputId, ok, message, extra = {}) {
-  updateOutput(channelId, outputId, (output) => {
-    output.lastStatus = { at: new Date().toISOString(), ok, message, ...extra };
-  });
 }
 
 // The output's reusable YouTube stream - the fixed ingest URL + key the relay
@@ -319,14 +302,10 @@ async function startBroadcast(channelId, outputId, session) {
   }
 }
 
-// Called RECONNECT_GRACE_MS after the stream stops (see rtmpHooks.js). If it
-// hasn't come back by then, the broadcast is ended now rather than left to
-// YouTube's own auto-stop (which can take minutes), and one that never went
-// live is deleted. Long enough for OBS's automatic reconnect to carry on in
-// the same broadcast; a dropped connection (rather than a clean stop) is only
-// noticed after nginx's drop_idle_publisher 10s anyway.
-const RECONNECT_GRACE_MS = Number(process.env.YOUTUBE_RECONNECT_GRACE_MS) || 15 * 1000;
-
+// Called RECONNECT_GRACE_MS (platformOutputs.js) after the stream stops (see
+// rtmpHooks.js). If it hasn't come back by then, the broadcast is ended now
+// rather than left to YouTube's own auto-stop (which can take minutes), and
+// one that never went live is deleted.
 async function finishBroadcast(channelId, outputId, broadcastId) {
   const channel = readDb().channels[channelId];
   const output = channel && (channel.outputs || []).find((o) => o.id === outputId);

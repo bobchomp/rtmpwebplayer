@@ -5,6 +5,14 @@ const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
 const { secretMatches } = require('../safeCompare');
 const youtube = require('../youtube');
+const facebook = require('../facebook');
+
+// Direct platform outputs, which create a broadcast/live video each time the
+// channel goes live and share one output shape (see platformOutputs.js).
+const PLATFORMS = {
+  youtube: { client: youtube, name: 'YouTube broadcast' },
+  facebook: { client: facebook, name: 'Facebook live video' },
+};
 const crypto = require('crypto');
 
 const router = express.Router();
@@ -54,26 +62,27 @@ router.post('/on_publish', (req, res) => {
   const channel = findChannelByKey(db, streamKey);
   if (!channel) return res.status(403).send('Invalid stream key');
 
-  // Direct YouTube outputs: mark this publish with a fresh session id and
-  // start creating the broadcast now, so it's ready (and the relay released)
-  // within seconds. See youtube.startBroadcast().
-  const youtubeStarts = [];
+  // Direct YouTube/Facebook outputs: mark this publish with a fresh session
+  // id and start creating the broadcast now, so it's ready (and the relay
+  // released) within seconds. See startBroadcast() in youtube.js/facebook.js.
+  const platformStarts = [];
   (channel.outputs || []).forEach((output) => {
-    if (output.type !== 'youtube') return;
+    const platform = PLATFORMS[output.type];
+    if (!platform) return;
     output.session = null;
     output.broadcastId = null;
-    if (!output.enabled || !youtube.isConfigured()) return;
+    if (!output.enabled || !platform.client.isConfigured()) return;
     output.session = crypto.randomUUID();
-    output.lastStatus = { at: new Date().toISOString(), ok: true, message: 'Starting the YouTube broadcast...' };
-    youtubeStarts.push([output.id, output.session]);
+    output.lastStatus = { at: new Date().toISOString(), ok: true, message: `Starting the ${platform.name}...` };
+    platformStarts.push([platform.client, output.id, output.session]);
   });
-  if (youtubeStarts.length) writeDb(db);
+  if (platformStarts.length) writeDb(db);
 
   // Respond immediately so the publish isn't delayed - nginx is waiting on
   // this HTTP response to decide whether to accept the connection at all.
   res.status(200).send('OK');
 
-  youtubeStarts.forEach(([outputId, session]) => youtube.startBroadcast(channel.id, outputId, session));
+  platformStarts.forEach(([client, outputId, session]) => client.startBroadcast(channel.id, outputId, session));
 
   cancelPendingLive(channel.id);
   pendingLiveTimers[channel.id] = setTimeout(() => {
@@ -105,31 +114,26 @@ router.post('/on_publish_done', (req, res) => {
   if (channel) {
     cancelPendingLive(channel.id);
     channel.isLive = false;
-    // YouTube broadcasts: kept for a short grace period so a quick reconnect
-    // carries on in the same one, then ended (see youtube.finishBroadcast).
+    // YouTube/Facebook broadcasts: kept for a short grace period so a quick
+    // reconnect carries on in the same one, then ended (finishBroadcast).
     const toFinish = [];
     (channel.outputs || []).forEach((output) => {
-      if (output.type !== 'youtube' || !output.session) return;
+      const platform = PLATFORMS[output.type];
+      if (!platform || !output.session) return;
       if (output.broadcastId) {
         output.previousBroadcastId = output.broadcastId;
         output.previousEndedAt = new Date().toISOString();
-        toFinish.push([output.id, output.broadcastId]);
+        toFinish.push([platform.client, output.id, output.broadcastId]);
       }
       output.session = null;
       output.broadcastId = null;
       if (output.lastStatus && output.lastStatus.ok) {
-        output.lastStatus = {
-          at: new Date().toISOString(),
-          ok: true,
-          message: toFinish.length && toFinish[toFinish.length - 1][0] === output.id
-            ? `Stream stopped - ending the YouTube broadcast in ${Math.round(youtube.RECONNECT_GRACE_MS / 1000)} seconds unless it reconnects`
-            : 'Stream ended',
-        };
+        output.lastStatus = { at: new Date().toISOString(), ok: true, message: 'Stream stopped' };
       }
     });
     writeDb(db);
-    toFinish.forEach(([outputId, broadcastId]) => {
-      setTimeout(() => youtube.finishBroadcast(channel.id, outputId, broadcastId), youtube.RECONNECT_GRACE_MS);
+    toFinish.forEach(([client, outputId, broadcastId]) => {
+      setTimeout(() => client.finishBroadcast(channel.id, outputId, broadcastId), client.RECONNECT_GRACE_MS);
     });
   }
   res.status(200).send('OK');
@@ -156,7 +160,7 @@ router.get('/relay-targets', (req, res) => {
     if (!output.enabled) return;
     if (output.type === 'rtmp' && output.rtmpUrl && output.streamKey) {
       lines.push(`${output.id}\t${output.rtmpUrl}/${output.streamKey}`);
-    } else if (output.type === 'youtube' && output.session && output.broadcastId && output.ingestUrl) {
+    } else if (PLATFORMS[output.type] && output.session && output.broadcastId && output.ingestUrl) {
       // Only once this publish's broadcast is created and bound, so YouTube
       // sees the video arrive for that broadcast and starts it.
       lines.push(`${output.id}\t${output.ingestUrl}`);

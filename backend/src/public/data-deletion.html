@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Deleting Your Data</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="stylesheet" href="/style.css">
+<style>
+  body { line-height: 1.6; }
+  .doc-wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 88px; }
+  .doc-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 48px; }
+  h1 { margin-bottom: 4px; }
+  h2 { font-size: 18px; margin-top: 36px; }
+  .updated { color: var(--slate); font-size: 13px; margin-bottom: 28px; }
+  ul { padding-left: 22px; }
+  p, li { max-width: 66ch; }
+  code { font-family: var(--font-mono); font-size: .92em; background: var(--surface-sunken); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="doc-wrap">
+
+<nav class="doc-nav">
+  <span class="wordmark">
+    <svg class="wordmark-icon" viewBox="0 0 32 32" aria-hidden="true">
+      <path class="wm-arc wm-arc-1" d="M9 9 A16 16 0 0 1 25 25"/>
+      <path class="wm-arc wm-arc-2" d="M9 14 A11 11 0 0 1 20 25"/>
+      <path class="wm-arc wm-arc-3" d="M9 19 A6 6 0 0 1 15 25"/>
+      <circle class="wm-dot" cx="9" cy="25" r="2.6"/>
+    </svg>
+    <span class="wordmark-text">RTMP <b>Web Player</b></span>
+  </span>
+  <a href="/" class="secondary">&larr; Back to site</a>
+</nav>
+
+<h1>Deleting your data</h1>
+<p class="updated">Last updated: 11 November 2026</p>
+
+<p>Administrators can connect a Facebook Page or YouTube channel to stream.rossmackenzie.co.uk ("the Site") so their live streams are published there. Here is how to remove what the Site stores about that connection.</p>
+
+<h2>What we store</h2>
+<ul>
+  <li><strong>Facebook:</strong> an access credential for the Facebook Page you chose, and the Page's name and ID.</li>
+  <li><strong>YouTube:</strong> an access credential for your YouTube channel, the channel's name and ID, and the details of the live stream created on it.</li>
+</ul>
+<p>Viewers who watch through the Site's player never sign in with Facebook or Google, so we hold no Facebook or Google data about them.</p>
+
+<h2>How to delete it</h2>
+<ol>
+  <li><strong>From the dashboard:</strong> open the channel, find the Facebook or YouTube output under Outputs and click <strong>Delete</strong>. The stored credential and connection details are deleted immediately. Deleting the whole channel does the same for all its outputs.</li>
+  <li><strong>From Facebook:</strong> go to <a href="https://www.facebook.com/settings?tab=business_tools" target="_blank" rel="noopener">Settings &amp; privacy &rarr; Settings &rarr; Business integrations</a> (or "Apps and websites"), find RTMP Web Player and remove it. This stops the credential working straight away.</li>
+  <li><strong>From Google:</strong> go to <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">your Google Account's third-party access settings</a> and remove RTMP Web Player.</li>
+  <li><strong>By email:</strong> write to <a href="mailto:info@rossmackenzie.co.uk">info@rossmackenzie.co.uk</a> and we will delete everything we hold about your connection within 30 days and confirm when it's done.</li>
+</ol>
+
+<p>Live videos and broadcasts already published on your Facebook Page or YouTube channel are yours and stay there - delete them on Facebook or YouTube if you no longer want them. See our <a href="/privacy.html">privacy policy</a> for more.</p>
+
+</div>
+
+<footer class="site-footer">&copy; <span id="copyright-year"></span> Ross Mackenzie</footer>
+
+<script>document.getElementById('copyright-year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

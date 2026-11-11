@@ -591,6 +591,17 @@
   </div>
 </div>
 
+<div id="facebook-page-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <h3>Which Facebook Page?</h3>
+    <p class="hint">Choose the Page this channel should go live on.</p>
+    <div class="facebook-page-list" id="facebook-page-list"></div>
+    <div class="modal-actions">
+      <button class="secondary" id="facebook-page-cancel-btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="metadata-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal-box">
     <h3>Title &amp; description</h3>
@@ -666,6 +677,7 @@
       <button class="secondary" id="add-output-type-rtmp">Custom RTMP</button>
       <button class="secondary" id="add-output-type-public-link">Public Link</button>
       <button class="secondary hidden" id="add-output-type-youtube">YouTube</button>
+      <button class="secondary hidden" id="add-output-type-facebook">Facebook</button>
     </div>
     <form id="add-output-rtmp-form" class="hidden add-output-form">
       <input type="text" id="new-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>

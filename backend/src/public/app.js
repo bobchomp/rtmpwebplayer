@@ -561,6 +561,10 @@
   var addOutputTypeRtmpBtn = document.getElementById('add-output-type-rtmp');
   var addOutputTypePublicLinkBtn = document.getElementById('add-output-type-public-link');
   var addOutputTypeYoutubeBtn = document.getElementById('add-output-type-youtube');
+  var addOutputTypeFacebookBtn = document.getElementById('add-output-type-facebook');
+  var facebookPageModalBackdrop = document.getElementById('facebook-page-modal-backdrop');
+  var facebookPageList = document.getElementById('facebook-page-list');
+  var facebookPageCancelBtn = document.getElementById('facebook-page-cancel-btn');
   var youtubeOutputRowTemplate = document.getElementById('youtube-output-row-template');
   var addOutputRtmpForm = document.getElementById('add-output-rtmp-form');
   var addOutputCancelBtn = document.getElementById('add-output-cancel-btn');
@@ -605,7 +609,32 @@
     wireDetailEventListeners();
     return refreshChannelDetail().then(function (channel) {
       if (channel) maybeShowThumbPopup(channel);
+      // Back from Facebook's sign-in with several Pages to choose from.
+      if (/\/facebook-page$/.test(window.location.hash)) showFacebookPagePicker();
     });
+  }
+
+  function showFacebookPagePicker() {
+    history.replaceState(null, '', '#/channel/' + encodeURIComponent(currentChannelId));
+    api('/api/facebook/pending').then(function (data) {
+      if (!data.pages || !data.pages.length) return;
+      facebookPageList.innerHTML = '';
+      data.pages.forEach(function (page) {
+        var btn = document.createElement('button');
+        btn.className = 'secondary';
+        btn.textContent = page.name;
+        btn.addEventListener('click', function () {
+          api('/api/facebook/pick', { method: 'POST', body: JSON.stringify({ pageId: page.id }) })
+            .then(function () {
+              facebookPageModalBackdrop.classList.add('hidden');
+              return refreshChannelDetail();
+            })
+            .catch(function (err) { alert(err.message); });
+        });
+        facebookPageList.appendChild(btn);
+      });
+      facebookPageModalBackdrop.classList.remove('hidden');
+    }).catch(function () {});
   }
 
   function refreshChannelDetail() {
@@ -768,7 +797,7 @@
       .then(function (data) {
         if (!data) return;
         updatePreviewState(data.isLive, currentChannelId);
-        refreshYoutubeOutputs();
+        refreshPlatformOutputs();
         if (data.isLive) {
           pollViewerCount();
           pollRecordingSession();
@@ -865,12 +894,19 @@
       .catch(function (err) { alert(err.message); });
   }
 
-  // A direct YouTube output: which YouTube channel it's connected to, the
-  // privacy new broadcasts get, its switch, and what happened last time.
-  function renderYoutubeOutput(channel, output) {
+  // Direct YouTube/Facebook outputs share one row layout: what's connected,
+  // the privacy new YouTube broadcasts get, the switch, and the status line.
+  var PLATFORM_OUTPUTS = {
+    youtube: { name: 'YouTube', connectedTo: function (o) { return o.youtubeChannelTitle; }, privacy: true },
+    facebook: { name: 'Facebook', connectedTo: function (o) { return o.facebookPageName; }, privacy: false },
+  };
+
+  function renderPlatformOutput(channel, output) {
+    var platform = PLATFORM_OUTPUTS[output.type];
     var node = youtubeOutputRowTemplate.content.firstElementChild.cloneNode(true);
-    node.dataset.youtubeOutputId = output.id;
-    node.querySelector('.youtube-output-channel').textContent = output.youtubeChannelTitle || 'Connected';
+    node.dataset.platformOutputId = output.id;
+    node.querySelector('.output-name').textContent = platform.name;
+    node.querySelector('.youtube-output-channel').textContent = platform.connectedTo(output) || 'Connected';
 
     function save(body, onError) {
       return api('/api/channels/' + channel.id + '/outputs/' + output.id, { method: 'PATCH', body: JSON.stringify(body) })
@@ -879,6 +915,7 @@
     }
 
     var privacy = node.querySelector('.youtube-privacy-select');
+    if (!platform.privacy) privacy.remove();
     privacy.value = output.privacyStatus || 'public';
     privacy.addEventListener('change', function () {
       save({ privacyStatus: privacy.value }, function () { privacy.value = output.privacyStatus || 'public'; });
@@ -899,7 +936,7 @@
       status.classList.toggle('error', !lastStatus.ok);
       status.classList.toggle('hint', lastStatus.ok);
       if (lastStatus.ok) {
-        status.textContent = 'Live on YouTube';
+        status.textContent = 'Live on ' + platform.name;
       } else {
         var when = new Date(lastStatus.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
         status.textContent = lastStatus.message + ' (' + when + ')';
@@ -909,14 +946,14 @@
         link.href = liveUrl;
         link.target = '_blank';
         link.rel = 'noopener';
-        link.textContent = 'Watch on YouTube';
+        link.textContent = 'Watch on ' + platform.name;
         status.appendChild(document.createTextNode(' - '));
         status.appendChild(link);
       }
     }
 
     node.querySelector('.output-delete-btn').addEventListener('click', function () {
-      if (!confirm('Remove the YouTube output? This disconnects ' + (output.youtubeChannelTitle || 'the YouTube channel') + ' from this channel.')) return;
+      if (!confirm('Remove the ' + platform.name + ' output? This disconnects ' + (platform.connectedTo(output) || platform.name) + ' from this channel.')) return;
       api('/api/channels/' + channel.id + '/outputs/' + output.id, { method: 'DELETE' })
         .then(refreshChannelDetail)
         .catch(function (err) { alert(err.message); });
@@ -924,18 +961,18 @@
     return node;
   }
 
-  // YouTube statuses change by themselves while going live, so the 5s poll
-  // re-renders just those rows (unless one is being interacted with).
-  function refreshYoutubeOutputs() {
-    if (!detailOutputsList.querySelector('[data-youtube-output-id]')) return;
+  // YouTube/Facebook statuses change by themselves while going live, so the
+  // 5s poll re-renders just those rows (unless one is being interacted with).
+  function refreshPlatformOutputs() {
+    if (!detailOutputsList.querySelector('[data-platform-output-id]')) return;
     var channelId = currentChannelId;
     api('/api/channels/' + channelId).then(function (channel) {
       if (channelId !== currentChannelId) return;
       (channel.outputs || []).forEach(function (output) {
-        if (output.type !== 'youtube') return;
-        var existing = detailOutputsList.querySelector('[data-youtube-output-id="' + output.id + '"]');
+        if (!PLATFORM_OUTPUTS[output.type]) return;
+        var existing = detailOutputsList.querySelector('[data-platform-output-id="' + output.id + '"]');
         if (!existing || existing.contains(document.activeElement)) return;
-        existing.replaceWith(renderYoutubeOutput(channel, output));
+        existing.replaceWith(renderPlatformOutput(channel, output));
       });
     }).catch(function () {});
   }
@@ -971,9 +1008,10 @@
     detailOutputsEmpty.classList.toggle('hidden', outputs.length > 0);
     addOutputTypePublicLinkBtn.disabled = outputs.some(function (o) { return o.type === 'public-link'; });
     addOutputTypeYoutubeBtn.classList.toggle('hidden', !config.youtubeEnabled);
+    addOutputTypeFacebookBtn.classList.toggle('hidden', !config.facebookEnabled);
     outputs.forEach(function (output) {
-      if (output.type === 'youtube') {
-        detailOutputsList.appendChild(renderYoutubeOutput(channel, output));
+      if (PLATFORM_OUTPUTS[output.type]) {
+        detailOutputsList.appendChild(renderPlatformOutput(channel, output));
         return;
       }
       var isPublicLink = output.type === 'public-link';
@@ -1386,6 +1424,13 @@
     addOutputTypeRtmpBtn.addEventListener('click', function () {
       addOutputTypeRow.classList.add('hidden');
       addOutputRtmpForm.classList.remove('hidden');
+    });
+    addOutputTypeFacebookBtn.addEventListener('click', function () {
+      // Off to Facebook's sign-in; it comes back to this channel page.
+      window.location.href = '/api/facebook/connect?channelId=' + encodeURIComponent(currentChannelId);
+    });
+    facebookPageCancelBtn.addEventListener('click', function () {
+      facebookPageModalBackdrop.classList.add('hidden');
     });
     addOutputTypeYoutubeBtn.addEventListener('click', function () {
       // Off to Google's sign-in; it comes back to this channel page.

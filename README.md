@@ -437,6 +437,43 @@ One-time Google Cloud setup (one project serves both sites):
 5. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `GOOGLE_REDIRECT_URI`
    (that site's own callback URL) in each site's `.env`.
 
+### Direct Facebook output
+
+**+ Add output → Facebook** signs in with Facebook and connects one of your
+Facebook **Pages** (Facebook only lets apps go live on Pages, not personal
+profiles); if you manage several, the channel page asks which. Each go-live
+creates a live video on the Page with the channel's title and description
+and relays the stream to the one-off RTMPS address Facebook returns. Title or
+description edits while live update it; 15 seconds after the stream stops
+the app ends it (a reconnect within that carries on in the same live video).
+There's no API for a live video's thumbnail, so that's set on Facebook.
+
+It works like the YouTube output (`facebook.js`, same output shape - see
+`platformOutputs.js` and `PLATFORMS` in `rtmpHooks.js`). The Page token is
+kept in `db.facebookTokens[outputId]`; it doesn't expire, since it's issued
+from a long-lived user token. The relay's ffmpeg must support `rtmps://`.
+
+One-time Meta setup (one app serves both sites):
+
+1. At [developers.facebook.com](https://developers.facebook.com), **Create
+   App** with the **Manage everything on your Page** use case, and add the
+   permissions `pages_show_list`, `pages_read_engagement` and
+   `pages_manage_posts` (Page live video doesn't need `publish_video`).
+2. **Facebook Login for Business → Settings**: Client and Web OAuth login
+   and Enforce HTTPS on; Valid OAuth Redirect URIs
+   `https://stream.<domain>/api/facebook/callback` and
+   `https://dev.stream.<domain>/api/facebook/callback`. If the app has
+   **Configurations**, create one (User access token; Pages; the three
+   permissions) and use its ID as `FACEBOOK_CONFIG_ID`.
+3. **App settings → Basic**: app domain, privacy policy URL and
+   `/data-deletion.html` as the data deletion instructions URL.
+4. Leave the app **Unpublished** (Development mode): it then works, without
+   Meta's App Review, for anyone with a role on the app - its creator
+   automatically; add others under **App roles**.
+5. Set `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, `FACEBOOK_REDIRECT_URI` (that
+   site's own callback URL) and optionally `FACEBOOK_CONFIG_ID` in each
+   site's `.env`.
+
 ## Viewer stats
 
 Click **Stats** next to Log out to see who's watched each channel - one row
