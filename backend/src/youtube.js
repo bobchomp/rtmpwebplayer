@@ -310,7 +310,7 @@ async function startBroadcast(channelId, outputId, session) {
       return;
     }
     const thumbnailProblem = await setThumbnail(accessToken, broadcast.id, channel);
-    setStatus(channelId, outputId, true, thumbnailProblem ? `Live on YouTube - ${thumbnailProblem}` : 'Live on YouTube',
+    setStatus(channelId, outputId, !thumbnailProblem, thumbnailProblem ? `Live on YouTube, but the ${thumbnailProblem}` : 'Live on YouTube',
       { url: `https://youtu.be/${broadcast.id}` });
   } catch (err) {
     console.error(`[youtube] Channel ${channelId} output ${outputId}: ${err.message}`);

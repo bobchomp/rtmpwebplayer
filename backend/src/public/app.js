@@ -893,16 +893,23 @@
       save({ enabled: toggle.checked }, function () { toggle.checked = !toggle.checked; });
     });
 
+    // Only two things are shown: the watch link while live, and errors.
     var status = node.querySelector('.youtube-output-status');
-    if (output.lastStatus) {
+    var lastStatus = output.lastStatus;
+    var liveUrl = lastStatus && lastStatus.url && output.session ? lastStatus.url : null;
+    if (lastStatus && (!lastStatus.ok || liveUrl)) {
       status.classList.remove('hidden');
-      status.classList.toggle('error', !output.lastStatus.ok);
-      status.classList.toggle('hint', output.lastStatus.ok);
-      var when = new Date(output.lastStatus.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      status.textContent = output.lastStatus.message + ' (' + when + ')';
-      if (output.lastStatus.url && output.session) {
+      status.classList.toggle('error', !lastStatus.ok);
+      status.classList.toggle('hint', lastStatus.ok);
+      if (lastStatus.ok) {
+        status.textContent = 'Live on YouTube';
+      } else {
+        var when = new Date(lastStatus.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        status.textContent = lastStatus.message + ' (' + when + ')';
+      }
+      if (liveUrl) {
         var link = document.createElement('a');
-        link.href = output.lastStatus.url;
+        link.href = liveUrl;
         link.target = '_blank';
         link.rel = 'noopener';
         link.textContent = 'Watch on YouTube';
