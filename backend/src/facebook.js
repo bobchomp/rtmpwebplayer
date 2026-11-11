@@ -41,6 +41,13 @@ function getAuthUrl(state) {
   return `${DIALOG_URL}?${params.toString()}`;
 }
 
+// Facebook's own rules on who may go live, reported as a bare "Permissions
+// error" - nothing the app or Meta app settings can change.
+const ELIGIBILITY_ERRORS = {
+  1363120: 'Facebook won\'t let this Page go live yet - it has to be at least 60 days old.',
+  1363144: 'Facebook won\'t let this Page go live yet - it needs at least 100 followers.',
+};
+
 async function graph(method, path, params = {}, accessToken) {
   const query = new URLSearchParams(params);
   if (accessToken) query.set('access_token', accessToken);
@@ -54,7 +61,9 @@ async function graph(method, path, params = {}, accessToken) {
     // Facebook's messages can be as vague as "Permissions error", so the
     // codes go along too - they're what its docs and support go by.
     const codes = [e.code && `code ${e.code}`, e.error_subcode && `subcode ${e.error_subcode}`].filter(Boolean).join(', ');
-    const err = new Error(`Facebook API error (${res.status}): ${e.message || res.statusText}${codes ? ` (${codes})` : ''}`);
+    const plain = ELIGIBILITY_ERRORS[e.error_subcode];
+    const err = new Error(plain
+      || `Facebook API error (${res.status}): ${e.message || res.statusText}${codes ? ` (${codes})` : ''}`);
     // 190 = the token was revoked or has expired.
     if (e.code === 190) err.reconnect = true;
     throw err;
