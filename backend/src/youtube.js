@@ -205,9 +205,13 @@ async function endBroadcast(accessToken, broadcast) {
   if (LIVE_STATES.includes(state)) {
     await apiCall(accessToken, 'POST',
       `/liveBroadcasts/transition?broadcastStatus=complete&id=${encodeURIComponent(broadcast.id)}&part=status`);
-  } else if (WAITING_STATES.includes(state)) {
-    await apiCall(accessToken, 'DELETE', `/liveBroadcasts?id=${encodeURIComponent(broadcast.id)}`);
+    return 'ended';
   }
+  if (WAITING_STATES.includes(state)) {
+    await apiCall(accessToken, 'DELETE', `/liveBroadcasts?id=${encodeURIComponent(broadcast.id)}`);
+    return 'deleted';
+  }
+  return null; // already complete (e.g. YouTube's own auto-stop got there first)
 }
 
 function broadcastSnippet(channel, scheduledStartTime) {
@@ -317,8 +321,11 @@ async function startBroadcast(channelId, outputId, session) {
 
 // Called RECONNECT_GRACE_MS after the stream stops (see rtmpHooks.js). If it
 // hasn't come back by then, the broadcast is ended now rather than left to
-// YouTube's own auto-stop, and one that never went live is deleted.
-const RECONNECT_GRACE_MS = Number(process.env.YOUTUBE_RECONNECT_GRACE_MS) || 90 * 1000;
+// YouTube's own auto-stop (which can take minutes), and one that never went
+// live is deleted. Long enough for OBS's automatic reconnect to carry on in
+// the same broadcast; a dropped connection (rather than a clean stop) is only
+// noticed after nginx's drop_idle_publisher 10s anyway.
+const RECONNECT_GRACE_MS = Number(process.env.YOUTUBE_RECONNECT_GRACE_MS) || 15 * 1000;
 
 async function finishBroadcast(channelId, outputId, broadcastId) {
   const channel = readDb().channels[channelId];
@@ -328,9 +335,13 @@ async function finishBroadcast(channelId, outputId, broadcastId) {
     const accessToken = await accessTokenFor(outputId);
     const res = await apiCall(accessToken, 'GET', `/liveBroadcasts?part=id,status&id=${encodeURIComponent(broadcastId)}`);
     const broadcast = res.items && res.items[0];
-    if (broadcast) await endBroadcast(accessToken, broadcast);
+    const done = broadcast ? await endBroadcast(accessToken, broadcast) : null;
+    setStatus(channelId, outputId, true,
+      done === 'deleted' ? 'Stream ended - the YouTube broadcast never went live, so it was removed' : 'Stream ended - YouTube broadcast ended');
   } catch (err) {
     console.error(`[youtube] Ending broadcast ${broadcastId}: ${err.message}`);
+    setStatus(channelId, outputId, false,
+      `Stream ended, but the YouTube broadcast couldn't be ended (YouTube will end it itself shortly): ${err.message}`);
   }
   updateOutput(channelId, outputId, (o) => {
     if (o.previousBroadcastId !== broadcastId) return;

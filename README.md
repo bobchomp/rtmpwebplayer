@@ -405,7 +405,10 @@ goes live, the app creates a YouTube broadcast with its title, description
 and the privacy chosen on the output (Public/Unlisted/Private), sets the
 channel's active **Live thumbnail** as its thumbnail (converted to a 1280px
 JPEG; needs a phone-verified YouTube channel), and relays the stream to it.
-YouTube starts and ends the broadcast itself. Saving a new title or
+YouTube starts the broadcast itself when the video arrives. When the stream
+stops, the app ends the broadcast 15 seconds later (or deletes it if it never
+went live) instead of waiting minutes for YouTube to notice; reconnecting
+within those 15 seconds carries on in the same broadcast. Saving a new title or
 description while live updates the broadcast. The output's status line shows
 what happened, with a link to the broadcast while live. Switching the output
 on or off applies from the next time you go live.

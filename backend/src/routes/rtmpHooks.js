@@ -121,7 +121,13 @@ router.post('/on_publish_done', (req, res) => {
       output.session = null;
       output.broadcastId = null;
       if (output.lastStatus && output.lastStatus.ok) {
-        output.lastStatus = { ...output.lastStatus, at: new Date().toISOString(), message: 'Stream ended' };
+        output.lastStatus = {
+          at: new Date().toISOString(),
+          ok: true,
+          message: toFinish.length && toFinish[toFinish.length - 1][0] === output.id
+            ? `Stream stopped - ending the YouTube broadcast in ${Math.round(youtube.RECONNECT_GRACE_MS / 1000)} seconds unless it reconnects`
+            : 'Stream ended',
+        };
       }
     });
     writeDb(db);
