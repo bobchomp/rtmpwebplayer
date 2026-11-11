@@ -149,8 +149,7 @@ Log in, click **Create channel**, give it a name. You'll get:
 
 - An **RTMP URL** (shared across all channels: `rtmp://<host>:1935/live`)
 - A **stream key** (unique per channel, secret)
-- An **embed code** you can copy straight into your website (the channel
-  page's **Website HTML** button)
+- An **embed code** you can copy straight into your website
 
 ## 4. Point your encoder at it
 
@@ -167,8 +166,7 @@ flips to "live" for anyone viewing the embed too.
 
 ## 5. Embed the player
 
-Click **Website HTML** on the channel page and paste the code into your
-website's HTML, e.g.:
+Paste the embed code from the channel page into your website's HTML, e.g.:
 
 ```html
 <iframe

@@ -544,9 +544,6 @@
 
   var detailWebsiteToggle = document.getElementById('detail-website-toggle');
   var detailWebsiteHint = document.getElementById('detail-website-hint');
-  var websiteHtmlBtn = document.getElementById('website-html-btn');
-  var websiteHtmlModalBackdrop = document.getElementById('website-html-modal-backdrop');
-  var websiteHtmlCloseBtn = document.getElementById('website-html-close-btn');
 
   var editMetadataBtn = document.getElementById('edit-metadata-btn');
   var metadataModalBackdrop = document.getElementById('metadata-modal-backdrop');
@@ -963,7 +960,7 @@
 
     detailWebsiteToggle.checked = channel.embedEnabled !== false;
     detailWebsiteHint.textContent = channel.embedEnabled !== false
-      ? 'The player on your website - click Website HTML for the code to paste into your site'
+      ? 'The player on your website - paste the code below wherever you like'
       : 'Off - your website\'s player shows as offline, as if you weren\'t streaming (you still see the stream on this page)';
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
@@ -1276,16 +1273,6 @@
         });
     });
 
-    websiteHtmlBtn.addEventListener('click', function () {
-      websiteHtmlModalBackdrop.classList.remove('hidden');
-    });
-    websiteHtmlCloseBtn.addEventListener('click', function () {
-      websiteHtmlModalBackdrop.classList.add('hidden');
-    });
-    websiteHtmlModalBackdrop.addEventListener('click', function (e) {
-      if (e.target === websiteHtmlModalBackdrop) websiteHtmlModalBackdrop.classList.add('hidden');
-    });
-    wireCopyButtons(websiteHtmlModalBackdrop);
 
     detailRecordingToggle.addEventListener('change', function () {
       if (detailRecordingToggle.checked && !config.recordingsEnabled) {
