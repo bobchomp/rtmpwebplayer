@@ -14,14 +14,18 @@
 const crypto = require('crypto');
 const { readDb, writeDb } = require('./db');
 const { updateOutput, setStatus, RECONNECT_GRACE_MS } = require('./platformOutputs');
+const platformStats = require('./platformStats');
 
 const GRAPH_VERSION = process.env.FACEBOOK_GRAPH_VERSION || 'v23.0';
 // Overridable only so the client can be pointed at a local mock for testing.
 const GRAPH_BASE = `${process.env.FACEBOOK_GRAPH_BASE || 'https://graph.facebook.com'}/${GRAPH_VERSION}`;
 const DIALOG_URL = `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth`;
 // Streaming to a Page needs a Page token with pages_read_engagement and
-// pages_manage_posts; pages_show_list lists the Pages to pick from.
-const SCOPE = 'pages_show_list,pages_read_engagement,pages_manage_posts';
+// pages_manage_posts; pages_show_list lists the Pages to pick from. Those are
+// required. read_insights is also asked for, for view counts on the Stats
+// page (platformStats.js) - without it streaming still works.
+const REQUIRED_PERMISSIONS = ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts'];
+const SCOPE = REQUIRED_PERMISSIONS.concat('read_insights').join(',');
 
 function isConfigured() {
   return !!(process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET && process.env.FACEBOOK_REDIRECT_URI);
@@ -91,7 +95,7 @@ async function pagesForCode(code) {
   // later with a vague "Permissions error".
   const perms = await graph('GET', '/me/permissions', {}, long.access_token);
   const granted = (perms.data || []).filter((p) => p.status === 'granted').map((p) => p.permission);
-  const missing = SCOPE.split(',').filter((p) => !granted.includes(p));
+  const missing = REQUIRED_PERMISSIONS.filter((p) => !granted.includes(p));
   if (missing.length) {
     throw new Error(`Facebook didn't grant ${missing.join(', ')}. Add Facebook again and leave every permission switched on`
       + `${process.env.FACEBOOK_CONFIG_ID ? ' - and check they are all ticked in the Meta app\'s Facebook Login for Business configuration' : ''}.`);
@@ -200,7 +204,11 @@ async function startBroadcast(channelId, outputId, session) {
       o.previousBroadcastId = null;
       o.previousEndedAt = null;
     });
-    setStatus(channelId, outputId, true, 'Live on Facebook', { url: await watchUrl(token, liveVideoId) });
+    const url = await watchUrl(token, liveVideoId);
+    if (liveVideoId !== output.previousBroadcastId) {
+      platformStats.registerBroadcast({ platform: 'facebook', broadcastId: liveVideoId, channel, account: output.facebookPageId, url });
+    }
+    setStatus(channelId, outputId, true, 'Live on Facebook', { url });
   } catch (err) {
     console.error(`[facebook] Channel ${channelId} output ${outputId}: ${err.message}`);
     setStatus(channelId, outputId, false,
@@ -209,6 +217,7 @@ async function startBroadcast(channelId, outputId, session) {
 }
 
 // Ends a live video, or deletes one Facebook never received video for.
+// Returns 'ended', 'deleted', or null if it had already ended.
 async function endLiveVideo(token, liveVideoId) {
   try {
     const info = await graph('GET', `/${liveVideoId}`, { fields: 'status' }, token);
@@ -229,11 +238,14 @@ async function endLiveVideo(token, liveVideoId) {
 async function finishBroadcast(channelId, outputId, liveVideoId) {
   const channel = readDb().channels[channelId];
   const output = channel && (channel.outputs || []).find((o) => o.id === outputId);
-  if (!output || output.session || output.previousBroadcastId !== liveVideoId) return;
+  if (!output) { platformStats.markEnded('facebook', liveVideoId); return; }
+  if (output.session || output.previousBroadcastId !== liveVideoId) return;
   try {
-    await endLiveVideo(tokenFor(outputId), liveVideoId);
+    const done = await endLiveVideo(tokenFor(outputId), liveVideoId);
+    platformStats.markEnded('facebook', liveVideoId, { neverWentLive: done === 'deleted' });
     setStatus(channelId, outputId, true, 'Stream ended - Facebook live video ended');
   } catch (err) {
+    platformStats.markEnded('facebook', liveVideoId);
     setStatus(channelId, outputId, false,
       `Stream ended, but the Facebook live video couldn't be ended (Facebook will end it itself shortly): ${err.message}`);
   }
@@ -254,6 +266,7 @@ async function updateBroadcastDetails(channelId) {
     try {
       // eslint-disable-next-line no-await-in-loop
       await graph('POST', `/${output.broadcastId}`, videoFields(channel), tokenFor(output.id));
+      platformStats.updateDetails('facebook', output.broadcastId, channel);
       setStatus(channelId, output.id, true, 'Live on Facebook - title updated', { url });
     } catch (err) {
       console.error(`[facebook] Title update for ${channelId}/${output.id}: ${err.message}`);
@@ -261,6 +274,43 @@ async function updateBroadcastDetails(channelId) {
     }
   }
 }
+
+// For platformStats.js: the token of whichever output is connected to this
+// Page now (the one that created the live video may have been re-added).
+function tokenForAccount(pageId) {
+  const db = readDb();
+  const outputs = Object.values(db.channels || {}).flatMap((c) => c.outputs || [])
+    .filter((o) => o.type === 'facebook' && o.facebookPageId === pageId && (db.facebookTokens || {})[o.id]);
+  if (!outputs.length) throw new Error('No Facebook output is connected to this Page any more.');
+  return db.facebookTokens[outputs[outputs.length - 1].id];
+}
+
+platformStats.registerClient('facebook', {
+  // People watching right now.
+  async liveViewers(record) {
+    const info = await graph('GET', `/${record.broadcastId}`, { fields: 'live_views' }, tokenForAccount(record.account));
+    return info.live_views != null ? Number(info.live_views) : null;
+  },
+  // Total views of the live video (live and replay), from the video's
+  // insights. Facebook gives no reliable per-country split for these.
+  async views(record) {
+    const token = tokenForAccount(record.account);
+    const info = await graph('GET', `/${record.broadcastId}`, { fields: 'video' }, token);
+    if (!info.video || !info.video.id) throw new Error('Facebook has no video for this live stream yet.');
+    let insights;
+    try {
+      insights = await graph('GET', `/${info.video.id}/video_insights`, { metric: 'total_video_views', period: 'lifetime' }, token);
+    } catch (err) {
+      if (/permission/i.test(err.message)) {
+        return { views: null, warning: 'Facebook view counts need the read_insights permission - add it to the Meta app (and its Configuration), then delete and re-add the Facebook output.' };
+      }
+      throw err;
+    }
+    const metric = (insights.data || [])[0];
+    const value = metric && metric.values && metric.values[0] ? Number(metric.values[0].value) : null;
+    return { views: value };
+  },
+});
 
 module.exports = {
   isConfigured,

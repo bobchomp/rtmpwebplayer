@@ -179,6 +179,17 @@ function upsertImportedPlays(rows) {
   return rows.length;
 }
 
+// Rows for the direct YouTube/Facebook outputs (see platformStats.js), which
+// carry their own deterministic ids: replaces every existing row whose id
+// starts with `prefix` (one broadcast's total and country rows) with `rows`,
+// so a country that drops out of a refresh doesn't linger.
+function replaceDirectRows(prefix, rows) {
+  ensureLoaded();
+  plays = plays.filter((p) => !p.id.startsWith(prefix)).concat(rows);
+  dirty = true;
+  flush();
+}
+
 // Reads straight from the in-memory array - always fully up to date
 // regardless of the flush timer, since that's only about disk durability.
 function listPlays({ owner, channelId, from, to } = {}) {
@@ -251,4 +262,4 @@ setInterval(flush, FLUSH_INTERVAL_MS).unref();
   });
 });
 
-module.exports = { recordPlay, listPlays, countActiveViewers, deletePlays, upsertImportedPlays };
+module.exports = { recordPlay, listPlays, countActiveViewers, deletePlays, upsertImportedPlays, replaceDirectRows };

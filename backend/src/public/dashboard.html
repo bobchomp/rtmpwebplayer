@@ -305,6 +305,13 @@
 
     <section class="panel stats-restream-panel">
       <div class="stats-restream-row">
+        <span id="stats-platforms-status-text" class="hint">YouTube and Facebook views update by themselves after each stream - daily for a week, then weekly.</span>
+        <button type="button" class="secondary" id="stats-platforms-refresh-btn">Refresh now</button>
+      </div>
+    </section>
+
+    <section class="panel stats-restream-panel">
+      <div class="stats-restream-row">
         <span id="stats-restream-status-text" class="hint">Checking Restream connection&hellip;</span>
         <a id="stats-restream-connect-btn" class="secondary hidden" href="/api/restream/connect">Connect Restream</a>
         <button type="button" class="secondary restream-link-btn hidden" id="stats-restream-import-btn">Import from <img src="/restream.svg" alt="Restream" class="restream-link-btn-logo"></button>
@@ -324,6 +331,8 @@
               <th>Description</th>
               <th>Platform</th>
               <th>Views</th>
+              <th>Peak Live</th>
+              <th>Avg Live</th>
               <th>Type</th>
               <th>IP Address</th>
               <th>Country</th>
@@ -505,6 +514,8 @@
     <td class="stats-col-description"></td>
     <td class="stats-col-platform"></td>
     <td class="stats-col-views"></td>
+    <td class="stats-col-peak"></td>
+    <td class="stats-col-avg"></td>
     <td class="stats-col-type"></td>
     <td class="stats-col-ip"></td>
     <td class="stats-col-country"></td>

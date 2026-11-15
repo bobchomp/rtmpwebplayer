@@ -18,6 +18,7 @@ const path = require('path');
 const { execFile } = require('child_process');
 const { readDb, writeDb } = require('./db');
 const { updateOutput, setStatus, RECONNECT_GRACE_MS } = require('./platformOutputs');
+const platformStats = require('./platformStats');
 
 // Overridable only so the whole client can be pointed at a local mock for
 // testing, like RESTREAM_API_BASE.
@@ -25,7 +26,10 @@ const GOOGLE_API_BASE = process.env.GOOGLE_API_BASE || 'https://www.googleapis.c
 const GOOGLE_TOKEN_URL = process.env.GOOGLE_TOKEN_URL || 'https://oauth2.googleapis.com/token';
 const YOUTUBE_API = `${GOOGLE_API_BASE}/youtube/v3`;
 const YOUTUBE_UPLOAD_API = `${GOOGLE_API_BASE}/upload/youtube/v3`;
-const OAUTH_SCOPE = 'https://www.googleapis.com/auth/youtube';
+// youtube: create and manage broadcasts and read their view counts.
+// yt-analytics.readonly: views by country for the Stats page (platformStats.js).
+const OAUTH_SCOPE = 'https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/yt-analytics.readonly';
+const ANALYTICS_API = process.env.YOUTUBE_ANALYTICS_BASE || 'https://youtubeanalytics.googleapis.com/v2';
 
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 const PRIVACY_STATUSES = ['public', 'unlisted', 'private'];
@@ -292,6 +296,9 @@ async function startBroadcast(channelId, outputId, session) {
       setStatus(channelId, outputId, true, 'Reconnected - carrying on in the same YouTube broadcast', { url: `https://youtu.be/${broadcast.id}` });
       return;
     }
+    platformStats.registerBroadcast({
+      platform: 'youtube', broadcastId: broadcast.id, channel, account: output.youtubeChannelId, url: `https://youtu.be/${broadcast.id}`,
+    });
     const thumbnailProblem = await setThumbnail(accessToken, broadcast.id, channel);
     setStatus(channelId, outputId, !thumbnailProblem, thumbnailProblem ? `Live on YouTube, but the ${thumbnailProblem}` : 'Live on YouTube',
       { url: `https://youtu.be/${broadcast.id}` });
@@ -309,18 +316,21 @@ async function startBroadcast(channelId, outputId, session) {
 async function finishBroadcast(channelId, outputId, broadcastId) {
   const channel = readDb().channels[channelId];
   const output = channel && (channel.outputs || []).find((o) => o.id === outputId);
-  if (!output || output.session || output.previousBroadcastId !== broadcastId) return; // live again, or already handled
+  if (!output) { platformStats.markEnded('youtube', broadcastId); return; }
+  if (output.session || output.previousBroadcastId !== broadcastId) return; // live again, or already handled
   try {
     const accessToken = await accessTokenFor(outputId);
     const res = await apiCall(accessToken, 'GET', `/liveBroadcasts?part=id,status&id=${encodeURIComponent(broadcastId)}`);
     const broadcast = res.items && res.items[0];
     const done = broadcast ? await endBroadcast(accessToken, broadcast) : null;
+    platformStats.markEnded('youtube', broadcastId, { neverWentLive: done === 'deleted' });
     setStatus(channelId, outputId, true,
       done === 'deleted' ? 'Stream ended - the YouTube broadcast never went live, so it was removed' : 'Stream ended - YouTube broadcast ended');
   } catch (err) {
     console.error(`[youtube] Ending broadcast ${broadcastId}: ${err.message}`);
     setStatus(channelId, outputId, false,
       `Stream ended, but the YouTube broadcast couldn't be ended (YouTube will end it itself shortly): ${err.message}`);
+    platformStats.markEnded('youtube', broadcastId);
   }
   updateOutput(channelId, outputId, (o) => {
     if (o.previousBroadcastId !== broadcastId) return;
@@ -370,6 +380,7 @@ async function updateBroadcastDetails(channelId) {
         id: output.broadcastId,
         snippet: broadcastSnippet(channel, item.snippet.scheduledStartTime),
       });
+      platformStats.updateDetails('youtube', output.broadcastId, channel);
       setStatus(channelId, output.id, true, `Live on YouTube - title updated to ${broadcastSnippet(channel).title}`,
         { url: `https://youtu.be/${output.broadcastId}` });
     } catch (err) {
@@ -379,6 +390,61 @@ async function updateBroadcastDetails(channelId) {
     }
   }
 }
+
+// For platformStats.js: a token for whichever output is connected to this
+// YouTube channel now (the one that created the broadcast may have been
+// deleted and re-added since).
+async function tokenForAccount(youtubeChannelId) {
+  const db = readDb();
+  const outputs = Object.values(db.channels || {}).flatMap((c) => c.outputs || [])
+    .filter((o) => o.type === 'youtube' && o.youtubeChannelId === youtubeChannelId && (db.youtubeTokens || {})[o.id]);
+  if (!outputs.length) throw new Error('No YouTube output is connected to this YouTube channel any more.');
+  return accessTokenFor(outputs[outputs.length - 1].id);
+}
+
+function isoDate(date) {
+  return new Date(date).toISOString().slice(0, 10);
+}
+
+platformStats.registerClient('youtube', {
+  // People watching right now (YouTube only reports this while it's live).
+  async liveViewers(record) {
+    const token = await tokenForAccount(record.account);
+    const res = await apiCall(token, 'GET', `/videos?part=liveStreamingDetails&id=${encodeURIComponent(record.broadcastId)}`);
+    const details = res.items && res.items[0] && res.items[0].liveStreamingDetails;
+    return details && details.concurrentViewers != null ? Number(details.concurrentViewers) : null;
+  },
+  // Total views (live and replay), plus views by country from YouTube
+  // Analytics - which runs a day or two behind, and needs the
+  // yt-analytics.readonly permission that connections made before it was
+  // added don't have.
+  async views(record) {
+    const token = await tokenForAccount(record.account);
+    const res = await apiCall(token, 'GET', `/videos?part=statistics&id=${encodeURIComponent(record.broadcastId)}`);
+    const item = res.items && res.items[0];
+    if (!item) throw new Error('YouTube no longer has this broadcast (deleted?).');
+    const result = { views: Number(item.statistics.viewCount) || 0 };
+    const params = new URLSearchParams({
+      ids: 'channel==MINE',
+      startDate: isoDate(record.startedAt),
+      endDate: isoDate(Date.now()),
+      metrics: 'views',
+      dimensions: 'country',
+      filters: `video==${record.broadcastId}`,
+    });
+    const analytics = await fetch(`${ANALYTICS_API}/reports?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (analytics.ok) {
+      const data = await analytics.json();
+      result.countries = {};
+      (data.rows || []).forEach(([country, views]) => { result.countries[country] = Number(views) || 0; });
+    } else if (analytics.status === 403) {
+      result.warning = 'Views by country need YouTube reconnecting once (delete the YouTube output and add it again).';
+    } else {
+      result.warning = `YouTube Analytics error (${analytics.status})`;
+    }
+    return result;
+  },
+});
 
 module.exports = {
   isConfigured,

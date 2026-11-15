@@ -8,6 +8,7 @@ const restreamImport = require('../restreamImport');
 const { secretMatches } = require('../safeCompare');
 const { adminEmails, currentAccount, ownsChannel } = require('../accounts');
 const statsTemplateExport = require('../statsTemplateExport');
+const platformStats = require('../platformStats');
 
 const router = express.Router();
 
@@ -21,6 +22,8 @@ const EXPORT_COLUMNS = [
   { header: 'Description', key: 'description' },
   { header: 'Platform', key: 'platformLabel' },
   { header: 'Views', key: 'views' },
+  { header: 'Peak Live Viewers', key: 'peakLiveViewers' },
+  { header: 'Average Live Viewers', key: 'avgLiveViewers' },
   { header: 'Type', key: 'type' },
   { header: 'IP Address', key: 'ip' },
   { header: 'Country', key: 'country' },
@@ -33,12 +36,14 @@ const PLATFORM_LABELS = { website: 'Website', youtube: 'YouTube', facebook: 'Fac
 
 // Website rows are one-row-per-visitor, so each one counts as 1 view and
 // carries its own device type/IP; YouTube/Facebook rows are an aggregate
-// across every viewer (see restreamImport.js) with their own view count
-// but no single device type or IP, so those show as "Various" instead.
+// across every viewer (see platformStats.js, and restreamImport.js for older
+// rows) with their own view count but no single device type or IP, so those
+// show as "Various" instead. A direct broadcast's views stay blank until
+// they're first fetched, rather than showing as 1.
 function withDisplayFields(rows) {
   return rows.map((p) => Object.assign({}, p, {
     platformLabel: PLATFORM_LABELS[p.platform] || p.platform,
-    views: p.views != null ? p.views : 1,
+    views: p.views != null ? p.views : (p.platform === 'website' ? 1 : null),
     type: p.type || 'Various',
     ip: p.ip || 'Various',
   }));
@@ -133,7 +138,18 @@ router.delete('/', requireAuth, (req, res) => {
   if (!ids.length) return res.status(400).json({ error: 'ids is required' });
 
   const deletedCount = plays.deletePlays(ids, currentAccount(req));
+  platformStats.excludeRows(ids, currentAccount(req));
   res.json({ deletedCount });
+});
+
+// "Refresh now" for the direct YouTube/Facebook rows - they also refresh by
+// themselves (see platformStats.js).
+router.post('/platforms/refresh', requireAuth, async (req, res) => {
+  try {
+    res.json(await platformStats.refreshNow(currentAccount(req)));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Read-only - hits Restream's API for the given range and returns what
@@ -294,7 +310,7 @@ router.get('/export-template.xlsx', requireAuth, async (req, res) => {
   res.end();
 });
 
-// Landscape so all 10 columns (Description especially) have room to breathe
+// Landscape so all 14 columns (Description especially) have room to breathe
 // instead of being squeezed into a portrait page.
 router.get('/export.pdf', requireAuth, async (req, res) => {
   const rows = exportRows(req);
@@ -317,7 +333,8 @@ router.get('/export.pdf', requireAuth, async (req, res) => {
       rows: rows.map((p) => EXPORT_COLUMNS.map((c) => (p[c.key] === null || p[c.key] === undefined ? '' : String(p[c.key])))),
     },
     {
-      columnsSize: [80, 70, 90, 130, 60, 45, 45, 70, 55, 60, 60, 75],
+      // Must add up to no more than the landscape page's 782pt between margins.
+      columnsSize: [62, 55, 70, 85, 45, 32, 38, 40, 40, 62, 52, 50, 50, 62],
       prepareHeader: () => doc.fontSize(8).font('Helvetica-Bold'),
       prepareRow: () => doc.fontSize(8).font('Helvetica'),
     }

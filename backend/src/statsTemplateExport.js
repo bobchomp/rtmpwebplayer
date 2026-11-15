@@ -44,6 +44,8 @@ function buildServiceRows({ channelId, from, to }) {
   const buckets = new Map(); // bucketKey -> { label, sortMs, website, facebook, youtube }
 
   rows.forEach((p) => {
+    // Per-country rows for a YouTube broadcast add up to its total row.
+    if (p.breakdown) return;
     if (!p.firstPlayAt) return;
     const date = new Date(p.firstPlayAt);
     if (Number.isNaN(date.getTime())) return;

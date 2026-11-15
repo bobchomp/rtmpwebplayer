@@ -214,6 +214,8 @@
   var statsChannelsCache = [];
 
   var statsRestreamStatusText = document.getElementById('stats-restream-status-text');
+  var statsPlatformsStatusText = document.getElementById('stats-platforms-status-text');
+  var statsPlatformsRefreshBtn = document.getElementById('stats-platforms-refresh-btn');
   var statsRestreamConnectBtn = document.getElementById('stats-restream-connect-btn');
   var statsRestreamImportBtn = document.getElementById('stats-restream-import-btn');
   var statsRestreamDisconnectBtn = document.getElementById('stats-restream-disconnect-btn');
@@ -304,7 +306,9 @@
         row.querySelector('.stats-col-title').textContent = p.title;
         row.querySelector('.stats-col-description').textContent = p.description || '';
         row.querySelector('.stats-col-platform').textContent = p.platformLabel || '';
-        row.querySelector('.stats-col-views').textContent = p.views || '';
+        row.querySelector('.stats-col-views').textContent = p.views != null ? p.views : '';
+        row.querySelector('.stats-col-peak').textContent = p.peakLiveViewers != null ? p.peakLiveViewers : '';
+        row.querySelector('.stats-col-avg').textContent = p.avgLiveViewers != null ? p.avgLiveViewers : '';
         row.querySelector('.stats-col-type').textContent = p.type || '';
         row.querySelector('.stats-col-ip').textContent = p.ip || '';
         row.querySelector('.stats-col-country').textContent = p.country || '';
@@ -493,6 +497,30 @@
       api('/api/stats', { method: 'DELETE', body: JSON.stringify({ ids: ids }) })
         .then(loadStats)
         .catch(function (err) { alert(err.message); });
+    });
+
+    statsPlatformsRefreshBtn.addEventListener('click', function () {
+      statsPlatformsRefreshBtn.disabled = true;
+      statsPlatformsStatusText.classList.remove('error');
+      statsPlatformsStatusText.textContent = 'Asking YouTube and Facebook for the latest views...';
+      api('/api/stats/platforms/refresh', { method: 'POST' })
+        .then(function (result) {
+          var when = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          if (result.problems && result.problems.length) {
+            statsPlatformsStatusText.classList.add('error');
+            statsPlatformsStatusText.textContent = 'Refreshed at ' + when + ', with problems: ' + result.problems.join(' ');
+          } else {
+            statsPlatformsStatusText.textContent = result.refreshed
+              ? 'Refreshed ' + result.refreshed + ' stream(s) at ' + when + '.'
+              : 'No YouTube or Facebook streams from the last five weeks to refresh.';
+          }
+          return loadStats();
+        })
+        .catch(function (err) {
+          statsPlatformsStatusText.classList.add('error');
+          statsPlatformsStatusText.textContent = 'Couldn\'t refresh: ' + err.message;
+        })
+        .then(function () { statsPlatformsRefreshBtn.disabled = false; });
     });
 
     statsRestreamDisconnectBtn.addEventListener('click', function () {

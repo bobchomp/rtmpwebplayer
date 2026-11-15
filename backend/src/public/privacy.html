@@ -61,15 +61,16 @@
   <li>Administrators sign in through our login provider, Auth0, which confirms who they are and tells us their email address. We use that address only to check they're authorised, and to keep each administrator's channels and data separate from everyone else's. We never see or store their password.</li>
   <li>If an administrator chooses to connect their Restream account, we store an access credential that lets us read the view counts of their past streams. We use it for nothing else, and they can disconnect it at any time.</li>
   <li>If an administrator chooses to connect a YouTube channel, we store an access credential issued by Google and the name of that YouTube channel. See "How we use Google user data" below.</li>
-  <li>If an administrator chooses to connect a Facebook Page, we store an access credential issued by Facebook for that Page, and the Page's name and ID. We use it only to create a live video on that Page each time they go live, set and update its title and description, and end it when they stop. We don't read or change anything else on the Page or their Facebook account. See <a href="/data-deletion.html">Deleting your data</a> for how to remove it.</li>
+  <li>If an administrator chooses to connect a Facebook Page, we store an access credential issued by Facebook for that Page, and the Page's name and ID. We use it only to create a live video on that Page each time they go live, set and update its title and description, end it when they stop, and read how many people watched it, for the administrator's own stats page. We don't read or change anything else on the Page or their Facebook account. See <a href="/data-deletion.html">Deleting your data</a> for how to remove it.</li>
 </ul>
 
 <h2>How we use Google user data</h2>
-<p>When an administrator connects a YouTube channel, we ask Google for the <code>https://www.googleapis.com/auth/youtube</code> permission on their Google Account, and use it only to:</p>
+<p>When an administrator connects a YouTube channel, we ask Google for the <code>https://www.googleapis.com/auth/youtube</code> and <code>https://www.googleapis.com/auth/yt-analytics.readonly</code> permissions on their Google Account, and use them only to:</p>
 <ul>
   <li>Read the name of their YouTube channel, to show which channel is connected.</li>
   <li>Create a reusable live stream on that channel, and a new live broadcast each time they go live, with the title, description and privacy setting chosen in our dashboard.</li>
   <li>Update that broadcast's title and description if the administrator changes them while live, and set its thumbnail to the image they chose in our dashboard.</li>
+  <li>Read how many people are watching those broadcasts while they're live, and afterwards how many views they've had in total and by country, for the administrator's own stats page.</li>
 </ul>
 <p>We don't read, change or delete their existing videos, comments, subscribers, analytics or anything else on their YouTube channel. We don't share this data with anyone else, and nobody reads or reviews it - it's only used automatically by our server for the actions above.</p>
 <p>The credential Google issues is stored only on our server and is never sent to any browser, including the administrator's own. It is deleted when the administrator removes the YouTube output from our dashboard, and they can also revoke it at any time from their <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account's third-party access settings</a>.</p>

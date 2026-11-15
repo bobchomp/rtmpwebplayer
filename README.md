@@ -474,6 +474,29 @@ One-time Meta setup (one app serves both sites):
    site's own callback URL) and optionally `FACEBOOK_CONFIG_ID` in each
    site's `.env`.
 
+### YouTube & Facebook views on the Stats page
+
+For broadcasts made by the direct YouTube/Facebook outputs (not Restream),
+`platformStats.js` records each one in `db.platformBroadcasts` and turns it
+into Stats rows - so views are fetched for exactly that broadcast, with no
+guessing which channel it belonged to:
+
+- **Peak/Avg Live:** viewers watching right now are sampled every minute
+  while live (YouTube `concurrentViewers`, Facebook `live_views`).
+- **Views:** total views (live plus replay), fetched 10 minutes after the
+  stream ends, then daily for a week, then weekly until five weeks after.
+  **Refresh now** on the Stats page fetches them straight away.
+- **YouTube by country:** one extra row per country (YouTube Analytics, a day
+  or two behind). These add up to the total row (Country "All"), so the
+  Template export counts only total rows.
+- Deleting a row on the Stats page keeps it deleted through refreshes.
+
+Needs, for YouTube: the **YouTube Analytics API** enabled in the Google Cloud
+project and the `yt-analytics.readonly` scope added to Data access
+(connections made before that need re-adding to get countries); for
+Facebook: `read_insights` added to the Meta app and its Configuration (views
+stay blank without it; streaming works either way).
+
 ## Viewer stats
 
 Click **Stats** next to Log out to see who's watched each channel - one row
