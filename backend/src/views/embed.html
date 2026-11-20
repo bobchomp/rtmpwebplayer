@@ -588,6 +588,15 @@
     muteIconPath.setAttribute('d', video.muted || video.volume === 0 ? MUTED_ICON_PATH : VOLUME_ICON_PATH);
   }
 
+  // ?muted=1 starts with the sound off - used by the dashboard's preview, so
+  // checking on a stream doesn't play it out loud. The mute button and
+  // volume slider turn it back on as usual.
+  if (/[?&]muted=1(&|$)/.test(window.location.search)) {
+    video.muted = true;
+    volumeSlider.value = 0;
+  }
+  updateMuteIcon();
+
   muteBtn.addEventListener('click', function () {
     video.muted = !video.muted;
     if (!video.muted && video.volume === 0) video.volume = 1;

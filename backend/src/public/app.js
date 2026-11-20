@@ -770,7 +770,8 @@
     detailPreviewIframe.classList.toggle('hidden', !isLive);
 
     if (isLive) {
-      var expectedSrc = embedOrigin() + '/embed/' + channelId;
+      // Muted to start with - see ?muted=1 in embed.html.
+      var expectedSrc = embedOrigin() + '/embed/' + channelId + '?muted=1';
       if (detailPreviewIframe.getAttribute('src') !== expectedSrc) {
         detailPreviewIframe.src = expectedSrc;
       }
