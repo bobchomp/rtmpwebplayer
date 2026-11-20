@@ -113,9 +113,55 @@
   #volume-slider {
     width: 60px; flex-shrink: 0; cursor: pointer; accent-color: #e11d2e;
   }
+
+  /* Public Link page (/watch, see playerPage.js): the same player, centred
+     at a maximum width on the app's light page, with the title, live status
+     and share button in their own section underneath instead of over the
+     video. The website embed (/embed) never has this class. */
+  @font-face { font-family: 'Poppins'; font-weight: 600; font-display: swap; src: url(/fonts/poppins-600.woff2) format('woff2'); }
+  @font-face { font-family: 'Source Sans 3'; font-weight: 400 700; font-display: swap; src: url(/fonts/source-sans-3.woff2) format('woff2'); }
+  html.watch-page, html.watch-page body { height: auto; overflow: auto; background: #FAF9F6; }
+  /* Narrower on short windows, so the title and Share button stay on
+     screen under the 16:9 player without scrolling. */
+  .watch-page #watch-main {
+    max-width: min(1100px, calc((100vh - 190px) * 16 / 9 + 32px));
+    margin: 0 auto; padding: 24px 16px 48px;
+  }
+  .watch-page #wrap {
+    width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(34,38,43,.05), 0 8px 24px -12px rgba(34,38,43,.25);
+  }
+  .watch-page #wrap:fullscreen { border-radius: 0; }
+  .watch-page #wrap:fullscreen video { height: 100%; }
+  #watch-info { display: none; }
+  .watch-page #watch-info {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    margin-top: 18px; color: #22262B; font-family: 'Source Sans 3', -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  #watch-text { flex: 1; min-width: 0; }
+  #watch-status { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; color: #62666D; }
+  #watch-live-pill {
+    background: #C1432B; color: #fff; font: 600 12px/1 'Poppins', -apple-system, sans-serif;
+    padding: 5px 9px; border-radius: 4px; letter-spacing: .04em;
+  }
+  #watch-title { margin: 0 0 4px; font: 600 22px/1.3 'Poppins', -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #watch-description { margin: 0; font-size: 16px; line-height: 1.5; color: #62666D; white-space: pre-line; }
+  #watch-share {
+    flex-shrink: 0; font: 500 14px/1 'Poppins', -apple-system, sans-serif; padding: 11px 18px;
+    border-radius: 7px; border: 1px solid transparent; background: #1F6F64; color: #fff; cursor: pointer;
+  }
+  #watch-share:hover { background: #164F47; }
+  @media (max-width: 600px) {
+    .watch-page #watch-main { padding: 0 0 32px; }
+    .watch-page #wrap { border-radius: 0; box-shadow: none; }
+    .watch-page #watch-info { padding: 0 16px; }
+    #watch-title { font-size: 19px; }
+    #watch-share { width: 100%; }
+  }
 </style>
 </head>
 <body>
+<div id="watch-main">
 <div id="wrap">
   <div id="live-badge">LIVE</div>
   <div id="offline-label">Offline</div>
@@ -139,6 +185,15 @@
       </button>
     </div>
   </div>
+</div>
+<section id="watch-info">
+  <div id="watch-text">
+    <div id="watch-status"><span id="watch-live-pill" hidden>LIVE</span><span id="watch-status-text"></span></div>
+    <h1 id="watch-title"></h1>
+    <p id="watch-description"></p>
+  </div>
+  <button id="watch-share" type="button">Share</button>
+</section>
 </div>
 <script src="/vendor/hls.min.js"></script>
 <script>
@@ -176,7 +231,9 @@
 
   var pageTitle = __TITLE_JSON__;
   var pageDescription = __DESCRIPTION_JSON__;
-  var hasTitleOverlay = !!(pageTitle || pageDescription);
+  // The Public Link page shows these under the player instead (see below).
+  var isWatchPage = document.documentElement.classList.contains('watch-page');
+  var hasTitleOverlay = !isWatchPage && !!(pageTitle || pageDescription);
   titleOverlayTitle.textContent = pageTitle;
   titleOverlayDescription.textContent = pageDescription;
   titleOverlayTitle.style.display = pageTitle ? 'block' : 'none';
@@ -572,11 +629,55 @@
     fullscreenIconPath.setAttribute('d', FULLSCREEN_ENTER_PATH);
   });
 
+  // Public Link page only: the section under the player.
+  var watchLivePill = document.getElementById('watch-live-pill');
+  var watchStatusText = document.getElementById('watch-status-text');
+  var watchTitle = document.getElementById('watch-title');
+  var watchDescription = document.getElementById('watch-description');
+  var watchShare = document.getElementById('watch-share');
+
+  function renderWatchInfo(data) {
+    var title = (data && data.title) || pageTitle || (data && data.name) || '';
+    var description = data && data.description != null ? data.description : pageDescription;
+    watchTitle.textContent = title;
+    watchTitle.hidden = !title;
+    watchDescription.textContent = description || '';
+    watchDescription.hidden = !description;
+    var live = !!(data && data.isLive);
+    watchLivePill.hidden = !live;
+    if (live) {
+      watchStatusText.textContent = 'Streaming now';
+    } else if (data && data.lastLiveAt) {
+      watchStatusText.textContent = 'Not live right now - last live ' + new Date(data.lastLiveAt).toLocaleString('en-GB', {
+        weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+      });
+    } else {
+      watchStatusText.textContent = 'Not live right now';
+    }
+  }
+
+  if (isWatchPage) {
+    renderWatchInfo(null);
+    // Phones get their own share sheet; elsewhere the link is copied.
+    watchShare.addEventListener('click', function () {
+      var shareData = { title: document.title, url: window.location.href };
+      if (navigator.share) {
+        navigator.share(shareData).catch(function () {});
+        return;
+      }
+      navigator.clipboard.writeText(window.location.href).then(function () {
+        watchShare.textContent = 'Link copied';
+        setTimeout(function () { watchShare.textContent = 'Share'; }, 1800);
+      });
+    });
+  }
+
   function poll() {
     fetch('/api/channels/' + channelId + '/status', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data) return;
+        if (isWatchPage) renderWatchInfo(data);
         lastCoverUrl = data.coverUrl;
         lastLiveThumbnailUrl = data.liveThumbnailUrl;
 

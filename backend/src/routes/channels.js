@@ -498,6 +498,10 @@ router.get('/:id/status', (req, res) => {
     id: channel.id,
     name: channel.name,
     isLive: hidden ? false : channel.isLive,
+    // Already public on the embed/watch pages; lets the Public Link page
+    // show a title edited mid-stream without a reload.
+    title: channel.title || '',
+    description: channel.description || '',
     lastLiveAt: channel.lastLiveAt,
     coverUrl: channel.activeCoverImage ? `/uploads/${channel.activeCoverImage}` : null,
     liveThumbnailUrl: channel.activeLiveThumbnail ? `/uploads/${channel.activeLiveThumbnail}` : null,

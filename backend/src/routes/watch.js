@@ -37,7 +37,7 @@ router.get('/:channelId/:token', (req, res) => {
   res.set('X-Frame-Options', 'DENY');
   res.set('Content-Security-Policy', "frame-ancestors 'none'");
   res.set('Cache-Control', 'no-store');
-  res.type('html').send(withDevBanner(buildPlayerHtml(channel), { overlay: true }));
+  res.type('html').send(withDevBanner(buildPlayerHtml(channel, { watchPage: true })));
 });
 
 module.exports = router;
