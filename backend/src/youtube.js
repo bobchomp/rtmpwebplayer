@@ -232,8 +232,16 @@ async function setThumbnail(accessToken, broadcastId, channel) {
     });
     if (!res.ok) {
       const text = await res.text();
-      if (res.status === 403) return 'thumbnail not set - custom thumbnails need a verified YouTube channel (studio.youtube.com → Settings → Channel → Feature eligibility)';
-      return `thumbnail not set (${res.status}): ${text.slice(0, 200)}`;
+      console.error(`[youtube] thumbnails.set for ${broadcastId} failed (${res.status}): ${text}`);
+      // YouTube refuses thumbnails for several reasons (too many changes in a
+      // short time, an unverified channel, the image itself), so report its
+      // own reason rather than guessing.
+      let reason = '';
+      try {
+        const e = JSON.parse(text).error || {};
+        reason = [e.errors && e.errors[0] && e.errors[0].reason, e.message].filter(Boolean).join(': ');
+      } catch (err) { reason = text.slice(0, 200); }
+      return `thumbnail not set - YouTube said (${res.status}) ${reason || 'no reason given'}`;
     }
     return null;
   } catch (err) {
