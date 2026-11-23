@@ -103,7 +103,7 @@ async function connect(code, channelId, maxOutputs) {
     redirect_uri: process.env.GOOGLE_REDIRECT_URI,
   });
   if (!tokens.refresh_token) {
-    throw new Error('Google did not return a refresh token. Remove this app at myaccount.google.com/permissions and connect again.');
+    throw new Error('Google didn\'t send back the access the app needs. Remove RTMP Web Player at myaccount.google.com/permissions, then connect again.');
   }
 
   const channels = await apiCall(tokens.access_token, 'GET', '/channels?part=snippet&mine=true');
@@ -241,7 +241,7 @@ async function setThumbnail(accessToken, broadcastId, channel) {
         const e = JSON.parse(text).error || {};
         reason = [e.errors && e.errors[0] && e.errors[0].reason, e.message].filter(Boolean).join(': ');
       } catch (err) { reason = text.slice(0, 200); }
-      return `thumbnail not set - YouTube said (${res.status}) ${reason || 'no reason given'}`;
+      return `thumbnail wasn't set. YouTube said (${res.status}): ${reason || 'no reason given'}`;
     }
     return null;
   } catch (err) {
@@ -301,7 +301,7 @@ async function startBroadcast(channelId, outputId, session) {
     });
 
     if (resumable) {
-      setStatus(channelId, outputId, true, 'Reconnected - carrying on in the same YouTube broadcast', { url: `https://youtu.be/${broadcast.id}` });
+      setStatus(channelId, outputId, true, 'Reconnected to the same YouTube broadcast.', { url: `https://youtu.be/${broadcast.id}` });
       return;
     }
     platformStats.registerBroadcast({
@@ -313,7 +313,7 @@ async function startBroadcast(channelId, outputId, session) {
   } catch (err) {
     console.error(`[youtube] Channel ${channelId} output ${outputId}: ${err.message}`);
     setStatus(channelId, outputId, false,
-      err.reconnect ? 'YouTube needs reconnecting - delete this output and add YouTube again.' : err.message);
+      err.reconnect ? 'YouTube needs reconnecting. Delete this output and add YouTube again.' : err.message);
   }
 }
 
@@ -333,7 +333,7 @@ async function finishBroadcast(channelId, outputId, broadcastId) {
     const done = broadcast ? await endBroadcast(accessToken, broadcast) : null;
     platformStats.markEnded('youtube', broadcastId, { neverWentLive: done === 'deleted' });
     setStatus(channelId, outputId, true,
-      done === 'deleted' ? 'Stream ended - the YouTube broadcast never went live, so it was removed' : 'Stream ended - YouTube broadcast ended');
+      done === 'deleted' ? 'Stream ended. The YouTube broadcast never went live, so it was removed.' : 'Stream ended, and the YouTube broadcast was ended.');
   } catch (err) {
     console.error(`[youtube] Ending broadcast ${broadcastId}: ${err.message}`);
     setStatus(channelId, outputId, false,
@@ -361,7 +361,7 @@ async function updateBroadcastThumbnail(channelId) {
       // eslint-disable-next-line no-await-in-loop
       const problem = await setThumbnail(accessToken, output.broadcastId, channel);
       if (problem) setStatus(channelId, output.id, false, `Live on YouTube, but the ${problem}`, { url });
-      else setStatus(channelId, output.id, true, 'Live on YouTube - thumbnail updated', { url });
+      else setStatus(channelId, output.id, true, 'Live on YouTube. Thumbnail updated.', { url });
     } catch (err) {
       console.error(`[youtube] Thumbnail update for ${channelId}/${output.id}: ${err.message}`);
       setStatus(channelId, output.id, false, `Couldn't update the YouTube thumbnail: ${err.message}`, { url });
@@ -389,7 +389,7 @@ async function updateBroadcastDetails(channelId) {
         snippet: broadcastSnippet(channel, item.snippet.scheduledStartTime),
       });
       platformStats.updateDetails('youtube', output.broadcastId, channel);
-      setStatus(channelId, output.id, true, `Live on YouTube - title updated to ${broadcastSnippet(channel).title}`,
+      setStatus(channelId, output.id, true, `Live on YouTube. Title changed to ${broadcastSnippet(channel).title}.`,
         { url: `https://youtu.be/${output.broadcastId}` });
     } catch (err) {
       console.error(`[youtube] Title update for ${channelId}/${output.id}: ${err.message}`);
@@ -430,7 +430,7 @@ platformStats.registerClient('youtube', {
     const token = await tokenForAccount(record.account);
     const res = await apiCall(token, 'GET', `/videos?part=statistics&id=${encodeURIComponent(record.broadcastId)}`);
     const item = res.items && res.items[0];
-    if (!item) throw new Error('YouTube no longer has this broadcast (deleted?).');
+    if (!item) throw new Error('YouTube no longer has this broadcast. It may have been deleted.');
     const result = { views: Number(item.statistics.viewCount) || 0 };
     const params = new URLSearchParams({
       ids: 'channel==MINE',
@@ -446,7 +446,7 @@ platformStats.registerClient('youtube', {
       result.countries = {};
       (data.rows || []).forEach(([country, views]) => { result.countries[country] = Number(views) || 0; });
     } else if (analytics.status === 403) {
-      result.warning = 'Views by country need YouTube reconnecting once (delete the YouTube output and add it again).';
+      result.warning = 'To get views by country, reconnect YouTube once: delete the YouTube output and add it again.';
     } else {
       result.warning = `YouTube Analytics error (${analytics.status})`;
     }

@@ -41,8 +41,8 @@
           Help <span class="help-menu-caret" aria-hidden="true">&#9662;</span>
         </button>
         <div class="help-menu-panel hidden" id="help-menu-panel" role="menu">
-          <a href="#/how-it-works" id="how-it-works-btn" role="menuitem">How It Works</a>
-          <a href="#/how-to-use" id="how-to-use-btn" role="menuitem">How To Use</a>
+          <a href="#/how-it-works" id="how-it-works-btn" role="menuitem">How it works</a>
+          <a href="#/how-to-use" id="how-to-use-btn" role="menuitem">How to use</a>
         </div>
       </div>
       <button id="logout-btn" class="secondary">Log out</button>
@@ -51,7 +51,7 @@
 
   <div id="how-to-use-view" class="hidden">
     <section class="panel step-timeline-panel">
-      <p class="step-timeline-intro">A practical walkthrough - what to actually click, in order, to get a stream on your website.</p>
+      <p class="step-timeline-intro">What to click, in order, to get a stream onto your website.</p>
 
       <ol class="step-timeline-steps">
         <li class="step step-right">
@@ -59,13 +59,13 @@
           <span class="step-num">1</span>
           <div class="step-content">
             <h3>Create a channel</h3>
-            <p>Click "+ Create channel" on the Channels page and give it a name - the room, service, or camera it's for. Each channel gets its own stream key, settings, and outputs, entirely separate from any others.</p>
+            <p>Click "+ Create channel" on the Channels page and name it after the room, service or camera it's for. Each channel has its own stream key, settings and outputs.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
             <h3>Connect your encoder</h3>
-            <p>Copy the channel's RTMP URL and Stream key into OBS, vMix, or whatever you're streaming from, then press "Start Streaming" there. There's no separate "go live" button here - the channel goes live automatically the moment your encoder connects.</p>
+            <p>Copy the channel's RTMP URL and stream key into OBS, vMix or whatever you stream from, then press "Start Streaming" there. There's no "go live" button in this app: the channel goes live as soon as your encoder connects.</p>
           </div>
           <span class="step-num">2</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -75,13 +75,13 @@
           <span class="step-num">3</span>
           <div class="step-content">
             <h3>Put the player on your website</h3>
-            <p>Copy the embed code shown on the channel page and paste it into your site's HTML. It can sit there permanently, live or not - it only starts downloading video once a visitor actually presses play.</p>
+            <p>Copy the embed code from the channel page and paste it into your site's HTML. You can leave it there all the time. It only downloads video once a visitor presses play.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
-            <h3>Relay to other platforms too</h3>
-            <p>Click "+ Add output" to also send the same stream to a custom RTMP address (Facebook and most other platforms work this way too - just paste in their RTMP URL and stream key), or generate a Public Link viewers can open directly. Turn any of them on or off whenever you like, independently of the others.</p>
+            <h3>Send it to other places too</h3>
+            <p>Click "+ Add output" to send the same stream to YouTube, a Facebook Page or any custom RTMP address, or to make a Public Link people can open directly. Each output has its own on/off switch.</p>
           </div>
           <span class="step-num">4</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -91,13 +91,13 @@
           <span class="step-num">5</span>
           <div class="step-content">
             <h3>Turn on recording if you want a copy saved</h3>
-            <p>Flip the "Record streams" switch before you go live. Once you stop, the recording finishes processing and appears on the Recordings page - usually within 5-30 minutes - ready to play back or download. It's never public, admin-only.</p>
+            <p>Switch on "Record streams" before you go live. After you stop, the recording appears on the Recordings page, usually within 5 to 30 minutes, ready to play back or download. Recordings are never public.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
             <h3>Add cover and thumbnail images</h3>
-            <p>On a channel's page, upload an offline cover (shown before you're live) and a live thumbnail (shown once you're live, before someone presses play). Upload as many as you like to either gallery, then click one to make it the active image.</p>
+            <p>On a channel's page, upload an offline cover, shown while you're not live, and a live thumbnail, shown while you're live until someone presses play. You can upload several of each and click one to use it.</p>
           </div>
           <span class="step-num">6</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -107,13 +107,13 @@
           <span class="step-num">7</span>
           <div class="step-content">
             <h3>Check who's watching</h3>
-            <p>The Stats page shows anonymised, aggregate viewer numbers per channel - roughly where and how many, filterable by date and exportable as CSV. No accounts, no personal data, ever.</p>
+            <p>The Stats page lists who watched each channel on your website: one row per viewer, with their device type, IP address and rough location. It also shows views on YouTube and Facebook. Filter by channel or date, and export to CSV, Excel or PDF.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
-            <h3>Rename or delete a channel any time</h3>
-            <p>Both live on the channel's own page. Deleting one is permanent - it revokes the stream key and switches off every output for that channel, so double-check before confirming.</p>
+            <h3>Rename or delete a channel</h3>
+            <p>Both buttons are at the top of the channel's page. Deleting a channel can't be undone: its stream key stops working and all its outputs go with it.</p>
           </div>
           <span class="step-num">8</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -123,15 +123,15 @@
   </div>
 
   <div id="stream-test-view" class="hidden">
-    <p class="info-banner">This generates real traffic against the live site - hundreds of simulated viewers, indistinguishable from real ones. Only run it against a channel you're deliberately testing, and expect it to show up in that channel's Stats afterward (cleanup instructions below). The script's password is <code>smithton</code>.</p>
+    <p class="info-banner">This sends real traffic to the live site: hundreds of pretend viewers that look exactly like real ones. Only run it against a channel you're testing, and expect them to appear in that channel's Stats (step 5 explains how to remove them). The script's password is <code>smithton</code>.</p>
 
     <section class="panel">
-      <p>A script that simulates many concurrent viewers hitting the real site, to see how it holds up under load - the same request pattern a real embed player makes (status polling, manifest and segment fetches, heartbeat pings), without downloading full video. Runs from your own computer, not the droplet.</p>
+      <p>A script that pretends to be many viewers at once, to see how the site copes. It makes the same requests a real player makes (status checks, playlist and video segment requests, and heartbeat pings) without downloading the full video. Run it on your own computer, not the server.</p>
       <a class="secondary" href="/api/tools/load-test.js" download>Download load-test.js</a>
     </section>
 
     <section class="panel step-timeline-panel">
-      <p class="step-timeline-intro">How to run it, step by step.</p>
+      <p class="step-timeline-intro">How to run it.</p>
 
       <ol class="step-timeline-steps">
         <li class="step step-right">
@@ -139,13 +139,13 @@
           <span class="step-num">1</span>
           <div class="step-content">
             <h3>Download the script</h3>
-            <p>Click the download button above. You'll need Node.js installed on your computer (18 or newer) - grab it from nodejs.org if you don't already have it.</p>
+            <p>Click the download button above. You'll need Node.js 18 or newer on your computer, from nodejs.org.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
             <h3>Start a test stream</h3>
-            <p>The channel you're testing against needs to actually be live - a real stream, or a looping video pushed in from OBS - so there's something real for the script to fetch.</p>
+            <p>The channel you're testing needs to be live, with a real stream or a looping video from OBS, so the script has something to fetch.</p>
           </div>
           <span class="step-num">2</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -155,13 +155,13 @@
           <span class="step-num">3</span>
           <div class="step-content">
             <h3>Run it</h3>
-            <p>Open a terminal where you downloaded the file and run <code>node load-test.js</code>. It'll ask for the password (<code>smithton</code>), show a welcome banner, then ask for the channel ID (the UUID in that channel's embed code), how many viewers to simulate, how long to run, and how many seconds to ramp them up over - press Enter on any of the last three to accept the suggested default.</p>
+            <p>Open a terminal in the folder you downloaded it to and run <code>node load-test.js</code>. It asks for the password (<code>smithton</code>), then the channel ID (the long ID in that channel's embed code), how many viewers to pretend to be, how long to run, and how many seconds to take adding them. Press Enter on any of the last three to use the suggested value.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
             <h3>Watch it run</h3>
-            <p>It prints a running request count as it goes, then a full summary per request type when it finishes - error rate, and average/typical/worst-case response times. A rising error rate or response time is the sign to watch for.</p>
+            <p>It shows a running count of requests, then a summary for each type of request when it finishes: the error rate and the average, typical and slowest response times. Errors or response times going up are the sign the site is struggling.</p>
           </div>
           <span class="step-num">4</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -170,8 +170,8 @@
           <div class="step-spacer" aria-hidden="true"></div>
           <span class="step-num">5</span>
           <div class="step-content">
-            <h3>Clean up afterward</h3>
-            <p>Stop the test stream, then head to Stats, filter to today's date, select all, and delete - the simulated viewers' heartbeat pings are indistinguishable from real ones and will otherwise sit in that channel's real numbers.</p>
+            <h3>Clean up afterwards</h3>
+            <p>Stop the test stream, then go to Stats, filter to today's date, select all and delete. Otherwise the pretend viewers stay in that channel's numbers, since the app can't tell them from real ones.</p>
           </div>
         </li>
       </ol>
@@ -180,7 +180,7 @@
 
   <div id="how-it-works-view" class="hidden">
     <section class="panel step-timeline-panel">
-      <p class="step-timeline-intro">The mechanics behind the site - what actually happens on the server, end to end.</p>
+      <p class="step-timeline-intro">What happens on the server, from your encoder to a viewer's screen.</p>
 
       <ol class="step-timeline-steps">
         <li class="step step-right">
@@ -188,13 +188,13 @@
           <span class="step-num">1</span>
           <div class="step-content">
             <h3>Your encoder pushes video in over RTMP</h3>
-            <p>OBS, vMix, or whatever you're using sends a live video feed to this server using RTMP, a streaming protocol built for exactly this. Your channel's Stream key is checked on connection - it's the only thing standing between "this is really you" and anyone else, so it doubles as your password for that channel.</p>
+            <p>OBS, vMix or whatever you use sends live video to this server using RTMP, a protocol made for streaming. The server checks your channel's stream key when you connect. Anyone with the key can stream to your channel, so treat it like a password.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
             <h3>The server converts it to HLS in real time</h3>
-            <p>The incoming feed is immediately re-packaged into HLS - a few seconds of video at a time, written out as small files plus a constantly-updated playlist pointing at the latest ones. It's the same technique YouTube, Netflix, and most of the web use, because it plays over plain HTTPS in any browser without a video plugin.</p>
+            <p>The server repackages the video into HLS as it arrives: a few seconds at a time, saved as small files, with a playlist that always points to the newest ones. Browsers can play HLS over ordinary HTTPS without a plugin, which is why most video sites use it.</p>
           </div>
           <span class="step-num">2</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -204,13 +204,13 @@
           <span class="step-num">3</span>
           <div class="step-content">
             <h3>Viewers never touch the ingest server directly</h3>
-            <p>The RTMP server itself isn't reachable from outside at all - the backend fetches those HLS files internally and serves them to viewers itself, over the same domain as everything else. There's nothing for a viewer's browser to connect to except this one website.</p>
+            <p>The RTMP server can't be reached from outside to watch video. The backend fetches the HLS files internally and serves them on the same domain as the rest of the site, so a viewer's browser only ever talks to this website.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
             <h3>The embed player checks in, then pulls video on demand</h3>
-            <p>The small player embedded on your website polls the backend every few seconds asking "is this channel live yet?" - it only starts actually downloading video once someone presses play, not the moment the page loads, so an embedded-but-unwatched player costs nothing in bandwidth.</p>
+            <p>The player on your website asks the backend every few seconds whether the channel is live. It only downloads video once someone presses play, so a player nobody is watching uses almost no bandwidth.</p>
           </div>
           <span class="step-num">4</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -219,14 +219,14 @@
           <div class="step-spacer" aria-hidden="true"></div>
           <span class="step-num">5</span>
           <div class="step-content">
-            <h3>Relaying is a live copy, made server-side</h3>
-            <p>If an output is turned on, the server spins up a separate process that reads the same incoming feed and forwards an exact copy of it, unmodified, to that destination (a custom RTMP address) for as long as you're live. It's a straight copy, not a re-encode, so it costs the server very little CPU and your encoder never knows or cares how many places it's going to.</p>
+            <h3>The server copies your stream to each output</h3>
+            <p>For each output that's switched on, the server starts a separate process that copies the incoming video, unchanged, to that destination (YouTube, Facebook or a custom RTMP address) for as long as you're live. For YouTube and Facebook it first creates the broadcast with your title. Copying without re-encoding uses very little of the server's CPU, and your encoder only ever sends one stream.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
-            <h3>Recording writes to local disk first, then uploads and self-deletes</h3>
-            <p>With recording on, the same incoming feed is also copied to a raw file on the server's own disk as it arrives. The moment you stop, that file is converted into a normal, seekable video file, uploaded to Cloudflare's cloud storage, and then deleted from the server itself - nothing from a finished recording is ever left sitting on the droplet.</p>
+            <h3>Recordings are saved on the server, then moved to cloud storage</h3>
+            <p>With recording on, the incoming video is also written to a file on the server's disk. When you stop, the server converts it to a normal video file you can skip through, uploads it to Cloudflare's cloud storage and deletes its own copy, so finished recordings don't take up space on the server.</p>
           </div>
           <span class="step-num">6</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -235,14 +235,14 @@
           <div class="step-spacer" aria-hidden="true"></div>
           <span class="step-num">7</span>
           <div class="step-content">
-            <h3>Stats come from the player quietly pinging back</h3>
-            <p>While someone is actually watching, their player periodically pings the backend, which logs a rough, IP-based location and device type against that channel - never anything that identifies who they are, since nobody needs an account to watch. That's the raw material behind the Stats page.</p>
+            <h3>Stats come from the player checking in</h3>
+            <p>While someone watches on your website, their player checks in with the backend every so often. The backend records their IP address, a rough location worked out from it, and whether they're on a phone or computer. Viewers never sign in, so there are no names. YouTube and Facebook views come from those services themselves.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
-            <h3>Everything's kept on one small server, by design</h3>
-            <p>Channel settings, outputs, and admin logins all live in a lightweight data file on the same server, not a separate database - there's no infrastructure to manage beyond this one machine, sized for one organisation's traffic rather than a large public platform.</p>
+            <h3>Everything runs on one small server</h3>
+            <p>Channel settings, outputs and stats are kept in data files on the same server rather than in a separate database, and sign-in goes through Auth0. There's only this one machine to look after, sized for one organisation rather than a large public site.</p>
           </div>
           <span class="step-num">8</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -254,11 +254,11 @@
   <div id="recordings-view" class="hidden">
     <section class="panel recording-disabled-notice hidden" id="recordings-disabled-notice">
       <img src="/CLOUDFLARE.png" alt="Cloudflare" class="recording-disabled-logo">
-      <p class="recording-disabled-text">Recording is disabled in the app config</p>
+      <p class="recording-disabled-text">Recording is turned off in the app's settings</p>
     </section>
 
     <div id="recordings-normal-content">
-      <p class="info-banner">A recording can take 5&ndash;30 minutes to appear here after the stream ends, while it's uploaded and processed.</p>
+      <p class="info-banner">Recordings appear here 5 to 30 minutes after the stream ends, once they've been processed and uploaded.</p>
 
       <section class="panel recordings-processing-panel hidden" id="recordings-processing-panel">
         <h3>Processing</h3>
@@ -305,7 +305,7 @@
 
     <section class="panel stats-restream-panel">
       <div class="stats-restream-row">
-        <span id="stats-platforms-status-text" class="hint">YouTube and Facebook views update by themselves after each stream - daily for a week, then weekly.</span>
+        <span id="stats-platforms-status-text" class="hint">YouTube and Facebook views update by themselves after each stream: daily for a week, then weekly.</span>
         <button type="button" class="secondary" id="stats-platforms-refresh-btn">Refresh now</button>
       </div>
     </section>
@@ -344,7 +344,7 @@
           <tbody id="stats-table-body"></tbody>
         </table>
       </div>
-      <p id="stats-empty" class="hint hidden">No plays recorded yet for this filter.</p>
+      <p id="stats-empty" class="hint hidden">Nothing recorded for these filters yet.</p>
     </section>
   </div>
 
@@ -355,7 +355,7 @@
         <button class="secondary" id="create-channel-btn">+ Create channel</button>
       </div>
       <div id="channels-list"></div>
-      <p id="empty-state" class="hint hidden">No channels yet - click "+ Create channel" to get a stream key.</p>
+      <p id="empty-state" class="hint hidden">No channels yet. Click "+ Create channel" to get a stream key.</p>
     </section>
   </div>
 
@@ -371,7 +371,7 @@
 
             <div id="detail-offline-info">
               <h3>Connect your encoder</h3>
-              <p class="hint">Copy &amp; paste into your streaming software (OBS, vMix, etc).</p>
+              <p class="hint">Copy these into your streaming software, such as OBS or vMix.</p>
 
               <div class="field-row">
                 <label>RTMP URL</label>
@@ -400,7 +400,7 @@
           <div class="output-row">
             <div class="output-info">
               <span class="output-name">Record streams</span>
-              <span class="hint">Saves each stream to private cloud storage - admin-only, never public. See past recordings under the <b>Recordings</b> button up top.</span>
+              <span class="hint">Saves each stream to private cloud storage. Find them under <b>Recordings</b> at the top of the page.</span>
             </div>
             <label class="switch">
               <input type="checkbox" id="detail-recording-toggle">
@@ -411,7 +411,7 @@
 
 
         <div class="panel warning-banner hidden" id="recording-continue-banner">
-          <p><b>This recording has been running a long time.</b> Continuing will keep using server disk space for as long as it keeps going. If the disk fills up, the whole app will break for everyone - not just this stream. If you don't respond within a few minutes, recording will stop automatically (the live stream itself is never affected either way).</p>
+          <p><b>This recording has been running a long time.</b> It keeps using the server's disk space while it runs, and if the disk fills up the whole app stops working, not just this stream. If you don't answer within a few minutes, recording stops by itself. The live stream carries on either way.</p>
           <div class="warning-banner-actions">
             <button class="secondary" id="recording-continue-btn">Keep recording</button>
             <button class="secondary danger" id="recording-stop-btn">Stop recording now</button>
@@ -434,7 +434,7 @@
 
           <div class="output-row">
             <div class="output-info">
-              <span class="output-name">Your Website</span>
+              <span class="output-name">Your website</span>
               <span class="hint" id="detail-website-hint"></span>
             </div>
             <label class="switch">
@@ -453,15 +453,15 @@
           <hr class="output-divider">
 
           <div id="detail-outputs-list"></div>
-          <p class="hint hidden" id="detail-outputs-empty">No other outputs yet - click "+ Add output" above to relay to another destination.</p>
+          <p class="hint hidden" id="detail-outputs-empty">No other outputs yet. Click "+ Add output" to send this stream somewhere else too.</p>
         </div>
 
         <div class="panel detail-extras">
-          <h3>Offline cover images - click one to make it active</h3>
+          <h3>Offline cover images: click one to use it</h3>
           <div class="gallery" id="detail-cover-gallery"></div>
           <input type="file" id="detail-cover-upload-input" accept=".png,.jpg,.jpeg,.webp">
 
-          <h3>Live thumbnails - click one to make it active</h3>
+          <h3>Live thumbnails: click one to use it</h3>
           <div class="gallery" id="detail-thumb-gallery"></div>
           <input type="file" id="detail-thumb-upload-input" accept=".png,.jpg,.jpeg,.webp">
         </div>
@@ -582,7 +582,7 @@
     <h3>Create a channel</h3>
     <form id="create-form">
       <label>Channel name
-        <input type="text" id="new-channel-name" placeholder="e.g. Main Camera" required maxlength="100">
+        <input type="text" id="new-channel-name" placeholder="e.g. Main camera" required maxlength="100">
       </label>
       <div class="modal-actions">
         <button type="button" class="secondary" id="create-channel-cancel-btn">Cancel</button>
@@ -595,7 +595,7 @@
 <div id="recording-disabled-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal-box recording-disabled-notice">
     <img src="/CLOUDFLARE.png" alt="Cloudflare" class="recording-disabled-logo">
-    <p class="recording-disabled-text">Recording is disabled in the app config</p>
+    <p class="recording-disabled-text">Recording is turned off in the app's settings</p>
     <div class="modal-actions">
       <button id="recording-disabled-ok-btn">OK</button>
     </div>
@@ -616,8 +616,8 @@
 <div id="metadata-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal-box">
     <h3>Title &amp; description</h3>
-    <p class="hint">Used on the embed page (title, link previews).</p>
-    <label>Sermon Title
+    <p class="hint">Shown under the player on your website and Public Link, used in link previews, and sent to YouTube and Facebook.</p>
+    <label>Sermon title
       <input type="text" id="metadata-title-input" maxlength="100" placeholder="'Jesus' Unique Commitment'">
     </label>
     <label>Minister
@@ -633,7 +633,7 @@
 <div id="restream-import-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal-box restream-import-box">
     <h3>Import from Restream</h3>
-    <p class="hint">Pulls YouTube/Facebook view counts for streams in this range and previews them before anything's imported. Re-importing a stream you've already imported refreshes its numbers.</p>
+    <p class="hint">Gets the YouTube and Facebook view counts for streams between these dates and shows them for you to check before importing. Importing a stream again updates its numbers.</p>
     <div class="restream-import-dates">
       <label>From
         <input type="date" id="restream-import-from">
@@ -644,7 +644,7 @@
       <button type="button" class="secondary" id="restream-import-today-btn">Today</button>
       <button type="button" class="secondary" id="restream-import-preview-btn">Preview</button>
     </div>
-    <p id="restream-import-empty" class="hint hidden">No streams with YouTube/Facebook views found in that range.</p>
+    <p id="restream-import-empty" class="hint hidden">No streams with YouTube or Facebook views between those dates.</p>
     <div id="restream-import-preview-wrap" class="hidden">
       <table class="restream-import-preview-table">
         <thead>
@@ -734,7 +734,7 @@
 <footer class="site-footer">
   &copy; <span id="copyright-year"></span> Ross Mackenzie<span id="footer-last-updated"></span>
   &middot; <a href="https://github.com/bobchomp/rtmpwebplayer/commits/main" target="_blank" rel="noopener">Changelog</a>
-  &middot; <a href="#/stream-test" id="stream-test-btn">Stream Test</a>
+  &middot; <a href="#/stream-test" id="stream-test-btn">Stream test</a>
   <span id="footer-account"></span>
 </footer>
 

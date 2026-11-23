@@ -38,7 +38,7 @@ router.get('/callback', requireAuth, async (req, res) => {
   if (error === 'access_denied') return res.redirect(back); // cancelled on Google's screen
   if (error) return res.status(400).send(`Google returned an error: ${error}`);
   if (!state || state !== expectedState || !channelId) {
-    return res.status(400).send('Invalid or expired request - please try connecting again from the channel page.');
+    return res.status(400).send('That request has expired. Please connect again from the channel page.');
   }
   if (!ownsChannel(readDb().channels[channelId], currentAccount(req))) return res.status(404).send('Channel not found.');
   if (!code) return res.status(400).send('Missing authorization code.');

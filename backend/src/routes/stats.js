@@ -75,7 +75,7 @@ function exportFilterSummary(req) {
     const to = req.query.to ? new Date(req.query.to).toLocaleDateString() : 'now';
     parts.push(`${from} to ${to}`);
   }
-  return parts.join(' - ');
+  return parts.join(', ');
 }
 
 // Cloudflare (and most CDNs) set this to the actual visitor's IP - req.ip
@@ -215,7 +215,7 @@ router.post('/restream/auto-import', async (req, res) => {
     return !!(connection && connection.refreshToken);
   });
   if (!connected.length) {
-    return res.status(500).json({ error: 'No account has Restream connected - connect it from the Stats page.' });
+    return res.status(500).json({ error: 'No account has Restream connected. Connect it on the Stats page.' });
   }
 
   const accounts = [];

@@ -45,7 +45,7 @@ router.get('/callback', requireAuth, async (req, res) => {
   const back = channelId ? `/dashboard#/channel/${encodeURIComponent(channelId)}` : '/dashboard';
   if (error) return res.redirect(back); // cancelled on Facebook's screen
   if (!state || state !== expectedState || !channelId) {
-    return res.status(400).send('Invalid or expired request - please try connecting again from the channel page.');
+    return res.status(400).send('That request has expired. Please connect again from the channel page.');
   }
   if (!ownsChannel(readDb().channels[channelId], currentAccount(req))) return res.status(404).send('Channel not found.');
   if (!code) return res.status(400).send('Missing authorization code.');
@@ -53,7 +53,7 @@ router.get('/callback', requireAuth, async (req, res) => {
   try {
     const pages = await facebook.pagesForCode(code);
     if (!pages.length) {
-      return res.status(400).send('No Facebook Pages you can go live on were found. Facebook only allows apps to stream to Pages (not personal profiles), and you need full control of the Page. Check that, then try again - and on Facebook\'s screen, make sure the Page is ticked.');
+      return res.status(400).send('None of your Facebook Pages can be used to go live. Facebook only lets apps stream to Pages, not personal profiles, and you need full control of the Page. Check that, then try again, and make sure the Page is ticked on Facebook\'s screen.');
     }
     if (pages.length === 1) {
       facebook.addOutput(channelId, pages[0], MAX_OUTPUTS);
@@ -78,7 +78,7 @@ router.get('/pending', requireAuth, (req, res) => {
 
 router.post('/pick', requireAuth, express.json(), (req, res) => {
   const entry = takePending(req);
-  if (!entry) return res.status(400).json({ error: 'That sign-in has expired - please add Facebook again.' });
+  if (!entry) return res.status(400).json({ error: 'That sign-in has expired. Please add Facebook again.' });
   const page = entry.pages.find((p) => p.id === String((req.body && req.body.pageId) || ''));
   if (!page) return res.status(400).json({ error: 'Unknown Page' });
   if (!ownsChannel(readDb().channels[entry.channelId], currentAccount(req))) return res.status(404).json({ error: 'Channel not found' });

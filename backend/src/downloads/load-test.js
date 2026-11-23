@@ -84,17 +84,16 @@ async function resolveConfig() {
     console.log(`************************************************************************
 WELCOME TO STREAM.ROSSMACKENZIE.CO.UK STREAM TEST
 
-This generates real traffic against the live site - hundreds of
-simulated viewers, indistinguishable from real ones. Only run it against
-a channel you're deliberately testing, and expect it to show up in that
-channel's Stats afterward.
+This sends real traffic to the live site: hundreds of pretend viewers
+that look exactly like real ones. Only run it against a channel you're
+testing, and expect them to show up in that channel's Stats afterwards.
 
 Please have the following details ready before you continue:
 
-1. The Channel ID  - the string in the link when on the channel page. For example: https://stream.rossmackenzie.co.uk/dashboard#/channel/${exampleChannelId}
-2. Numbers of Viewers to simulate - how many people you want to simulate joining in on the stream
-3. Duration - I recommend you set this to 180, only set it to something else if you know what you're doing!
-4. Ramp Up - I recommend you set this to 30, again, only set it to something else if you know what you're doing!
+1. The Channel ID: the string in the link when on the channel page. For example: https://stream.rossmackenzie.co.uk/dashboard#/channel/${exampleChannelId}
+2. Number of viewers to simulate: how many people you want to pretend are joining the stream
+3. Duration: I recommend you set this to 180. Only set it to something else if you know what you're doing!
+4. Ramp up: I recommend you set this to 30. Again, only set it to something else if you know what you're doing!
 
 
 PLEASE ENSURE THERE ARE NO PRODUCTION STREAMS ACTIVE NOW!

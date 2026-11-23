@@ -45,10 +45,10 @@ router.get('/callback', async (req, res) => {
     return res.redirect('/login?error=' + encodeURIComponent(errorDescription || error));
   }
   if (!state || state !== expectedState) {
-    return res.redirect('/login?error=' + encodeURIComponent('Login request expired or was tampered with - please try again.'));
+    return res.redirect('/login?error=' + encodeURIComponent('That sign-in link has expired. Please try again.'));
   }
   if (!code) {
-    return res.redirect('/login?error=' + encodeURIComponent('Missing authorization code.'));
+    return res.redirect('/login?error=' + encodeURIComponent('Sign-in didn\'t finish. Please try again.'));
   }
 
   try {
@@ -65,17 +65,17 @@ router.get('/callback', async (req, res) => {
     // address before proving they control it - without this check, an
     // attacker could self-register with an ADMIN_EMAIL address and log straight in.
     if (!userInfo.email_verified || !gotEmail || !allowedEmails.includes(gotEmail)) {
-      return res.redirect('/login?error=' + encodeURIComponent('That account is not authorized for this dashboard.'));
+      return res.redirect('/login?error=' + encodeURIComponent('That account doesn\'t have access to this dashboard.'));
     }
 
     req.session.regenerate((err) => {
-      if (err) return res.redirect('/login?error=' + encodeURIComponent('Login failed - please try again.'));
+      if (err) return res.redirect('/login?error=' + encodeURIComponent('Sign-in failed. Please try again.'));
       req.session.isAdmin = true;
       req.session.account = gotEmail;
       res.redirect('/dashboard');
     });
   } catch (err) {
-    res.redirect('/login?error=' + encodeURIComponent('Login failed - please try again.'));
+    res.redirect('/login?error=' + encodeURIComponent('Sign-in failed. Please try again.'));
   }
 });
 

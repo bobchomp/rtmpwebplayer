@@ -125,13 +125,13 @@
         recordingsDisabledNotice.classList.remove('hidden');
       }
     } else if (r.view === 'how-it-works') {
-      document.title = 'How It Works - RTMP Web Player';
+      document.title = 'How it works - RTMP Web Player';
       howItWorksView.classList.remove('hidden');
     } else if (r.view === 'how-to-use') {
-      document.title = 'How To Use - RTMP Web Player';
+      document.title = 'How to use - RTMP Web Player';
       howToUseView.classList.remove('hidden');
     } else if (r.view === 'stream-test') {
-      document.title = 'Stream Test - RTMP Web Player';
+      document.title = 'Stream test - RTMP Web Player';
       streamTestView.classList.remove('hidden');
     } else {
       document.title = 'Channels - RTMP Web Player';
@@ -267,8 +267,8 @@
       + (statsChannelFilter.value ? '?channelId=' + encodeURIComponent(statsChannelFilter.value) : '');
     statsExportTemplateBtn.classList.toggle('disabled', !statsChannelFilter.value);
     statsExportTemplateBtn.title = statsChannelFilter.value
-      ? 'Exports the last 6 months for this channel, regardless of the From/To filters above'
-      : 'Select a single channel above to export in template';
+      ? 'Exports this channel\'s last 6 months, whatever the From and To dates are set to'
+      : 'Choose a channel above to export in the template';
 
     return api('/api/stats' + (query ? '?' + query : '')).then(function (data) {
       statsChannelsCache = data.channels;
@@ -336,9 +336,9 @@
       statsRestreamDisconnectBtn.classList.toggle('hidden', !data.connected);
       statsRestreamStatusText.textContent = data.connected
         ? 'Restream connected'
-        : 'Restream not connected - connect it to import YouTube/Facebook view counts.';
+        : 'Restream isn\'t connected. Connect it to import YouTube and Facebook view counts.';
     }).catch(function () {
-      statsRestreamStatusText.textContent = 'Could not check Restream connection status.';
+      statsRestreamStatusText.textContent = 'Couldn\'t check whether Restream is connected.';
     });
   }
 
@@ -420,7 +420,7 @@
 
   function previewRestreamImport() {
     if (!restreamImportFrom.value || !restreamImportTo.value) {
-      alert('Pick both a From and To date first.');
+      alert('Choose a From date and a To date first.');
       return;
     }
     restreamImportPreviewBtn.disabled = true;
@@ -443,7 +443,7 @@
   function commitRestreamImport() {
     var itemsToImport = restreamPreviewItems.filter(function (item) { return item.included !== false; });
     if (!itemsToImport.length) {
-      alert('Nothing selected - tick at least one stream to import.');
+      alert('Tick at least one stream to import.');
       return;
     }
     restreamImportCommitBtn.disabled = true;
@@ -453,10 +453,10 @@
     }).then(function (result) {
       closeRestreamImportModal();
       return loadStats().then(function () {
-        var msg = 'Imported ' + result.importedCount + ' row(s) from ' + result.itemCount + ' stream(s).';
+        var msg = 'Imported ' + result.importedCount + ' row' + (result.importedCount === 1 ? '' : 's') + ' from ' + result.itemCount + ' stream' + (result.itemCount === 1 ? '' : 's') + '.';
         var skipped = result.skippedNoChannel + result.skippedNoViews;
         if (skipped) {
-          msg += ' Skipped ' + skipped + ' (' + result.skippedNoChannel + ' with no channel match, ' + result.skippedNoViews + ' with no views).';
+          msg += ' Skipped ' + skipped + ': ' + result.skippedNoChannel + ' didn\'t match a channel and ' + result.skippedNoViews + ' had no views.';
         }
         alert(msg);
       });
@@ -493,7 +493,7 @@
     statsDeleteSelectedBtn.addEventListener('click', function () {
       var ids = Object.keys(statsSelectedIds);
       if (!ids.length) return;
-      if (!confirm('Delete ' + ids.length + ' selected play record' + (ids.length === 1 ? '' : 's') + '? This cannot be undone.')) return;
+      if (!confirm('Delete ' + ids.length + ' selected row' + (ids.length === 1 ? '' : 's') + '? This can\'t be undone.')) return;
       api('/api/stats', { method: 'DELETE', body: JSON.stringify({ ids: ids }) })
         .then(loadStats)
         .catch(function (err) { alert(err.message); });
@@ -508,23 +508,23 @@
           var when = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
           if (result.problems && result.problems.length) {
             statsPlatformsStatusText.classList.add('error');
-            statsPlatformsStatusText.textContent = 'Refreshed at ' + when + ', with problems: ' + result.problems.join(' ');
+            statsPlatformsStatusText.textContent = 'Updated at ' + when + ', but some failed: ' + result.problems.join(' ');
           } else {
             statsPlatformsStatusText.textContent = result.refreshed
-              ? 'Refreshed ' + result.refreshed + ' stream(s) at ' + when + '.'
-              : 'No YouTube or Facebook streams from the last five weeks to refresh.';
+              ? 'Updated ' + result.refreshed + ' stream' + (result.refreshed === 1 ? '' : 's') + ' at ' + when + '.'
+              : 'No YouTube or Facebook streams in the last five weeks to update.';
           }
           return loadStats();
         })
         .catch(function (err) {
           statsPlatformsStatusText.classList.add('error');
-          statsPlatformsStatusText.textContent = 'Couldn\'t refresh: ' + err.message;
+          statsPlatformsStatusText.textContent = 'Couldn\'t update the views: ' + err.message;
         })
         .then(function () { statsPlatformsRefreshBtn.disabled = false; });
     });
 
     statsRestreamDisconnectBtn.addEventListener('click', function () {
-      if (!confirm('Disconnect Restream? You can reconnect any time - already-imported rows stay put.')) return;
+      if (!confirm('Disconnect Restream? You can connect it again at any time, and rows you\'ve already imported stay.')) return;
       api('/api/restream/disconnect', { method: 'POST' })
         .then(checkRestreamStatus)
         .catch(function (err) { alert(err.message); });
@@ -844,7 +844,7 @@
     if (list.length === 0) {
       var empty = document.createElement('span');
       empty.className = 'gallery-empty hint';
-      empty.textContent = 'No images uploaded yet';
+      empty.textContent = 'No images yet';
       galleryEl.appendChild(empty);
       return;
     }
@@ -982,7 +982,7 @@
     }
 
     node.querySelector('.output-delete-btn').addEventListener('click', function () {
-      if (!confirm('Remove the ' + platform.name + ' output? This disconnects ' + (platform.connectedTo(output) || platform.name) + ' from this channel.')) return;
+      if (!confirm('Remove the ' + platform.name + ' output? ' + (platform.connectedTo(output) || platform.name) + ' will be disconnected from this channel.')) return;
       api('/api/channels/' + channel.id + '/outputs/' + output.id, { method: 'DELETE' })
         .then(refreshChannelDetail)
         .catch(function (err) { alert(err.message); });
@@ -1026,8 +1026,8 @@
 
     detailWebsiteToggle.checked = channel.embedEnabled !== false;
     detailWebsiteHint.textContent = channel.embedEnabled !== false
-      ? 'The player on your website - paste the code below wherever you like'
-      : 'Off - your website\'s player shows as offline, as if you weren\'t streaming (you still see the stream on this page)';
+      ? 'Paste the code below into any page of your website.'
+      : 'Off. The player on your website shows as offline, even while you\'re streaming. You can still watch here.';
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
     recordingContinueBanner.classList.add('hidden'); // reset on nav - pollLiveStatus re-shows it if still warranted
@@ -1051,7 +1051,7 @@
       var node = outputRowTemplate.content.firstElementChild.cloneNode(true);
       node.querySelector('.output-name').textContent = isPublicLink ? 'Public Link' : output.name;
       node.querySelector('.output-url').textContent = isPublicLink
-        ? 'Anyone with the link can watch - click Copy link to share it'
+        ? 'Anyone with the link can watch. Click Copy link to share it.'
         : output.rtmpUrl;
 
       var toggle = node.querySelector('.output-toggle');
@@ -1161,12 +1161,12 @@
           var stageLabel = node.querySelector('.recording-processing-stage');
           var fill = node.querySelector('.recording-processing-bar-fill');
           if (job.stage === 'failed') {
-            var when = job.recordingStartedAt ? 'Recorded ' + formatPlayDate(job.recordingStartedAt) + ' - ' : '';
-            stageLabel.textContent = when + "Couldn't be saved after " + job.attempts + ' attempts' +
+            var when = job.recordingStartedAt ? 'Recorded ' + formatPlayDate(job.recordingStartedAt) + ': ' : '';
+            stageLabel.textContent = when + "couldn't be saved after " + job.attempts + ' attempts' +
               (job.error ? ' (' + job.error + ')' : '') + '. The raw file is still on the server.';
             node.querySelector('.recording-processing-bar-track').classList.add('hidden');
           } else if (job.stage === 'uploading' && typeof job.progressPercent === 'number') {
-            stageLabel.textContent = 'Uploading - ' + job.progressPercent + '%';
+            stageLabel.textContent = 'Uploading: ' + job.progressPercent + '%';
             fill.style.width = job.progressPercent + '%';
           } else {
             stageLabel.textContent = 'Converting recording…';
@@ -1205,7 +1205,7 @@
       });
 
       node.querySelector('.recording-delete-btn').addEventListener('click', function () {
-        if (!confirm('Delete this recording? This cannot be undone.')) return;
+        if (!confirm('Delete this recording? This can\'t be undone.')) return;
         api('/api/channels/' + recordingChannelId + '/recordings/' + recording.id, { method: 'DELETE' })
           .then(function () { loadRecordingsForChannel(channelId); })
           .catch(function (err) { alert(err.message); });
@@ -1304,7 +1304,7 @@
     });
 
     detailDeleteBtn.addEventListener('click', function () {
-      if (!confirm('Delete channel "' + detailName.textContent + '"? This cannot be undone.')) return;
+      if (!confirm('Delete the channel "' + detailName.textContent + '"? This can\'t be undone.')) return;
       api('/api/channels/' + currentChannelId, { method: 'DELETE' })
         .then(function () { window.location.hash = '#/'; })
         .catch(function (err) { alert(err.message); });
@@ -1317,7 +1317,7 @@
     });
 
     detailRegenBtn.addEventListener('click', function () {
-      if (!confirm('Regenerate the stream key? Any encoder currently publishing with the old key will be disconnected.')) return;
+      if (!confirm('Make a new stream key? Anything streaming with the old key right now will be cut off.')) return;
       api('/api/channels/' + currentChannelId + '/regenerate-key', { method: 'POST' })
         .then(refreshChannelDetail)
         .catch(function (err) { alert(err.message); });
@@ -1325,7 +1325,7 @@
 
     detailWebsiteToggle.addEventListener('change', function () {
       if (!detailWebsiteToggle.checked
-        && !confirm('Switch off the player on your website? It will show as offline to visitors, even while you\'re streaming, until you switch it back on.')) {
+        && !confirm('Switch off the player on your website? Visitors will see it as offline, even while you\'re streaming, until you switch it back on.')) {
         detailWebsiteToggle.checked = true;
         return;
       }

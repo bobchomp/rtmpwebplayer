@@ -426,7 +426,7 @@
       video.src = freshManifestUrl();
     } else {
       showOffline();
-      offlineLabel.textContent = 'Your browser cannot play this stream.';
+      offlineLabel.textContent = 'This browser can\'t play the stream.';
       offlineLabel.style.display = 'block';
     }
   }
@@ -657,7 +657,7 @@
     if (live) {
       watchStatusText.textContent = 'Streaming now';
     } else if (data && data.lastLiveAt) {
-      watchStatusText.textContent = 'Not live right now - last live ' + new Date(data.lastLiveAt).toLocaleString('en-GB', {
+      watchStatusText.textContent = 'Not live right now. Last live ' + new Date(data.lastLiveAt).toLocaleString('en-GB', {
         weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
       });
     } else {

@@ -10,7 +10,7 @@ function bannerHtml(position) {
 display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
 padding:11px 16px;font:600 14px/1.4 'Poppins',-apple-system,'Segoe UI',Roboto,sans-serif;
 box-shadow:0 1px 4px rgba(34,38,43,.2);">
-  <span>&#9888;&#65039; This is the <strong>development</strong> site &mdash; not for real streams or production use.</span>
+  <span>&#9888;&#65039; This is the <strong>development</strong> site, for testing only. Don't use it for real streams.</span>
   <a href="https://stream.rossmackenzie.co.uk" style="background:#22262B;color:#fff;
   padding:7px 14px;border-radius:7px;text-decoration:none;font-weight:600;white-space:nowrap;">Go to main site</a>
 </div>`.trim();

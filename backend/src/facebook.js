@@ -48,8 +48,8 @@ function getAuthUrl(state) {
 // Facebook's own rules on who may go live, reported as a bare "Permissions
 // error" - nothing the app or Meta app settings can change.
 const ELIGIBILITY_ERRORS = {
-  1363120: 'Facebook won\'t let this Page go live yet - it has to be at least 60 days old.',
-  1363144: 'Facebook won\'t let this Page go live yet - it needs at least 100 followers.',
+  1363120: 'Facebook won\'t let this Page go live until it\'s at least 60 days old.',
+  1363144: 'Facebook won\'t let this Page go live until it has at least 100 followers.',
 };
 
 async function graph(method, path, params = {}, accessToken) {
@@ -98,7 +98,7 @@ async function pagesForCode(code) {
   const missing = REQUIRED_PERMISSIONS.filter((p) => !granted.includes(p));
   if (missing.length) {
     throw new Error(`Facebook didn't grant ${missing.join(', ')}. Add Facebook again and leave every permission switched on`
-      + `${process.env.FACEBOOK_CONFIG_ID ? ' - and check they are all ticked in the Meta app\'s Facebook Login for Business configuration' : ''}.`);
+      + `${process.env.FACEBOOK_CONFIG_ID ? ', and check they are all ticked in the Meta app\'s Facebook Login for Business configuration' : ''}.`);
   }
   const res = await graph('GET', '/me/accounts', { fields: 'id,name,access_token,tasks', limit: '100' }, long.access_token);
   return (res.data || [])
@@ -189,7 +189,7 @@ async function startBroadcast(channelId, outputId, session) {
         { status: 'LIVE_NOW', ...videoFields(channel) }, token);
       liveVideoId = created.id;
       ingestUrl = created.secure_stream_url || created.stream_url;
-      if (!ingestUrl) throw new Error('Facebook did not return a stream address for the live video.');
+      if (!ingestUrl) throw new Error('Facebook didn\'t give a stream address for the live video.');
     }
 
     output = readDb().channels[channelId].outputs.find((o) => o.id === outputId);
@@ -212,7 +212,7 @@ async function startBroadcast(channelId, outputId, session) {
   } catch (err) {
     console.error(`[facebook] Channel ${channelId} output ${outputId}: ${err.message}`);
     setStatus(channelId, outputId, false,
-      err.reconnect ? 'Facebook needs reconnecting - delete this output and add Facebook again.' : err.message);
+      err.reconnect ? 'Facebook needs reconnecting. Delete this output and add Facebook again.' : err.message);
   }
 }
 
@@ -243,7 +243,7 @@ async function finishBroadcast(channelId, outputId, liveVideoId) {
   try {
     const done = await endLiveVideo(tokenFor(outputId), liveVideoId);
     platformStats.markEnded('facebook', liveVideoId, { neverWentLive: done === 'deleted' });
-    setStatus(channelId, outputId, true, 'Stream ended - Facebook live video ended');
+    setStatus(channelId, outputId, true, 'Stream ended, and the Facebook live video was ended.');
   } catch (err) {
     platformStats.markEnded('facebook', liveVideoId);
     setStatus(channelId, outputId, false,
@@ -267,7 +267,7 @@ async function updateBroadcastDetails(channelId) {
       // eslint-disable-next-line no-await-in-loop
       await graph('POST', `/${output.broadcastId}`, videoFields(channel), tokenFor(output.id));
       platformStats.updateDetails('facebook', output.broadcastId, channel);
-      setStatus(channelId, output.id, true, 'Live on Facebook - title updated', { url });
+      setStatus(channelId, output.id, true, 'Live on Facebook. Title updated.', { url });
     } catch (err) {
       console.error(`[facebook] Title update for ${channelId}/${output.id}: ${err.message}`);
       setStatus(channelId, output.id, false, `Couldn't update the Facebook title: ${err.message}`, { url });
@@ -302,7 +302,7 @@ platformStats.registerClient('facebook', {
       insights = await graph('GET', `/${info.video.id}/video_insights`, { metric: 'total_video_views', period: 'lifetime' }, token);
     } catch (err) {
       if (/permission/i.test(err.message)) {
-        return { views: null, warning: 'Facebook view counts need the read_insights permission - add it to the Meta app (and its Configuration), then delete and re-add the Facebook output.' };
+        return { views: null, warning: 'Facebook view counts need the read_insights permission. Add it to the Meta app and its Configuration, then delete and re-add the Facebook output.' };
       }
       throw err;
     }

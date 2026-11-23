@@ -27,7 +27,7 @@ router.get('/callback', requireAuth, async (req, res) => {
 
   if (error) return res.status(400).send(`Restream returned an error: ${error}`);
   if (!state || state !== req.session.restreamOAuthState) {
-    return res.status(400).send('Invalid or expired request - please try connecting again from the Stats page.');
+    return res.status(400).send('That request has expired. Please connect again from the Stats page.');
   }
   delete req.session.restreamOAuthState;
   if (!code) return res.status(400).send('Missing authorization code.');

@@ -10,7 +10,7 @@ async function getAccessToken(account) {
   const db = readDb();
   const connection = db.restreamAccounts && db.restreamAccounts[account];
   if (!connection || !connection.refreshToken) {
-    throw new Error('Restream is not connected - connect it first from the Stats page.');
+    throw new Error('Restream isn\'t connected. Connect it on the Stats page first.');
   }
   const tokens = await restream.refreshAccessToken(connection.refreshToken);
   // If Restream hands back a new refresh token, keep it - an old one may
