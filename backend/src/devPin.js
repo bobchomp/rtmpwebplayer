@@ -16,7 +16,18 @@ const LOCKOUT_MS = 15 * 60 * 1000;
 // Paths that must work without the PIN: nginx-rtmp's webhooks (called by the
 // dev-rtmp container, never a browser - Caddy already blocks them from
 // outside), health checks, and the files the PIN page itself needs.
-const EXEMPT_PREFIXES = ['/api/rtmp/', '/healthz', '/style.css', '/fonts/', '/favicon.'];
+//
+// Plus the public player and everything it loads, so a dev embed pasted
+// into a website (or a dev Public Link) plays for anyone, like production.
+// A visitor there has no PIN cookie, and inside someone else's page the
+// browser wouldn't send one anyway. The dashboard stays locked.
+const EXEMPT_PREFIXES = [
+  '/api/rtmp/', '/healthz', '/style.css', '/fonts/', '/favicon.',
+  '/embed/', '/watch/', '/live/', '/uploads/', '/vendor/', '/api/stats/track',
+];
+// The player's live/offline check (the viewer count route next to it stays
+// locked, and needs a login anyway).
+const EXEMPT_PATTERNS = [/^\/api\/channels\/[^/]+\/status$/];
 
 // Derived from the PIN and SESSION_SECRET rather than storing the PIN in the
 // cookie, so the cookie can't be forged and changing the PIN logs everyone out.
@@ -121,6 +132,7 @@ function devPinGate(req, res, next) {
   }
 
   if (EXEMPT_PREFIXES.some((prefix) => req.path.startsWith(prefix))) return next();
+  if (EXEMPT_PATTERNS.some((pattern) => pattern.test(req.path))) return next();
   if (secretMatches(readCookie(req, COOKIE_NAME), expectedCookieValue())) return next();
 
   sendPinPage(res, 401, req.method === 'GET' ? safeNext(req.originalUrl) : '/');
