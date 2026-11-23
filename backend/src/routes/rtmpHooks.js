@@ -6,6 +6,7 @@ const recordingSessions = require('../recordingSessions');
 const { secretMatches } = require('../safeCompare');
 const youtube = require('../youtube');
 const facebook = require('../facebook');
+const streamSessions = require('../streamSessions');
 
 // Direct platform outputs, which create a broadcast/live video each time the
 // channel goes live and share one output shape (see platformOutputs.js).
@@ -97,6 +98,7 @@ router.post('/on_publish', (req, res) => {
       freshChannel.isLive = true;
       freshChannel.lastLiveAt = new Date().toISOString();
       writeDb(freshDb);
+      streamSessions.start(channel.id);
     } catch (err) {
       console.error(`Failed to flip channel ${channel.id} live:`, err.message);
     }
@@ -132,6 +134,11 @@ router.post('/on_publish_done', (req, res) => {
       }
     });
     writeDb(db);
+    try {
+      streamSessions.end(channel.id);
+    } catch (err) {
+      console.error(`Failed to end the stream session for ${channel.id}:`, err.message);
+    }
     toFinish.forEach(([client, outputId, broadcastId]) => {
       setTimeout(() => client.finishBroadcast(channel.id, outputId, broadcastId), client.RECONNECT_GRACE_MS);
     });

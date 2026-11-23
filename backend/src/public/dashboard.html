@@ -481,6 +481,47 @@
       </div>
 
     </div>
+
+    <!-- Live: Stream health + Viewers. Offline: Last stream. See app.js. -->
+    <div class="detail-bottom hidden" id="detail-bottom">
+      <section class="panel stream-health-panel hidden" id="stream-health-panel">
+        <div class="bottom-panel-header">
+          <h3>Stream health</h3>
+          <span class="health-chip" id="health-chip"></span>
+        </div>
+        <p class="health-message hidden" id="health-message"></p>
+        <dl class="health-stats" id="health-stats"></dl>
+        <div class="health-spark-wrap">
+          <div class="health-spark-label"><span>Bitrate, last 5 minutes</span><span id="health-spark-range"></span></div>
+          <svg class="health-spark" id="health-spark" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+      </section>
+
+      <section class="panel viewer-graph-panel hidden" id="viewer-graph-panel">
+        <div class="bottom-panel-header">
+          <h3>Viewers</h3>
+          <span class="hint" id="viewer-graph-note">Updated every minute</span>
+        </div>
+        <div class="viewer-graph-legend" id="viewer-graph-legend"></div>
+        <div class="viewer-graph" id="viewer-graph"></div>
+      </section>
+
+      <section class="panel last-stream-panel hidden" id="last-stream-panel">
+        <div class="bottom-panel-header">
+          <h3>Last stream</h3>
+          <a href="#/stats" class="secondary last-stream-stats-link">See all stats</a>
+        </div>
+        <p class="hint last-stream-when" id="last-stream-when"></p>
+        <div class="last-stream-body">
+          <dl class="last-stream-figures" id="last-stream-figures"></dl>
+          <div class="last-stream-graph-wrap">
+            <div class="viewer-graph-legend" id="last-stream-legend"></div>
+            <div class="viewer-graph" id="last-stream-graph"></div>
+          </div>
+        </div>
+        <p class="hint last-stream-empty hidden" id="last-stream-empty">No streams yet. After your first stream, a summary of it appears here.</p>
+      </section>
+    </div>
   </div>
 </div>
 

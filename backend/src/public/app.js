@@ -792,6 +792,7 @@
       lastViewerCounts = null;
       applyViewerPills();
     }
+    renderBottomPanels(isLive);
   }
 
   // Admin-only, dashboard-only - polled while a recording is in progress so
@@ -857,6 +858,7 @@
       .then(function (data) {
         if (!data) return;
         updatePreviewState(data.isLive, currentChannelId);
+        pollBottomPanels(data.isLive);
         refreshPlatformOutputs();
         if (data.isLive) {
           pollViewerCount();
@@ -1150,6 +1152,353 @@
 
   function galleryOrder(galleryEl) {
     return Array.prototype.map.call(galleryEl.querySelectorAll('.gallery-item'), function (el) { return el.dataset.filename; });
+  }
+
+  // ===================== Stream health, Viewers, Last stream =====================
+  // Under the player and outputs. While live: Stream health (what the server
+  // is receiving from the encoder) and a Viewers graph. While offline: a
+  // summary of the last stream. See streamHealth.js and streamSessions.js.
+
+  var detailBottom = document.getElementById('detail-bottom');
+  var streamHealthPanel = document.getElementById('stream-health-panel');
+  var viewerGraphPanel = document.getElementById('viewer-graph-panel');
+  var lastStreamPanel = document.getElementById('last-stream-panel');
+  var healthChip = document.getElementById('health-chip');
+  var healthMessage = document.getElementById('health-message');
+  var healthStats = document.getElementById('health-stats');
+  var healthSpark = document.getElementById('health-spark');
+  var healthSparkRange = document.getElementById('health-spark-range');
+  var viewerGraph = document.getElementById('viewer-graph');
+  var viewerGraphLegend = document.getElementById('viewer-graph-legend');
+  var lastStreamWhen = document.getElementById('last-stream-when');
+  var lastStreamFigures = document.getElementById('last-stream-figures');
+  var lastStreamGraph = document.getElementById('last-stream-graph');
+  var lastStreamLegend = document.getElementById('last-stream-legend');
+  var lastStreamEmpty = document.getElementById('last-stream-empty');
+  var lastStreamBody = lastStreamPanel.querySelector('.last-stream-body');
+
+  var bottomState = null; // 'live' or 'offline', with the channel it's for
+  var bitrateHistory = [];
+  var lastSession = null;
+  var bottomPollCount = 0;
+  var BITRATE_WINDOW_MS = 5 * 60 * 1000;
+  var SERIES_COLOURS = { 'Your website': '--series-website', 'Public Link': '--series-public-link', YouTube: '--series-youtube', Facebook: '--series-facebook' };
+
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function formatSpan(ms) {
+    var mins = Math.floor(ms / 60000);
+    if (mins < 1) return Math.max(0, Math.round(ms / 1000)) + 's';
+    var h = Math.floor(mins / 60);
+    return h ? h + 'h ' + String(mins % 60).padStart(2, '0') + 'm' : mins + 'm';
+  }
+
+  function formatClock(date) {
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatNumber(n) {
+    return Number(n).toLocaleString('en-GB');
+  }
+
+  function svgEl(name, attrs) {
+    var el = document.createElementNS('http://www.w3.org/2000/svg', name);
+    Object.keys(attrs || {}).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+    return el;
+  }
+
+  function fillFigures(dl, figures) {
+    dl.innerHTML = '';
+    figures.forEach(function (f) {
+      var div = document.createElement('div');
+      var dt = document.createElement('dt');
+      dt.textContent = f.label;
+      var dd = document.createElement('dd');
+      dd.textContent = f.value;
+      if (f.note) {
+        var small = document.createElement('small');
+        small.textContent = f.note;
+        dd.appendChild(small);
+      }
+      div.appendChild(dt);
+      div.appendChild(dd);
+      dl.appendChild(div);
+    });
+  }
+
+  // Called whenever the channel's live state is known (page load and every
+  // 5s poll). Switches between the live and offline boxes, and loads fresh
+  // data when it changes.
+  function renderBottomPanels(isLive) {
+    var state = (isLive ? 'live:' : 'offline:') + currentChannelId;
+    detailBottom.classList.remove('hidden');
+    streamHealthPanel.classList.toggle('hidden', !isLive);
+    viewerGraphPanel.classList.toggle('hidden', !isLive);
+    lastStreamPanel.classList.toggle('hidden', isLive);
+    if (state === bottomState) return;
+    bottomState = state;
+    bottomPollCount = 0;
+    bitrateHistory = [];
+    lastSession = null;
+    viewerGraph.innerHTML = '';
+    viewerGraphLegend.innerHTML = '';
+    if (isLive) {
+      healthChip.textContent = '';
+      healthChip.className = 'health-chip';
+      healthStats.innerHTML = '';
+      healthMessage.classList.add('hidden');
+      healthSpark.innerHTML = '';
+      healthSparkRange.textContent = '';
+      pollStreamHealth();
+    }
+    loadStreamSession();
+  }
+
+  // From pollLiveStatus, every 5s: health each time, the session (graph or
+  // summary) every 15s while live and every minute while offline.
+  function pollBottomPanels(isLive) {
+    bottomPollCount += 1;
+    if (isLive) {
+      pollStreamHealth();
+      if (bottomPollCount % 3 === 0) loadStreamSession();
+    } else if (bottomPollCount % 12 === 0) {
+      loadStreamSession();
+    }
+  }
+
+  function pollStreamHealth() {
+    var channelId = currentChannelId;
+    fetch('/api/channels/' + channelId + '/health', { cache: 'no-store' })
+      .then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
+      .then(function (res) {
+        if (channelId !== currentChannelId) return;
+        renderStreamHealth(res.ok ? res.body : { error: res.body.error });
+      })
+      .catch(function () { if (channelId === currentChannelId) renderStreamHealth({ error: 'Couldn\'t reach the server.' }); });
+  }
+
+  function setHealth(level, chipText, message) {
+    healthChip.className = 'health-chip ' + level;
+    healthChip.textContent = chipText;
+    healthMessage.classList.toggle('hidden', !message);
+    healthMessage.classList.toggle('bad', level === 'bad');
+    healthMessage.textContent = message || '';
+  }
+
+  function renderStreamHealth(h) {
+    if (h.error) {
+      setHealth('warn', 'Unknown', h.error);
+      return;
+    }
+    if (!h.connected) {
+      setHealth('bad', 'No signal', 'The server isn\'t receiving anything from your encoder right now.');
+      healthStats.innerHTML = '';
+      return;
+    }
+
+    var now = Date.now();
+    bitrateHistory.push({ t: now, kbps: h.bitrateKbps || 0 });
+    bitrateHistory = bitrateHistory.filter(function (p) { return now - p.t <= BITRATE_WINDOW_MS; });
+
+    // Compared with its own recent average, since a "good" bitrate depends
+    // on the OBS settings.
+    var earlier = bitrateHistory.slice(0, -1);
+    var average = earlier.length ? earlier.reduce(function (s, p) { return s + p.kbps; }, 0) / earlier.length : 0;
+    if (!h.bitrateKbps) {
+      setHealth('bad', 'No data', 'Nothing is arriving from your encoder. Check OBS is still streaming and its internet connection is working.');
+    } else if (earlier.length >= 6 && h.bitrateKbps < average * 0.6) {
+      setHealth('warn', 'Dropping', 'The bitrate has fallen well below its usual level. Check the internet connection where you\'re streaming from.');
+    } else {
+      setHealth('good', 'Good', '');
+    }
+
+    var figures = [
+      { label: 'Bitrate', value: formatNumber(h.bitrateKbps || 0) + ' kbps',
+        note: h.videoKbps != null ? 'Video ' + formatNumber(h.videoKbps) + ', audio ' + formatNumber(h.audioKbps || 0) : '' },
+      { label: 'Live for', value: h.uptimeMs != null ? formatSpan(h.uptimeMs) : '-' },
+    ];
+    if (h.width && h.height) {
+      figures.push({ label: 'Resolution', value: h.width + ' × ' + h.height,
+        note: [h.videoCodec, h.videoProfile].filter(Boolean).join(' ') });
+    }
+    if (h.fps) figures.push({ label: 'Frame rate', value: Math.round(h.fps) + ' fps' });
+    if (h.audioCodec) {
+      var audioNote = [];
+      if (h.sampleRate) audioNote.push(Math.round(h.sampleRate / 100) / 10 + ' kHz');
+      if (h.audioChannels) audioNote.push(h.audioChannels === 1 ? 'mono' : h.audioChannels === 2 ? 'stereo' : h.audioChannels + ' channels');
+      figures.push({ label: 'Audio', value: h.audioCodec, note: audioNote.join(', ') });
+    }
+    fillFigures(healthStats, figures);
+    drawBitrateSpark();
+  }
+
+  function drawBitrateSpark() {
+    healthSpark.innerHTML = '';
+    if (bitrateHistory.length < 2) {
+      healthSparkRange.textContent = 'Filling in…';
+      return;
+    }
+    var values = bitrateHistory.map(function (p) { return p.kbps; });
+    var max = Math.max.apply(null, values) || 1;
+    var min = Math.min.apply(null, values);
+    var t0 = bitrateHistory[0].t;
+    var span = Math.max(1, bitrateHistory[bitrateHistory.length - 1].t - t0);
+    healthSpark.setAttribute('viewBox', '0 0 100 48');
+    var pts = bitrateHistory.map(function (p) {
+      return [((p.t - t0) / span) * 100, 46 - (p.kbps / max) * 42];
+    });
+    var line = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2); }).join(' ');
+    healthSpark.appendChild(svgEl('path', { class: 'area', d: line + ' L100 48 L0 48 Z' }));
+    healthSpark.appendChild(svgEl('path', { class: 'line', d: line }));
+    healthSparkRange.textContent = formatNumber(min) + ' to ' + formatNumber(max) + ' kbps';
+  }
+
+  function loadStreamSession() {
+    var channelId = currentChannelId;
+    fetch('/api/channels/' + channelId + '/stream-session', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || channelId !== currentChannelId) return;
+        lastSession = data.session;
+        if (bottomState === 'live:' + channelId) renderLiveGraph();
+        else renderLastStream();
+      })
+      .catch(function () {});
+  }
+
+  function renderLiveGraph() {
+    drawViewerGraph(viewerGraph, viewerGraphLegend, lastSession, true);
+  }
+
+  // The summary of the most recent stream (or an empty state before the
+  // first one).
+  function renderLastStream() {
+    var s = lastSession;
+    lastStreamEmpty.classList.toggle('hidden', !!s);
+    lastStreamBody.classList.toggle('hidden', !s);
+    lastStreamWhen.classList.toggle('hidden', !s);
+    if (!s) return;
+
+    var start = new Date(s.startedAt);
+    var end = s.endedAt ? new Date(s.endedAt) : new Date();
+    lastStreamWhen.textContent = start.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+      + ', ' + formatClock(start) + ' to ' + formatClock(end)
+      + (s.title ? ' · “' + s.title + '”' : '');
+
+    // Most watching at once, across every source together.
+    var peakTotal = 0;
+    s.samples.forEach(function (sample) {
+      var total = Object.keys(sample.c).reduce(function (sum, id) { return sum + (sample.c[id] || 0); }, 0);
+      peakTotal = Math.max(peakTotal, total);
+    });
+
+    var figures = [
+      { label: 'Length', value: formatSpan(s.durationMs) },
+      { label: 'Most watching at once', value: formatNumber(peakTotal), note: 'All sources together' },
+      { label: 'Website views', value: formatNumber(s.websiteViews), note: 'Your website and Public Link' },
+    ];
+    s.platforms.forEach(function (p) {
+      figures.push({
+        label: p.name + ' views',
+        value: p.views != null ? formatNumber(p.views) : 'Counting…',
+        note: p.views != null ? 'Keeps updating for 5 weeks' : 'Arrives about 10 minutes after the stream ends',
+      });
+    });
+    fillFigures(lastStreamFigures, figures);
+    drawViewerGraph(lastStreamGraph, lastStreamLegend, s, false);
+  }
+
+  // One line per source over the course of the stream. Live, the legend
+  // shows how many are watching now; afterwards, each source's peak.
+  function drawViewerGraph(container, legend, session, live) {
+    container.innerHTML = '';
+    legend.innerHTML = '';
+    if (!session) return;
+
+    var samples = session.samples || [];
+    var series = session.sources.map(function (src) {
+      var points = [];
+      samples.forEach(function (sample) {
+        if (sample.c[src.id] != null) points.push({ t: new Date(sample.t).getTime(), v: sample.c[src.id] });
+      });
+      return { id: src.id, name: src.name, peak: src.peak, points: points, colour: cssVar(SERIES_COLOURS[src.name] || '--slate') };
+    }).filter(function (s) { return s.points.length; });
+
+    series.forEach(function (s) {
+      var item = document.createElement('span');
+      var swatch = document.createElement('i');
+      swatch.style.background = s.colour;
+      var value = document.createElement('b');
+      value.textContent = live ? s.points[s.points.length - 1].v : (s.peak != null ? s.peak : 0);
+      item.appendChild(swatch);
+      item.appendChild(document.createTextNode(s.name + (live ? ' now ' : ' peak ')));
+      item.appendChild(value);
+      legend.appendChild(item);
+    });
+
+    if (samples.length < 2) {
+      var empty = document.createElement('div');
+      empty.className = 'viewer-graph-empty';
+      empty.textContent = live ? 'The graph fills in as the stream goes on. It updates every minute.' : 'This stream was too short for a graph.';
+      container.appendChild(empty);
+      return;
+    }
+
+    var W = container.clientWidth;
+    var H = container.clientHeight;
+    if (!W || !H) return;
+    var pad = { left: 34, right: 10, top: 8, bottom: 22 };
+    var t0 = new Date(session.startedAt).getTime();
+    var t1 = live ? Date.now() : (session.endedAt ? new Date(session.endedAt).getTime() : new Date(samples[samples.length - 1].t).getTime());
+    t1 = Math.max(t1, t0 + 5 * 60 * 1000);
+
+    var maxV = 0;
+    series.forEach(function (s) { s.points.forEach(function (p) { maxV = Math.max(maxV, p.v); }); });
+    var step = maxV <= 4 ? 1 : Math.ceil(maxV / 4 / (maxV > 40 ? 10 : maxV > 20 ? 5 : 1)) * (maxV > 40 ? 10 : maxV > 20 ? 5 : 1);
+    var yMax = Math.max(4, Math.ceil(maxV / step) * step);
+
+    var x = function (t) { return pad.left + ((t - t0) / (t1 - t0)) * (W - pad.left - pad.right); };
+    var y = function (v) { return pad.top + (1 - v / yMax) * (H - pad.top - pad.bottom); };
+
+    var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Viewers over the stream, by source' });
+    for (var v = 0; v <= yMax; v += step) {
+      svg.appendChild(svgEl('line', { class: 'grid', x1: pad.left, x2: W - pad.right, y1: y(v), y2: y(v) }));
+      var label = svgEl('text', { class: 'axis', x: pad.left - 8, y: y(v) + 4, 'text-anchor': 'end' });
+      label.textContent = v;
+      svg.appendChild(label);
+    }
+
+    // Time labels at a round interval, about one per 110px.
+    var spanMin = (t1 - t0) / 60000;
+    var intervals = [5, 10, 15, 30, 60, 120, 240];
+    var wanted = Math.max(1, Math.floor((W - pad.left - pad.right) / 110));
+    var every = intervals.find(function (m) { return spanMin / m <= wanted; }) || 480;
+    var firstTick = Math.ceil(t0 / (every * 60000)) * every * 60000;
+    for (var t = firstTick; t <= t1; t += every * 60000) {
+      var tick = svgEl('text', { class: 'axis', x: x(t), y: H - 4, 'text-anchor': 'middle' });
+      tick.textContent = formatClock(new Date(t));
+      svg.appendChild(tick);
+    }
+
+    series.forEach(function (s) {
+      var d = s.points.map(function (p, i) { return (i ? 'L' : 'M') + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1); }).join(' ');
+      svg.appendChild(svgEl('path', { class: 'series', d: d, stroke: s.colour }));
+      var last = s.points[s.points.length - 1];
+      svg.appendChild(svgEl('circle', { class: 'end-dot', cx: x(last.t), cy: y(last.v), r: 4, fill: s.colour }));
+    });
+    container.appendChild(svg);
+  }
+
+  if (window.ResizeObserver) {
+    var graphObserver = new ResizeObserver(function () {
+      if (!lastSession) return;
+      if (!viewerGraphPanel.classList.contains('hidden')) renderLiveGraph();
+      if (!lastStreamPanel.classList.contains('hidden')) drawViewerGraph(lastStreamGraph, lastStreamLegend, lastSession, false);
+    });
+    graphObserver.observe(viewerGraph);
+    graphObserver.observe(lastStreamGraph);
   }
 
   function viewerPillEl() {

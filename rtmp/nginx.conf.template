@@ -80,6 +80,12 @@ http {
 
         # Internal only (not published to the host) - the backend proxies
         # requests here using the secret stream key, viewers never see it.
+        # Internal only too - the backend reads what the encoder is sending
+        # (bitrate, resolution, frame rate) for the Stream health box.
+        location = /stat {
+            rtmp_stat all;
+        }
+
         location /hls/ {
             types {
                 application/vnd.apple.mpegurl m3u8;
