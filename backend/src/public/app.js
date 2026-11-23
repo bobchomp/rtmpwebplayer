@@ -943,8 +943,10 @@
     list.forEach(function (filename) {
       var item = document.createElement('div');
       item.className = 'gallery-item' + (filename === channel[activeField] ? ' active' : '');
+      item.dataset.filename = filename;
 
       var img = document.createElement('img');
+      img.draggable = false;
       img.src = '/uploads/' + filename;
       img.alt = '';
       img.title = 'Click to use this image';
@@ -1092,6 +1094,62 @@
   function syncAllOutputsToggle() {
     var switches = detailOutputsList.querySelectorAll('input[type="checkbox"]');
     allOutputsToggle.checked = switches.length > 0 && Array.prototype.every.call(switches, function (s) { return s.checked; });
+  }
+
+  // Drag images in a gallery to reorder them. A press that moves less than
+  // a few pixels is still a click (which picks the image).
+  function wireGalleryReordering(galleryEl, routeSegment) {
+    var drag = null;
+    galleryEl.classList.add('gallery-sortable');
+
+    galleryEl.addEventListener('pointerdown', function (e) {
+      var item = e.target.closest('.gallery-item');
+      if (!item || e.target.closest('button') || e.button > 0) return;
+      drag = { item: item, x: e.clientX, y: e.clientY, moved: false, start: galleryOrder(galleryEl).join('|') };
+    });
+
+    galleryEl.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      if (!drag.moved) {
+        if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) < 6) return;
+        drag.moved = true;
+        drag.item.classList.add('dragging');
+        document.body.classList.add('is-dragging-output');
+        galleryEl.setPointerCapture(e.pointerId);
+      }
+      var items = Array.prototype.slice.call(galleryEl.querySelectorAll('.gallery-item'));
+      for (var i = 0; i < items.length; i++) {
+        if (items[i] === drag.item) continue;
+        var box = items[i].getBoundingClientRect();
+        if (e.clientX >= box.left && e.clientX <= box.right && e.clientY >= box.top && e.clientY <= box.bottom) {
+          var after = e.clientX > box.left + box.width / 2;
+          galleryEl.insertBefore(drag.item, after ? items[i].nextSibling : items[i]);
+          break;
+        }
+      }
+    });
+
+    function end() {
+      if (!drag) return;
+      var d = drag;
+      drag = null;
+      if (!d.moved) return;
+      d.item.classList.remove('dragging');
+      document.body.classList.remove('is-dragging-output');
+      // Swallow the click that follows the drop, so it doesn't pick the image.
+      galleryEl.addEventListener('click', function (ev) { ev.stopPropagation(); ev.preventDefault(); }, { capture: true, once: true });
+      setTimeout(function () { galleryEl.dispatchEvent(new Event('click')); }, 0);
+      var order = galleryOrder(galleryEl);
+      if (order.join('|') === d.start) return;
+      api('/api/channels/' + currentChannelId + '/' + routeSegment + '/order', { method: 'PATCH', body: JSON.stringify({ order: order }) })
+        .catch(function (err) { alert(err.message); refreshChannelDetail(); });
+    }
+    galleryEl.addEventListener('pointerup', end);
+    galleryEl.addEventListener('pointercancel', end);
+  }
+
+  function galleryOrder(galleryEl) {
+    return Array.prototype.map.call(galleryEl.querySelectorAll('.gallery-item'), function (el) { return el.dataset.filename; });
   }
 
   function viewerPillEl() {
@@ -1547,6 +1605,7 @@
     wireCopyButtons(detailView);
 
     wireOutputReordering();
+    wireGalleryReordering(detailThumbGallery, 'live-thumbnails');
 
     detailOutputsList.addEventListener('change', function (e) {
       if (e.target.type === 'checkbox') syncAllOutputsToggle();

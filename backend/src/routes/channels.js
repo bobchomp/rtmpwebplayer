@@ -501,6 +501,23 @@ function registerGalleryRoutes(routeSegment, listField, activeField, namesField)
     writeDb(db);
     res.json(channel);
   });
+
+  // Reorder the gallery (dragged on the channel page). Must list exactly
+  // the images already there.
+  router.patch(`/:id/${routeSegment}/order`, requireAuth, (req, res) => {
+    const db = readDb();
+    const channel = ownChannel(db, req);
+    if (!channel) return res.status(404).json({ error: 'Not found' });
+    const order = req.body && req.body.order;
+    const current = channel[listField] || [];
+    if (!Array.isArray(order) || order.length !== current.length
+      || new Set(order).size !== order.length || !order.every((f) => current.includes(f))) {
+      return res.status(400).json({ error: 'The images have changed. Reload the page and try again.' });
+    }
+    channel[listField] = order;
+    writeDb(db);
+    res.json(channel);
+  });
 }
 
 // Admin: offline cover gallery (shown whenever the channel isn't live)

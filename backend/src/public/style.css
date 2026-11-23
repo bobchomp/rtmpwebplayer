@@ -390,6 +390,8 @@ body.is-dragging-output, body.is-dragging-output * { cursor: grabbing !important
 .app-select { position: relative; flex-shrink: 0; }
 /* File pickers open from an app-styled button (data-file-input) instead. */
 .file-input-hidden { display: none; }
+.gallery-sortable .gallery-item img { cursor: grab; touch-action: pan-y; }
+.gallery-sortable .gallery-item.dragging { opacity: .55; }
 .app-select-native { display: none !important; }
 .app-select-btn { display: inline-flex; align-items: center; gap: 6px; }
 .app-select-btn .help-menu-caret { margin-left: 0; }
