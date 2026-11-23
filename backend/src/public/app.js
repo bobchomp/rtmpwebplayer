@@ -561,7 +561,10 @@
   var detailDeleteBtn = document.getElementById('detail-delete-btn');
 
   var detailOfflineBadge = document.getElementById('detail-offline-badge');
-  var detailViewerBadge = document.getElementById('detail-viewer-badge');
+  var detailWebsiteViewers = document.getElementById('detail-website-viewers');
+  // Latest counts from /viewers, kept so rows re-rendered between polls
+  // get their pills straight back. Null while the channel is offline.
+  var lastViewerCounts = null;
   var detailOfflineInfo = document.getElementById('detail-offline-info');
   var detailPreviewIframe = document.getElementById('detail-preview-iframe');
   var detailRtmpUrl = document.getElementById('detail-rtmp-url');
@@ -777,7 +780,10 @@
       }
     } else if (detailPreviewIframe.getAttribute('src')) {
       detailPreviewIframe.removeAttribute('src');
-      detailViewerBadge.classList.add('hidden');
+    }
+    if (!isLive) {
+      lastViewerCounts = null;
+      applyViewerPills();
     }
   }
 
@@ -810,10 +816,28 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data || !currentChannelId) return;
-        detailViewerBadge.textContent = data.count + ' watching';
-        detailViewerBadge.classList.remove('hidden');
+        data.channelId = currentChannelId;
+        lastViewerCounts = data;
+        applyViewerPills();
       })
       .catch(function () {});
+  }
+
+  function setViewerPill(pill, count) {
+    var show = count != null;
+    pill.classList.toggle('hidden', !show);
+    if (show) pill.textContent = count + ' watching';
+  }
+
+  // One pill per output that can be counted. Custom RTMP outputs can't, so
+  // they never get one.
+  function applyViewerPills() {
+    var counts = lastViewerCounts && lastViewerCounts.channelId === currentChannelId ? lastViewerCounts : null;
+    setViewerPill(detailWebsiteViewers, counts && counts.website);
+    var outputs = (counts && counts.outputs) || {};
+    detailOutputsList.querySelectorAll('[data-viewer-output-id]').forEach(function (row) {
+      setViewerPill(row.querySelector('.viewer-pill'), outputs[row.dataset.viewerOutputId]);
+    });
   }
 
   // Polled on an interval - only touches live/offline state, never the rest
@@ -930,11 +954,19 @@
     facebook: { name: 'Facebook', connectedTo: function (o) { return o.facebookPageName; }, privacy: false },
   };
 
+  function viewerPillEl() {
+    var pill = document.createElement('span');
+    pill.className = 'viewer-pill hidden';
+    return pill;
+  }
+
   function renderPlatformOutput(channel, output) {
     var platform = PLATFORM_OUTPUTS[output.type];
     var node = youtubeOutputRowTemplate.content.firstElementChild.cloneNode(true);
     node.dataset.platformOutputId = output.id;
+    node.dataset.viewerOutputId = output.id;
     node.querySelector('.output-name').textContent = platform.name;
+    node.querySelector('.output-name').appendChild(viewerPillEl());
     node.querySelector('.youtube-output-channel').textContent = platform.connectedTo(output) || 'Connected';
 
     function save(body, onError) {
@@ -1003,6 +1035,7 @@
         if (!existing || existing.contains(document.activeElement)) return;
         existing.replaceWith(renderPlatformOutput(channel, output));
       });
+      applyViewerPills();
     }).catch(function () {});
   }
 
@@ -1050,6 +1083,10 @@
       var publicLinkUrl = embedOrigin() + '/watch/' + channel.id + '/' + output.token;
       var node = outputRowTemplate.content.firstElementChild.cloneNode(true);
       node.querySelector('.output-name').textContent = isPublicLink ? 'Public Link' : output.name;
+      if (isPublicLink) {
+        node.dataset.viewerOutputId = output.id;
+        node.querySelector('.output-name').appendChild(viewerPillEl());
+      }
       node.querySelector('.output-url').textContent = isPublicLink
         ? 'Anyone with the link can watch. Click Copy link to share it.'
         : output.rtmpUrl;
@@ -1108,6 +1145,7 @@
 
       detailOutputsList.appendChild(node);
     });
+    applyViewerPills();
 
     renderGallery(detailCoverGallery, channel, 'coverImages', 'activeCoverImage', 'covers', 'coverImageNames');
     renderGallery(detailThumbGallery, channel, 'liveThumbnails', 'activeLiveThumbnail', 'live-thumbnails', 'liveThumbnailNames');

@@ -99,6 +99,7 @@ router.post('/track', (req, res) => {
       channelId,
       ip: clientIp(req),
       userAgent: req.headers['user-agent'] || '',
+      source: req.body.source === 'public-link' ? 'public-link' : 'website',
     });
   }
   res.status(204).end();

@@ -7,6 +7,7 @@ const fs = require('fs');
 const { readDb, writeDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
+const platformStats = require('../platformStats');
 const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
 const { currentAccount, ownsChannel } = require('../accounts');
@@ -517,7 +518,18 @@ router.get('/:id/viewers', requireAuth, (req, res) => {
   if (!channel) return res.status(404).json({ error: 'Not found' });
 
   res.set('Cache-Control', 'no-store');
-  res.json({ count: plays.countActiveViewers(channel.id) });
+  // Per output: the website and Public Link counts come from player
+  // heartbeats; YouTube and Facebook from their own live viewer numbers,
+  // sampled once a minute (null until the first sample arrives).
+  const counts = plays.countActiveViewers(channel.id);
+  const outputs = {};
+  (channel.outputs || []).forEach((o) => {
+    if (o.type === 'public-link') outputs[o.id] = counts['public-link'];
+    else if ((o.type === 'youtube' || o.type === 'facebook') && o.session && o.broadcastId) {
+      outputs[o.id] = platformStats.currentViewers(o.type, o.broadcastId);
+    }
+  });
+  res.json({ website: counts.website, outputs });
 });
 
 // Admin-only - past recordings across every channel, newest first, each

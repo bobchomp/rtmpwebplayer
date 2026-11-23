@@ -334,7 +334,6 @@ button.danger:hover { background: var(--ember-tint); }
 }
 .preview-status-badge.live-badge { background: var(--ember); color: #fff; }
 #detail-offline-badge { background: rgba(255, 255, 255, .16); color: #fff; }
-#detail-viewer-badge { top: 12px; right: 12px; left: auto; background: rgba(0, 0, 0, .55); color: #fff; }
 
 #detail-offline-info { width: 100%; max-width: 520px; padding: 24px; }
 #detail-offline-info h3 { color: #fff; font-size: 17px; text-align: center; margin: 0 0 6px; }
@@ -370,6 +369,11 @@ button.danger:hover { background: var(--ember-tint); }
 .recording-row { margin-bottom: 8px; }
 .output-info { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 2px; }
 .output-name { font: 600 14px/1.3 var(--font-display); }
+.viewer-pill {
+  display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; vertical-align: 1px;
+  background: var(--accent-tint); color: var(--accent-strong); font: 600 11px/1.4 var(--font-display);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 .output-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 12.5px; }
 .output-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
 

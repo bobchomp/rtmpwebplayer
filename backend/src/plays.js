@@ -83,7 +83,12 @@ function detectDeviceType(userAgent) {
 
 // Only ever touches the in-memory array - see FLUSH_INTERVAL_MS above for
 // why this deliberately doesn't write to disk itself.
-function recordPlay({ channelId, ip, userAgent }) {
+// Latest heartbeat per viewer per page ("website" embed or "public-link"),
+// kept in memory only, for the dashboard's "watching now" pills. A play row
+// is one per IP per service, so it can't say which page someone is on.
+const liveHeartbeats = new Map();
+
+function recordPlay({ channelId, ip, userAgent, source = 'website' }) {
   ensureLoaded();
 
   const db = readDb();
@@ -101,6 +106,7 @@ function recordPlay({ channelId, ip, userAgent }) {
   if (!channel.isLive) return;
 
   const now = Date.now();
+  liveHeartbeats.set(`${channelId}|${source}|${ip}`, now);
   const nowDate = new Date(now);
   const nowIso = nowDate.toISOString();
 
@@ -225,11 +231,17 @@ function listPlays({ owner, channelId, from, to } = {}) {
 // who are plausibly still actually watching right now, not just everyone
 // who's ever tuned in.
 function countActiveViewers(channelId) {
-  ensureLoaded();
   const now = Date.now();
-  return plays.filter(
-    (p) => p.channelId === channelId && now - new Date(p.latestPlayAt).getTime() < ACTIVE_VIEWER_WINDOW_MS
-  ).length;
+  const counts = { website: 0, 'public-link': 0 };
+  liveHeartbeats.forEach((at, key) => {
+    if (now - at >= ACTIVE_VIEWER_WINDOW_MS) {
+      liveHeartbeats.delete(key);
+      return;
+    }
+    const [id, source] = key.split('|');
+    if (id === channelId && counts[source] != null) counts[source] += 1;
+  });
+  return counts;
 }
 
 // Admin-only bulk delete from the Stats page. Flushed immediately (rather

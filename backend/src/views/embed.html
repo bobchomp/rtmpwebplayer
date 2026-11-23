@@ -501,7 +501,7 @@
     fetch('/api/stats/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channelId: channelId }),
+      body: JSON.stringify({ channelId: channelId, source: isWatchPage ? 'public-link' : 'website' }),
       keepalive: true,
     }).catch(function () {});
   }

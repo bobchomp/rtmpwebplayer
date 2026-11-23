@@ -199,6 +199,8 @@ async function sampleLiveViewers() {
       fresh.live.peak = Math.max(fresh.live.peak, viewers);
       fresh.live.sum += viewers;
       fresh.live.count += 1;
+      fresh.live.current = viewers;
+      fresh.live.currentAt = new Date().toISOString();
       saveRecord(fresh);
     } catch (err) {
       console.error(`[platform-stats] Live viewers for ${record.platform} ${record.broadcastId}: ${err.message}`);
@@ -255,6 +257,16 @@ function excludeRows(ids, owner) {
   if (changed) writeDb(db);
 }
 
+// The most recent "watching now" sample for a live broadcast, for the
+// dashboard. Null once it's more than a few minutes old.
+function currentViewers(platform, broadcastId) {
+  const record = getRecord(platform, broadcastId);
+  const live = record && !record.endedAt && record.live;
+  if (!live || live.current == null || !live.currentAt) return null;
+  if (Date.now() - new Date(live.currentAt).getTime() > 3 * MINUTE) return null;
+  return live.current;
+}
+
 let running = false;
 async function tick() {
   if (running) return;
@@ -276,5 +288,6 @@ module.exports = {
   markEnded,
   refreshNow,
   excludeRows,
+  currentViewers,
   tick,
 };
