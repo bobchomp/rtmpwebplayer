@@ -353,9 +353,19 @@ button.danger:hover { background: var(--ember-tint); }
 .add-output-type-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .add-output-type-row button { flex: 1; }
 .youtube-output { margin-bottom: 12px; }
+/* Grip to drag an output up or down the list (or arrow keys when focused). */
+.drag-handle {
+  flex-shrink: 0; width: 22px; height: 32px; padding: 0; margin-left: -6px; display: flex; align-items: center; justify-content: center;
+  background: none; border: 0; border-radius: var(--radius-sm); color: var(--slate-soft); cursor: grab; touch-action: none;
+}
+.drag-handle:hover { background: var(--surface-sunken); color: var(--slate); }
+.drag-handle svg { width: 10px; height: 16px; fill: currentColor; }
+.dragging { opacity: .55; }
+.dragging .drag-handle { cursor: grabbing; }
+body.is-dragging-output, body.is-dragging-output * { cursor: grabbing !important; user-select: none; }
 .outputs-panel .youtube-output .output-row { margin-bottom: 0; }
 .youtube-privacy-select { width: auto; flex-shrink: 0; padding: 7px 9px; font-size: 13px; }
-.youtube-output-status { margin: 4px 0 0; }
+.youtube-output-status { margin: 4px 0 0; padding-left: 28px; }
 .facebook-page-list { display: flex; flex-direction: column; gap: 8px; }
 
 

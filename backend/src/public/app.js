@@ -587,6 +587,8 @@
   var metadataCancelBtn = document.getElementById('metadata-cancel-btn');
 
   var detailOutputsList = document.getElementById('detail-outputs-list');
+  var websiteOutputRow = document.getElementById('website-output-row');
+  var draggingOutput = null;
   var detailOutputsEmpty = document.getElementById('detail-outputs-empty');
 
   var addOutputBtn = document.getElementById('add-output-btn');
@@ -957,6 +959,72 @@
     facebook: { name: 'Facebook', connectedTo: function (o) { return o.facebookPageName; }, privacy: false },
   };
 
+  // ===================== Reordering outputs =====================
+  // Drag the grip (mouse or touch), or focus it and use the arrow keys.
+
+  function outputOrder() {
+    return Array.prototype.map.call(detailOutputsList.querySelectorAll(':scope > [data-sort-id]'), function (el) {
+      return el.dataset.sortId;
+    });
+  }
+
+  function saveOutputOrder() {
+    api('/api/channels/' + currentChannelId + '/output-order', { method: 'PATCH', body: JSON.stringify({ order: outputOrder() }) })
+      .catch(function (err) { alert(err.message); refreshChannelDetail(); });
+  }
+
+  function wireOutputReordering() {
+    var startOrder = null;
+
+    detailOutputsList.addEventListener('pointerdown', function (e) {
+      var handle = e.target.closest('.drag-handle');
+      if (!handle || e.button > 0) return;
+      e.preventDefault();
+      draggingOutput = handle.closest('[data-sort-id]');
+      startOrder = outputOrder().join();
+      draggingOutput.classList.add('dragging');
+      document.body.classList.add('is-dragging-output');
+      handle.setPointerCapture(e.pointerId);
+    });
+
+    detailOutputsList.addEventListener('pointermove', function (e) {
+      if (!draggingOutput) return;
+      var others = Array.prototype.filter.call(detailOutputsList.querySelectorAll(':scope > [data-sort-id]'), function (el) {
+        return el !== draggingOutput;
+      });
+      var before = null;
+      for (var i = 0; i < others.length; i++) {
+        var box = others[i].getBoundingClientRect();
+        if (e.clientY < box.top + box.height / 2) { before = others[i]; break; }
+      }
+      if (draggingOutput.nextElementSibling !== before || (before === null && detailOutputsList.lastElementChild !== draggingOutput)) {
+        detailOutputsList.insertBefore(draggingOutput, before);
+      }
+    });
+
+    function endDrag() {
+      if (!draggingOutput) return;
+      draggingOutput.classList.remove('dragging');
+      document.body.classList.remove('is-dragging-output');
+      draggingOutput = null;
+      if (outputOrder().join() !== startOrder) saveOutputOrder();
+    }
+    detailOutputsList.addEventListener('pointerup', endDrag);
+    detailOutputsList.addEventListener('pointercancel', endDrag);
+
+    detailOutputsList.addEventListener('keydown', function (e) {
+      var handle = e.target.closest('.drag-handle');
+      if (!handle || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+      e.preventDefault();
+      var item = handle.closest('[data-sort-id]');
+      var sibling = e.key === 'ArrowUp' ? item.previousElementSibling : item.nextElementSibling;
+      if (!sibling) return;
+      detailOutputsList.insertBefore(item, e.key === 'ArrowUp' ? sibling : sibling.nextElementSibling);
+      handle.focus();
+      saveOutputOrder();
+    });
+  }
+
   function viewerPillEl() {
     var pill = document.createElement('span');
     pill.className = 'viewer-pill hidden';
@@ -968,6 +1036,7 @@
     var node = youtubeOutputRowTemplate.content.firstElementChild.cloneNode(true);
     node.dataset.platformOutputId = output.id;
     node.dataset.viewerOutputId = output.id;
+    node.dataset.sortId = output.id;
     node.querySelector('.output-name').textContent = platform.name;
     node.querySelector('.output-name').appendChild(viewerPillEl());
     node.querySelector('.youtube-output-channel').textContent = platform.connectedTo(output) || 'Connected';
@@ -1028,7 +1097,7 @@
   // YouTube/Facebook statuses change by themselves while going live, so the
   // 5s poll re-renders just those rows (unless one is being interacted with).
   function refreshPlatformOutputs() {
-    if (!detailOutputsList.querySelector('[data-platform-output-id]')) return;
+    if (draggingOutput || !detailOutputsList.querySelector('[data-platform-output-id]')) return;
     var channelId = currentChannelId;
     api('/api/channels/' + channelId).then(function (channel) {
       if (channelId !== currentChannelId) return;
@@ -1069,12 +1138,26 @@
     recordingContinueBanner.classList.add('hidden'); // reset on nav - pollLiveStatus re-shows it if still warranted
 
     var outputs = channel.outputs || [];
+    if (websiteOutputRow.parentNode) websiteOutputRow.parentNode.removeChild(websiteOutputRow);
     detailOutputsList.innerHTML = '';
     detailOutputsEmpty.classList.toggle('hidden', outputs.length > 0);
     addOutputTypePublicLinkBtn.disabled = outputs.some(function (o) { return o.type === 'public-link'; });
     addOutputTypeYoutubeBtn.classList.toggle('hidden', !config.youtubeEnabled);
     addOutputTypeFacebookBtn.classList.toggle('hidden', !config.facebookEnabled);
-    outputs.forEach(function (output) {
+    // Saved order first (see /output-order); anything not in it yet, such
+    // as a newly added output, goes at the end. Your website starts on top.
+    var savedOrder = channel.outputOrder || [];
+    var items = [{ id: 'website' }].concat(outputs);
+    function rank(item) {
+      var i = savedOrder.indexOf(item.id);
+      return i === -1 ? savedOrder.length + items.indexOf(item) : i;
+    }
+    items.sort(function (x, y) { return rank(x) - rank(y); });
+    items.forEach(function (output) {
+      if (output.id === 'website') {
+        detailOutputsList.appendChild(websiteOutputRow);
+        return;
+      }
       if (PLATFORM_OUTPUTS[output.type]) {
         detailOutputsList.appendChild(renderPlatformOutput(channel, output));
         return;
@@ -1085,6 +1168,7 @@
       // level as a stream key, so it only ever leaves via the Copy button.
       var publicLinkUrl = embedOrigin() + '/watch/' + channel.id + '/' + output.token;
       var node = outputRowTemplate.content.firstElementChild.cloneNode(true);
+      node.dataset.sortId = output.id;
       node.querySelector('.output-name').textContent = isPublicLink ? 'Public Link' : output.name;
       if (isPublicLink) {
         node.dataset.viewerOutputId = output.id;
@@ -1295,6 +1379,8 @@
     detailListenersWired = true;
 
     wireCopyButtons(detailView);
+
+    wireOutputReordering();
 
     websiteHtmlBtn.addEventListener('click', function () {
       websiteHtmlModalBackdrop.classList.remove('hidden');

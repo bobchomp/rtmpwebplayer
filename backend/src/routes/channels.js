@@ -166,6 +166,20 @@ router.patch('/:id/website-settings', requireAuth, (req, res) => {
   res.json(channel);
 });
 
+// Admin: the order outputs are listed in on the channel page. 'website' is
+// the Your website row; everything else is an output id. Display only.
+router.patch('/:id/output-order', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = ownChannel(db, req);
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+  const order = req.body && req.body.order;
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be a list' });
+  const known = new Set(['website'].concat((channel.outputs || []).map((o) => o.id)));
+  channel.outputOrder = order.filter((id, i) => typeof id === 'string' && known.has(id) && order.indexOf(id) === i);
+  writeDb(db);
+  res.json({ outputOrder: channel.outputOrder });
+});
+
 // Admin: update the title/description used for the embed page's metadata
 // (title tag, meta/OG description, on-screen overlay) - and on a direct
 // YouTube output's broadcast, if it's live.
