@@ -1030,6 +1030,7 @@
       var dt = document.createElement('dt');
       dt.textContent = f.label;
       var dd = document.createElement('dd');
+      if (f.id) dd.id = f.id;
       dd.textContent = f.value;
       if (f.note) {
         var small = document.createElement('small');
@@ -1107,12 +1108,18 @@
       return;
     }
     if (!h.connected) {
+      liveStartedAt = null;
       setHealth('bad', 'No signal', 'The server isn\'t receiving anything from your encoder right now.');
       healthStats.innerHTML = '';
       return;
     }
 
     var now = Date.now();
+    // "Live for" counts up every second between the 5-second checks. Small
+    // differences between checks are ignored so it never ticks backwards;
+    // a reconnect (a big jump) resets it.
+    var started = h.uptimeMs != null ? now - h.uptimeMs : null;
+    if (started == null || liveStartedAt == null || Math.abs(started - liveStartedAt) > 3000) liveStartedAt = started;
     bitrateHistory.push({ t: now, kbps: h.bitrateKbps || 0 });
     bitrateHistory = bitrateHistory.filter(function (p) { return now - p.t <= BITRATE_WINDOW_MS; });
 
@@ -1131,7 +1138,7 @@
     var figures = [
       { label: 'Bitrate', value: formatNumber(h.bitrateKbps || 0) + ' kbps',
         note: h.videoKbps != null ? 'Video ' + formatNumber(h.videoKbps) + ', audio ' + formatNumber(h.audioKbps || 0) : '' },
-      { label: 'Live for', value: h.uptimeMs != null ? formatSpan(h.uptimeMs) : '-' },
+      { label: 'Live for', value: h.uptimeMs != null ? formatUptime(h.uptimeMs) : '-', id: 'health-uptime' },
     ];
     if (h.width && h.height) {
       figures.push({ label: 'Resolution', value: h.width + ' × ' + h.height,
@@ -1147,6 +1154,24 @@
     fillFigures(healthStats, figures);
     drawBitrateSpark();
   }
+
+  // Like formatSpan, but with seconds: 42s, 10m 05s, 1h 02m 05s.
+  function formatUptime(ms) {
+    var secs = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(secs / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    var s = String(secs % 60).padStart(2, '0');
+    if (h) return h + 'h ' + String(m).padStart(2, '0') + 'm ' + s + 's';
+    if (m) return m + 'm ' + s + 's';
+    return (secs % 60) + 's';
+  }
+
+  var liveStartedAt = null;
+  setInterval(function () {
+    var el = document.getElementById('health-uptime');
+    if (!el || liveStartedAt == null || streamHealthPanel.classList.contains('hidden')) return;
+    el.textContent = formatUptime(Date.now() - liveStartedAt);
+  }, 1000);
 
   function drawBitrateSpark() {
     healthSpark.innerHTML = '';
