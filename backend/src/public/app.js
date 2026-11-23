@@ -657,6 +657,13 @@
     var counts = lastViewerCounts && lastViewerCounts.channelId === currentChannelId ? lastViewerCounts : null;
     setViewerPill(detailWebsiteViewers, counts && counts.website);
     var outputs = (counts && counts.outputs) || {};
+    // All sources: everyone on every source that has a count.
+    var total = null;
+    if (counts) {
+      total = counts.website || 0;
+      Object.keys(outputs).forEach(function (id) { if (outputs[id] != null) total += outputs[id]; });
+    }
+    setViewerPill(document.getElementById('all-sources-viewers'), total);
     detailOutputsList.querySelectorAll('[data-viewer-output-id]').forEach(function (row) {
       setViewerPill(row.querySelector('.viewer-pill'), outputs[row.dataset.viewerOutputId]);
     });
