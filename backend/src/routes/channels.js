@@ -340,6 +340,19 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   res.json(channel);
 });
 
+// Admin: the "All sources" switch - Your website and every output on or
+// off together.
+router.patch('/:id/all-outputs', requireAuth, (req, res) => {
+  const db = readDb();
+  const channel = ownChannel(db, req);
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+  if (typeof (req.body && req.body.enabled) !== 'boolean') return res.status(400).json({ error: 'enabled must be true or false' });
+  channel.embedEnabled = req.body.enabled;
+  (channel.outputs || []).forEach((o) => { o.enabled = req.body.enabled; });
+  writeDb(db);
+  res.json(channel);
+});
+
 // Admin: remove an output
 router.delete('/:id/outputs/:outputId', requireAuth, (req, res) => {
   const db = readDb();

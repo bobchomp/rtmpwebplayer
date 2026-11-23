@@ -588,6 +588,8 @@
 
   var detailOutputsList = document.getElementById('detail-outputs-list');
   var websiteOutputRow = document.getElementById('website-output-row');
+  var allOutputsRow = document.getElementById('all-outputs-row');
+  var allOutputsToggle = document.getElementById('all-outputs-toggle');
   var draggingOutput = null;
   var detailOutputsEmpty = document.getElementById('detail-outputs-empty');
 
@@ -1086,6 +1088,12 @@
     });
   }
 
+  // "All sources" is on only when every switch in the list is on.
+  function syncAllOutputsToggle() {
+    var switches = detailOutputsList.querySelectorAll('input[type="checkbox"]');
+    allOutputsToggle.checked = switches.length > 0 && Array.prototype.every.call(switches, function (s) { return s.checked; });
+  }
+
   function viewerPillEl() {
     var pill = document.createElement('span');
     pill.className = 'viewer-pill hidden';
@@ -1388,6 +1396,8 @@
       detailOutputsList.appendChild(node);
     });
     applyViewerPills();
+    allOutputsRow.classList.toggle('hidden', outputs.length < 1);
+    syncAllOutputsToggle();
 
     renderGallery(detailCoverGallery, channel, 'coverImages', 'activeCoverImage', 'covers', 'coverImageNames');
     renderGallery(detailThumbGallery, channel, 'liveThumbnails', 'activeLiveThumbnail', 'live-thumbnails', 'liveThumbnailNames');
@@ -1537,6 +1547,17 @@
     wireCopyButtons(detailView);
 
     wireOutputReordering();
+
+    detailOutputsList.addEventListener('change', function (e) {
+      if (e.target.type === 'checkbox') syncAllOutputsToggle();
+    });
+    allOutputsToggle.addEventListener('change', function () {
+      var enabled = allOutputsToggle.checked;
+      detailOutputsList.querySelectorAll('input[type="checkbox"]').forEach(function (s) { s.checked = enabled; });
+      api('/api/channels/' + currentChannelId + '/all-outputs', { method: 'PATCH', body: JSON.stringify({ enabled: enabled }) })
+        .then(refreshChannelDetail)
+        .catch(function (err) { alert(err.message); refreshChannelDetail(); });
+    });
 
     websiteHtmlBtn.addEventListener('click', function () {
       websiteHtmlModalBackdrop.classList.remove('hidden');

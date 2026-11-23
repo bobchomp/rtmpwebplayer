@@ -373,6 +373,8 @@ body.is-dragging-output, body.is-dragging-output * { cursor: grabbing !important
    width instead), so the switches line up in one column. */
 .outputs-panel .output-delete-btn, .output-delete-spacer { width: 76px; flex-shrink: 0; text-align: center; }
 .output-delete-spacer { align-self: stretch; }
+.drag-handle-spacer { width: 22px; margin-left: -6px; flex-shrink: 0; }
+.outputs-panel .all-outputs-row { padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 /* Phones: name and description get the full width, controls drop below,
    still right-aligned so the switches keep lining up. */
 @media (max-width: 560px) {
