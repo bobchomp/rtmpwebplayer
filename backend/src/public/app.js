@@ -1506,11 +1506,21 @@
       save({ enabled: toggle.checked }, function () { toggle.checked = !toggle.checked; });
     });
 
-    // Only two things are shown: the watch link while live, and errors.
+    // Only two things are shown: the watch link while live (on the same
+    // line as the connected account), and errors (on their own line).
     var status = node.querySelector('.youtube-output-status');
     var lastStatus = output.lastStatus;
     var liveUrl = lastStatus && lastStatus.url && output.session ? lastStatus.url : null;
-    if (lastStatus && (!lastStatus.ok || liveUrl)) {
+    if (lastStatus && lastStatus.ok && liveUrl) {
+      var connected = node.querySelector('.youtube-output-channel');
+      var watch = document.createElement('a');
+      watch.href = liveUrl;
+      watch.target = '_blank';
+      watch.rel = 'noopener';
+      watch.textContent = 'Watch on ' + platform.name;
+      connected.appendChild(document.createTextNode(' | Live on ' + platform.name + ' - '));
+      connected.appendChild(watch);
+    } else if (lastStatus && !lastStatus.ok) {
       status.classList.remove('hidden');
       status.classList.toggle('error', !lastStatus.ok);
       status.classList.toggle('hint', lastStatus.ok);
