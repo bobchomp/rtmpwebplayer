@@ -667,7 +667,24 @@
     detailOutputsList.querySelectorAll('[data-viewer-output-id]').forEach(function (row) {
       setViewerPill(row.querySelector('.viewer-pill'), outputs[row.dataset.viewerOutputId]);
     });
+    alignViewerPills();
   }
+
+  // Lines the pills up in one column, level with the one after the longest
+  // name. Skipped on phones, where the rows stack.
+  var PILL_GAP = 8;
+  function alignViewerPills() {
+    var pills = Array.prototype.filter.call(document.querySelectorAll('.outputs-panel .viewer-pill'), function (pill) {
+      pill.style.marginLeft = '';
+      return !pill.classList.contains('hidden');
+    });
+    if (pills.length < 2 || window.innerWidth <= 560) return;
+    var lefts = pills.map(function (pill) { return pill.getBoundingClientRect().left; });
+    var furthest = Math.max.apply(null, lefts);
+    pills.forEach(function (pill, i) { pill.style.marginLeft = (PILL_GAP + furthest - lefts[i]) + 'px'; });
+  }
+  window.addEventListener('resize', alignViewerPills);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignViewerPills);
 
   // Polled on an interval - only touches live/offline state, never the rest
   // of the form, so it can't clobber in-progress typing (e.g. a title or a
