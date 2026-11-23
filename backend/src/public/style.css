@@ -484,7 +484,6 @@ button.danger:hover { background: var(--ember-tint); }
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px;
   padding: 56px 24px;
 }
-.recording-disabled-notice .modal-actions { margin-top: 4px; }
 .recording-disabled-logo { height: 56px; width: auto; display: block; }
 .recording-disabled-text { font: 700 20px/1.4 var(--font-display); color: var(--ink); margin: 0; max-width: 380px; }
 

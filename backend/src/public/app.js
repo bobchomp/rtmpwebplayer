@@ -1180,8 +1180,6 @@
   var recordingsListenersWired = false;
   var recordingsNormalContent = document.getElementById('recordings-normal-content');
   var recordingsDisabledNotice = document.getElementById('recordings-disabled-notice');
-  var recordingDisabledModalBackdrop = document.getElementById('recording-disabled-modal-backdrop');
-  var recordingDisabledOkBtn = document.getElementById('recording-disabled-ok-btn');
 
   var recordingsProcessingPanel = document.getElementById('recordings-processing-panel');
   var recordingsProcessingList = document.getElementById('recordings-processing-list');
@@ -1394,11 +1392,6 @@
 
 
     detailRecordingToggle.addEventListener('change', function () {
-      if (detailRecordingToggle.checked && !config.recordingsEnabled) {
-        detailRecordingToggle.checked = false;
-        showRecordingDisabledModal();
-        return;
-      }
       api('/api/channels/' + currentChannelId + '/website-settings', {
         method: 'PATCH',
         body: JSON.stringify({ recordingEnabled: detailRecordingToggle.checked }),
@@ -1553,23 +1546,6 @@
     });
   }
 
-  // ===================== Recording disabled popup =====================
-  // Shown instead of turning the "Record streams" toggle on, when
-  // config.recordingsEnabled is false (see /api/config's recordingsEnabled -
-  // RECORDINGS_ENABLED=false or R2 not configured). The Recordings page has
-  // its own inline version of this same notice - see route()'s
-  // 'recordings' branch below.
-
-  function showRecordingDisabledModal() {
-    recordingDisabledModalBackdrop.classList.remove('hidden');
-  }
-  recordingDisabledOkBtn.addEventListener('click', function () {
-    recordingDisabledModalBackdrop.classList.add('hidden');
-  });
-  recordingDisabledModalBackdrop.addEventListener('click', function (e) {
-    if (e.target === recordingDisabledModalBackdrop) recordingDisabledModalBackdrop.classList.add('hidden');
-  });
-
   // ===================== Auth =====================
 
   function enterDashboard() {
@@ -1580,6 +1556,10 @@
       // same disabled notice as always - see route()'s 'recordings' branch) -
       // just no point advertising it in the nav when there's nothing to see.
       document.getElementById('recordings-btn').classList.toggle('hidden', !cfg.recordingsEnabled);
+      // Same for the channel page's "Record streams" switch: hidden rather
+      // than shown and refused when recording is off (RECORDINGS_ENABLED=false
+      // or R2 not configured).
+      document.getElementById('recording-toggle-panel').classList.toggle('hidden', !cfg.recordingsEnabled);
       route();
     });
   }
