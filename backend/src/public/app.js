@@ -987,6 +987,7 @@
   function openImageRenameModal(routeSegment, filename, currentName) {
     imageRenameTarget = { routeSegment: routeSegment, filename: filename };
     imageRenameInput.value = currentName || '';
+    document.getElementById('image-rename-preview').src = '/uploads/' + filename;
     imageRenameModalBackdrop.classList.remove('hidden');
     imageRenameInput.focus();
   }
