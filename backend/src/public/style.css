@@ -424,7 +424,12 @@ body.is-dragging-output, body.is-dragging-output * { cursor: grabbing !important
 
 /* Covers and thumbnails side by side, stacking when the column is narrow. */
 .detail-extras { margin-top: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px 28px; }
-.detail-extras-col { min-width: 0; }
+.detail-extras-col { min-width: 0; align-self: start; }
+/* fitDetailExtras() in app.js sets --thumb-w so the images grow to fill the
+   panel down to the bottom of the player. */
+.detail-extras .gallery-item { width: var(--thumb-w, 72px); height: calc(var(--thumb-w, 72px) * 9 / 16); }
+.detail-extras .gallery-big .gallery-item img { border-width: 3px; border-radius: 8px; }
+.detail-extras .gallery-big .gallery-item .gallery-active-badge { font-size: 11px; padding: 3px 7px; bottom: 6px; left: 6px; }
 .detail-extras-col input[type="file"] { max-width: 100%; }
 
 /* Stats page */

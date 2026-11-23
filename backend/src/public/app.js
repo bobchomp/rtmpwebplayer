@@ -866,6 +866,66 @@
       .catch(function () {});
   }
 
+  // Stretch the cover/thumbnail panel so its bottom lines up with the
+  // bottom of the player, and grow the images to fill the space: the
+  // biggest 16:9 size at which each gallery still fits. Only side by side;
+  // when the columns stack the panel keeps its natural size.
+  var detailPreviewPanel = document.getElementById('detail-preview-panel');
+  var detailExtrasPanel = document.getElementById('detail-extras-panel');
+  var GALLERY_GAP = 22;
+  var MIN_THUMB_W = 72;
+  var MAX_THUMB_W = 300;
+
+  function largestThumbWidth(count, width, height) {
+    for (var w = MAX_THUMB_W; w > MIN_THUMB_W; w -= 2) {
+      var perRow = Math.max(1, Math.floor((width + GALLERY_GAP) / (w + GALLERY_GAP)));
+      if (perRow === 1 && w > width) continue;
+      var rows = Math.ceil(count / perRow);
+      if (rows * (w * 9 / 16) + (rows - 1) * GALLERY_GAP <= height) return w;
+    }
+    return MIN_THUMB_W;
+  }
+
+  function fitDetailExtras() {
+    var galleries = [detailCoverGallery, detailThumbGallery];
+    detailExtrasPanel.style.minHeight = '';
+    galleries.forEach(function (g) { g.style.removeProperty('--thumb-w'); g.classList.remove('gallery-big'); });
+    if (detailView.classList.contains('hidden')) return;
+
+    var sideBySide = detailPreviewPanel.getBoundingClientRect().right <= detailExtrasPanel.getBoundingClientRect().left;
+    if (!sideBySide) return;
+    var target = detailPreviewPanel.getBoundingClientRect().bottom;
+    var panelBox = detailExtrasPanel.getBoundingClientRect();
+    if (panelBox.bottom >= target) return;
+
+    var padBottom = parseFloat(getComputedStyle(detailExtrasPanel).paddingBottom) || 0;
+    // Measure both galleries before growing either: growing one makes the
+    // panel taller, which would hide the other's spare room.
+    var sizes = galleries.map(function (g) {
+      var count = g.querySelectorAll('.gallery-item').length;
+      var slack = (target - padBottom) - g.parentNode.getBoundingClientRect().bottom;
+      return count && slack > 0 ? largestThumbWidth(count, g.clientWidth, g.clientHeight + slack) : null;
+    });
+    // Both galleries use the same size, so they match side by side.
+    var fits = sizes.filter(function (s) { return s; });
+    var size = fits.length ? Math.min.apply(null, fits) : null;
+    galleries.forEach(function (g, i) {
+      if (!size || !sizes[i]) return;
+      g.style.setProperty('--thumb-w', size + 'px');
+      g.classList.toggle('gallery-big', size >= 140);
+    });
+    detailExtrasPanel.style.minHeight = Math.max(0, Math.round(target - detailExtrasPanel.getBoundingClientRect().top)) + 'px';
+  }
+
+  if (window.ResizeObserver) {
+    // Not the extras panel itself, which this resizes.
+    var extrasObserver = new ResizeObserver(function () { fitDetailExtras(); });
+    extrasObserver.observe(detailPreviewPanel);
+    extrasObserver.observe(document.querySelector('.outputs-panel'));
+  } else {
+    window.addEventListener('resize', fitDetailExtras);
+  }
+
   function renderGallery(galleryEl, channel, listField, activeField, routeSegment, namesField) {
     var list = channel[listField] || [];
     var names = channel[namesField] || {};
@@ -1236,6 +1296,7 @@
 
     renderGallery(detailCoverGallery, channel, 'coverImages', 'activeCoverImage', 'covers', 'coverImageNames');
     renderGallery(detailThumbGallery, channel, 'liveThumbnails', 'activeLiveThumbnail', 'live-thumbnails', 'liveThumbnailNames');
+    fitDetailExtras();
   }
 
   function formatBytes(bytes) {
