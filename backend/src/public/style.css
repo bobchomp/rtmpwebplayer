@@ -364,6 +364,17 @@ button.danger:hover { background: var(--ember-tint); }
 .dragging .drag-handle { cursor: grabbing; }
 body.is-dragging-output, body.is-dragging-output * { cursor: grabbing !important; user-select: none; }
 .outputs-panel .youtube-output .output-row { margin-bottom: 0; }
+/* Every row ends switch then Delete (Your website has a blank the same
+   width instead), so the switches line up in one column. */
+.outputs-panel .output-delete-btn, .output-delete-spacer { width: 76px; flex-shrink: 0; text-align: center; }
+.output-delete-spacer { align-self: stretch; }
+/* Phones: name and description get the full width, controls drop below,
+   still right-aligned so the switches keep lining up. */
+@media (max-width: 560px) {
+  .outputs-panel .output-row { flex-wrap: wrap; row-gap: 8px; justify-content: flex-end; }
+  .outputs-panel .output-row .output-info { flex: 1 1 calc(100% - 40px); }
+  .outputs-panel .youtube-output-status { padding-left: 28px; }
+}
 .youtube-privacy-select { width: auto; flex-shrink: 0; padding: 7px 9px; font-size: 13px; }
 .youtube-output-status { margin: 4px 0 0; padding-left: 28px; }
 .facebook-page-list { display: flex; flex-direction: column; gap: 8px; }
