@@ -1235,6 +1235,8 @@
         node.dataset.viewerOutputId = output.id;
         node.querySelector('.output-name').appendChild(viewerPillEl());
       }
+      // The code font is for RTMP addresses; Public Link's line is a sentence.
+      node.querySelector('.output-url').classList.toggle('output-url-text', isPublicLink);
       node.querySelector('.output-url').textContent = isPublicLink
         ? 'Anyone with the link can watch. Click Copy link to share it.'
         : output.rtmpUrl;

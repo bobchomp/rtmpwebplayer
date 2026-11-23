@@ -385,6 +385,7 @@ body.is-dragging-output, body.is-dragging-output * { cursor: grabbing !important
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .output-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 12.5px; }
+.output-url.output-url-text { font-family: inherit; font-size: 13px; white-space: normal; }
 .output-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
 
 .recording-processing-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
