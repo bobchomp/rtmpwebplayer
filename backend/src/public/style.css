@@ -355,8 +355,24 @@ button.danger:hover { background: var(--ember-tint); }
 .outputs-panel-header h2, .outputs-panel-header h3 { margin: 0; }
 .outputs-panel-header-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.add-output-type-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.add-output-type-row button { flex: 1; }
+/* Add output: one row per kind, with a line saying what it's for. */
+.add-output-type-list { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+button.add-output-type {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; white-space: normal;
+  background: var(--surface); color: var(--ink); border: 0; border-radius: 0; padding: 13px 16px;
+}
+button.add-output-type + button.add-output-type { border-top: 1px solid var(--border); }
+button.add-output-type:hover { background: var(--surface-sunken); }
+button.add-output-type:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.add-output-type-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.add-output-type-text b { font: 600 14px/1.3 var(--font-display); }
+.add-output-type-text span { font: 400 13px/1.35 var(--font-body); color: var(--slate); }
+.add-output-type-arrow { font-size: 22px; line-height: 1; color: var(--slate-soft); }
+.add-output-type .when-disabled { display: none; }
+button.add-output-type:disabled { cursor: default; background: var(--surface); }
+button.add-output-type:disabled b { color: var(--slate-soft); }
+button.add-output-type:disabled .when-enabled, button.add-output-type:disabled .add-output-type-arrow { display: none; }
+button.add-output-type:disabled .when-disabled { display: block; }
 .youtube-output { margin-bottom: 12px; }
 /* Grip to drag an output up or down the list (or arrow keys when focused). */
 .drag-handle {

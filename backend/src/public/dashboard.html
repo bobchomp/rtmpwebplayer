@@ -703,11 +703,23 @@
   <div class="modal-box">
     <h3>Add output</h3>
     <p class="hint">Choose what to send this stream to.</p>
-    <div class="add-output-type-row" id="add-output-type-row">
-      <button class="secondary" id="add-output-type-rtmp">Custom RTMP</button>
-      <button class="secondary" id="add-output-type-public-link">Public Link</button>
-      <button class="secondary hidden" id="add-output-type-youtube">YouTube</button>
-      <button class="secondary hidden" id="add-output-type-facebook">Facebook</button>
+    <div class="add-output-type-list" id="add-output-type-row">
+      <button type="button" class="add-output-type hidden" id="add-output-type-youtube">
+        <span class="add-output-type-text"><b>YouTube</b><span class="when-enabled">Go live on your YouTube channel.</span></span>
+        <span class="add-output-type-arrow" aria-hidden="true">&rsaquo;</span>
+      </button>
+      <button type="button" class="add-output-type hidden" id="add-output-type-facebook">
+        <span class="add-output-type-text"><b>Facebook</b><span class="when-enabled">Go live on a Facebook Page.</span></span>
+        <span class="add-output-type-arrow" aria-hidden="true">&rsaquo;</span>
+      </button>
+      <button type="button" class="add-output-type" id="add-output-type-public-link">
+        <span class="add-output-type-text"><b>Public Link</b><span class="when-enabled">A page anyone with the link can watch.</span><span class="when-disabled">This channel already has one.</span></span>
+        <span class="add-output-type-arrow" aria-hidden="true">&rsaquo;</span>
+      </button>
+      <button type="button" class="add-output-type" id="add-output-type-rtmp">
+        <span class="add-output-type-text"><b>Custom RTMP</b><span class="when-enabled">Any other service, using its RTMP address and stream key.</span></span>
+        <span class="add-output-type-arrow" aria-hidden="true">&rsaquo;</span>
+      </button>
     </div>
     <form id="add-output-rtmp-form" class="hidden add-output-form">
       <input type="text" id="new-output-name" placeholder="Name (e.g. Twitch)" maxlength="60" required>
