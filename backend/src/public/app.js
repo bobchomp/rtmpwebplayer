@@ -1092,6 +1092,94 @@
     return pill;
   }
 
+  // Replaces a <select>'s browser dropdown with one styled like the rest of
+  // the app. The <select> stays (hidden) as the source of truth: picking an
+  // option sets its value and fires 'change' as usual.
+  function enhanceSelect(select) {
+    var wrap = document.createElement('div');
+    wrap.className = 'app-select';
+    select.parentNode.insertBefore(wrap, select);
+    wrap.appendChild(select);
+    select.classList.add('app-select-native');
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'secondary app-select-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    if (select.getAttribute('aria-label')) btn.setAttribute('aria-label', select.getAttribute('aria-label'));
+    var label = document.createElement('span');
+    var caret = document.createElement('span');
+    caret.className = 'help-menu-caret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '\u25BE';
+    btn.appendChild(label);
+    btn.appendChild(caret);
+    wrap.appendChild(btn);
+
+    var panel = document.createElement('div');
+    panel.className = 'help-menu-panel app-select-panel hidden';
+    panel.setAttribute('role', 'listbox');
+    wrap.appendChild(panel);
+
+    function syncLabel() {
+      var opt = select.options[select.selectedIndex];
+      label.textContent = opt ? opt.textContent : '';
+    }
+    function close(focusBtn) {
+      panel.classList.add('hidden');
+      wrap.classList.remove('app-select-open');
+      btn.setAttribute('aria-expanded', 'false');
+      if (focusBtn) btn.focus();
+    }
+    function open() {
+      panel.innerHTML = '';
+      Array.prototype.forEach.call(select.options, function (opt) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'app-select-option';
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', String(opt.value === select.value));
+        item.innerHTML = '<span class="app-select-tick" aria-hidden="true">\u2713</span>';
+        item.appendChild(document.createTextNode(opt.textContent));
+        item.addEventListener('click', function () {
+          var changed = select.value !== opt.value;
+          select.value = opt.value;
+          syncLabel();
+          close(true);
+          if (changed) select.dispatchEvent(new Event('change'));
+        });
+        panel.appendChild(item);
+      });
+      panel.classList.remove('hidden');
+      wrap.classList.add('app-select-open');
+      btn.setAttribute('aria-expanded', 'true');
+      (panel.querySelector('[aria-selected="true"]') || panel.firstChild).focus();
+    }
+
+    btn.addEventListener('click', function () {
+      if (panel.classList.contains('hidden')) open(); else close(false);
+    });
+    wrap.addEventListener('keydown', function (e) {
+      if (panel.classList.contains('hidden')) {
+        if (e.target === btn && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); open(); }
+        return;
+      }
+      var items = Array.prototype.slice.call(panel.children);
+      var i = items.indexOf(document.activeElement);
+      if (e.key === 'Escape') { e.preventDefault(); close(true); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); items[Math.min(items.length - 1, i + 1)].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); items[Math.max(0, i - 1)].focus(); }
+      else if (e.key === 'Tab') close(false);
+    });
+    document.addEventListener('click', function (e) {
+      if (!wrap.contains(e.target) && !panel.classList.contains('hidden')) close(false);
+    });
+    select.addEventListener('change', syncLabel);
+    syncLabel();
+    return wrap;
+  }
+
   function renderPlatformOutput(channel, output) {
     var platform = PLATFORM_OUTPUTS[output.type];
     var node = youtubeOutputRowTemplate.content.firstElementChild.cloneNode(true);
@@ -1112,8 +1200,12 @@
     if (!platform.privacy) privacy.remove();
     privacy.value = output.privacyStatus || 'public';
     privacy.addEventListener('change', function () {
-      save({ privacyStatus: privacy.value }, function () { privacy.value = output.privacyStatus || 'public'; });
+      save({ privacyStatus: privacy.value }, function () {
+        privacy.value = output.privacyStatus || 'public';
+        privacy.dispatchEvent(new Event('change'));
+      });
     });
+    if (platform.privacy) enhanceSelect(privacy);
 
     var toggle = node.querySelector('.output-toggle');
     toggle.checked = !!output.enabled;
@@ -1686,6 +1778,12 @@
           return refreshChannelDetail();
         })
         .catch(function (err) { alert(err.message); });
+    });
+
+    // Upload buttons open their hidden file picker.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-file-input]');
+      if (btn) document.getElementById(btn.dataset.fileInput).click();
     });
 
     detailCoverUploadInput.addEventListener('change', function (e) {

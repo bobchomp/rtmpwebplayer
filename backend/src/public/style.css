@@ -381,6 +381,27 @@ body.is-dragging-output, body.is-dragging-output * { cursor: grabbing !important
   .outputs-panel .youtube-output-status { padding-left: 28px; }
 }
 .youtube-privacy-select { width: auto; flex-shrink: 0; padding: 7px 9px; font-size: 13px; }
+
+/* App-styled dropdown (enhanceSelect in app.js): a secondary button that
+   opens a menu like the Help menu. The real <select> stays hidden underneath
+   and keeps the value. */
+.app-select { position: relative; flex-shrink: 0; }
+/* File pickers open from an app-styled button (data-file-input) instead. */
+.file-input-hidden { display: none; }
+.app-select-native { display: none !important; }
+.app-select-btn { display: inline-flex; align-items: center; gap: 6px; }
+.app-select-btn .help-menu-caret { margin-left: 0; }
+.app-select-open .help-menu-caret { transform: rotate(180deg); }
+.app-select-panel { right: auto; left: 0; min-width: 100%; }
+.app-select-option {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  font: 500 13.5px/1 var(--font-display); padding: 9px 11px; border-radius: var(--radius-sm);
+  background: none; color: var(--ink); border: 0;
+}
+.app-select-option:hover, .app-select-option:focus-visible { background: var(--surface-sunken); outline: none; }
+.app-select-option .app-select-tick { width: 12px; color: var(--accent); visibility: hidden; }
+.app-select-option[aria-selected="true"] { color: var(--accent-strong); }
+.app-select-option[aria-selected="true"] .app-select-tick { visibility: visible; }
 .youtube-output-status { margin: 4px 0 0; padding-left: 28px; }
 .facebook-page-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -510,7 +531,6 @@ body.is-dragging-output, body.is-dragging-output * { cursor: grabbing !important
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 
 .thumb-picker-box { max-width: 640px; }
-.thumb-picker-upload-label { margin-top: -6px; }
 
 /* Shared between the inline Recordings-page notice and the popup shown when
    trying to turn a channel's "Record streams" toggle on - both while
