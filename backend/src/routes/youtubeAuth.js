@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { requireAuth } = require('../authMiddleware');
 const { readDb } = require('../db');
 const youtube = require('../youtube');
+const liveOutputs = require('../liveOutputs');
 const { currentAccount, ownsChannel } = require('../accounts');
 const { MAX_OUTPUTS } = require('./channels');
 
@@ -44,7 +45,8 @@ router.get('/callback', requireAuth, async (req, res) => {
   if (!code) return res.status(400).send('Missing authorization code.');
 
   try {
-    await youtube.connect(code, channelId, MAX_OUTPUTS);
+    const output = await youtube.connect(code, channelId, MAX_OUTPUTS);
+    liveOutputs.startIfLive(channelId, output.id);
     res.redirect(back);
   } catch (err) {
     res.status(500).send(`Failed to connect YouTube: ${err.message}`);

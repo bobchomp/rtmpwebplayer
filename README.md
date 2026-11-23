@@ -411,13 +411,18 @@ within those 15 seconds carries on in the same broadcast. Saving a new title or
 description, or picking a different Live thumbnail, while live updates the
 broadcast. The output's status line shows
 what happened, with a link to the broadcast while live. Switching the output
-on or off applies from the next time you go live.
+on mid-stream starts a broadcast within a few seconds; switching it off
+stops sending and ends the broadcast 15 seconds later (switching back on
+within that time carries on in the same one). The same goes for Facebook,
+and custom RTMP outputs start and stop mid-stream too.
 
 How it works: the output keeps one reusable YouTube stream (a fixed ingest
-URL/key, created on first use). On publish, `rtmpHooks.js` gives the output
-a fresh `session` id and `youtube.js` creates and binds a new broadcast;
-`/relay-targets` only lists the YouTube target once that's done, which is
-why `relay-start.sh` keeps polling for up to a minute. The Google refresh
+URL/key, created on first use). On publish (or when switched on mid-stream,
+see `liveOutputs.js`), the output gets a fresh `session` id and `youtube.js`
+creates and binds a new broadcast; `/relay-targets` only lists the YouTube
+target once that's done. `relay-start.sh` checks `/relay-targets` every 3
+seconds for the whole stream, starting relays for outputs that appear and
+stopping ones that disappear. The Google refresh
 token is kept in `db.youtubeTokens[outputId]`, never on the output, so it
 never reaches the browser; deleting the output deletes it.
 

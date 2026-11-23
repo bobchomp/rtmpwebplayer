@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { requireAuth } = require('../authMiddleware');
 const { readDb } = require('../db');
 const facebook = require('../facebook');
+const liveOutputs = require('../liveOutputs');
 const { currentAccount, ownsChannel } = require('../accounts');
 const { MAX_OUTPUTS } = require('./channels');
 
@@ -56,7 +57,8 @@ router.get('/callback', requireAuth, async (req, res) => {
       return res.status(400).send('None of your Facebook Pages can be used to go live. Facebook only lets apps stream to Pages, not personal profiles, and you need full control of the Page. Check that, then try again, and make sure the Page is ticked on Facebook\'s screen.');
     }
     if (pages.length === 1) {
-      facebook.addOutput(channelId, pages[0], MAX_OUTPUTS);
+      const output = facebook.addOutput(channelId, pages[0], MAX_OUTPUTS);
+      liveOutputs.startIfLive(channelId, output.id);
       return res.redirect(back);
     }
     const id = crypto.randomBytes(16).toString('hex');
@@ -83,7 +85,8 @@ router.post('/pick', requireAuth, express.json(), (req, res) => {
   if (!page) return res.status(400).json({ error: 'Unknown Page' });
   if (!ownsChannel(readDb().channels[entry.channelId], currentAccount(req))) return res.status(404).json({ error: 'Channel not found' });
   try {
-    facebook.addOutput(entry.channelId, page, MAX_OUTPUTS);
+    const output = facebook.addOutput(entry.channelId, page, MAX_OUTPUTS);
+    liveOutputs.startIfLive(entry.channelId, output.id);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }

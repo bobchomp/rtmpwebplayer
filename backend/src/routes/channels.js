@@ -8,6 +8,7 @@ const { readDb, writeDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
 const streamSessions = require('../streamSessions');
+const liveOutputs = require('../liveOutputs');
 const streamHealth = require('../streamHealth');
 const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
@@ -315,7 +316,9 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
   // only the switch can be changed here.
   if (output.type === 'facebook') {
     if (typeof req.body.enabled === 'boolean') output.enabled = req.body.enabled;
+    const run = liveOutputs.applySwitch(channel, output);
     writeDb(db);
+    if (run) run();
     return res.json(channel);
   }
 
@@ -329,7 +332,10 @@ router.patch('/:id/outputs/:outputId', requireAuth, (req, res) => {
       }
       output.privacyStatus = req.body.privacyStatus;
     }
+    // Switched on or off mid-stream: start or end the broadcast now.
+    const run = liveOutputs.applySwitch(channel, output);
     writeDb(db);
+    if (run) run();
     return res.json(channel);
   }
 
@@ -350,7 +356,9 @@ router.patch('/:id/all-outputs', requireAuth, (req, res) => {
   if (typeof (req.body && req.body.enabled) !== 'boolean') return res.status(400).json({ error: 'enabled must be true or false' });
   channel.embedEnabled = req.body.enabled;
   (channel.outputs || []).forEach((o) => { o.enabled = req.body.enabled; });
+  const runs = (channel.outputs || []).map((o) => liveOutputs.applySwitch(channel, o)).filter(Boolean);
   writeDb(db);
+  runs.forEach((run) => run());
   res.json(channel);
 });
 

@@ -4,17 +4,8 @@ const { readDb, writeDb } = require('../db');
 const recordings = require('../recordings');
 const recordingSessions = require('../recordingSessions');
 const { secretMatches } = require('../safeCompare');
-const youtube = require('../youtube');
-const facebook = require('../facebook');
 const streamSessions = require('../streamSessions');
-
-// Direct platform outputs, which create a broadcast/live video each time the
-// channel goes live and share one output shape (see platformOutputs.js).
-const PLATFORMS = {
-  youtube: { client: youtube, name: 'YouTube broadcast' },
-  facebook: { client: facebook, name: 'Facebook live video' },
-};
-const crypto = require('crypto');
+const { PLATFORMS, beginOutput, endOutput } = require('../liveOutputs');
 
 const router = express.Router();
 
@@ -65,25 +56,17 @@ router.post('/on_publish', (req, res) => {
 
   // Direct YouTube/Facebook outputs: mark this publish with a fresh session
   // id and start creating the broadcast now, so it's ready (and the relay
-  // released) within seconds. See startBroadcast() in youtube.js/facebook.js.
-  const platformStarts = [];
-  (channel.outputs || []).forEach((output) => {
-    const platform = PLATFORMS[output.type];
-    if (!platform) return;
-    output.session = null;
-    output.broadcastId = null;
-    if (!output.enabled || !platform.client.isConfigured()) return;
-    output.session = crypto.randomUUID();
-    output.lastStatus = { at: new Date().toISOString(), ok: true, message: `Starting the ${platform.name}...` };
-    platformStarts.push([platform.client, output.id, output.session]);
-  });
-  if (platformStarts.length) writeDb(db);
+  // released) within seconds. See liveOutputs.js. `publishing` tells the
+  // output switches (and the relay) that the encoder is connected.
+  channel.publishing = true;
+  const starts = (channel.outputs || []).map((output) => beginOutput(channel, output)).filter(Boolean);
+  writeDb(db);
 
   // Respond immediately so the publish isn't delayed - nginx is waiting on
   // this HTTP response to decide whether to accept the connection at all.
   res.status(200).send('OK');
 
-  platformStarts.forEach(([client, outputId, session]) => client.startBroadcast(channel.id, outputId, session));
+  starts.forEach((start) => start());
 
   cancelPendingLive(channel.id);
   pendingLiveTimers[channel.id] = setTimeout(() => {
@@ -116,39 +99,25 @@ router.post('/on_publish_done', (req, res) => {
   if (channel) {
     cancelPendingLive(channel.id);
     channel.isLive = false;
+    channel.publishing = false;
     // YouTube/Facebook broadcasts: kept for a short grace period so a quick
-    // reconnect carries on in the same one, then ended (finishBroadcast).
-    const toFinish = [];
-    (channel.outputs || []).forEach((output) => {
-      const platform = PLATFORMS[output.type];
-      if (!platform || !output.session) return;
-      if (output.broadcastId) {
-        output.previousBroadcastId = output.broadcastId;
-        output.previousEndedAt = new Date().toISOString();
-        toFinish.push([platform.client, output.id, output.broadcastId]);
-      }
-      output.session = null;
-      output.broadcastId = null;
-      if (output.lastStatus && output.lastStatus.ok) {
-        output.lastStatus = { at: new Date().toISOString(), ok: true, message: 'Stream stopped' };
-      }
-    });
+    // reconnect carries on in the same one, then ended (see liveOutputs.js).
+    const finishes = (channel.outputs || []).map((output) => endOutput(channel, output, 'Stream stopped')).filter(Boolean);
     writeDb(db);
     try {
       streamSessions.end(channel.id);
     } catch (err) {
       console.error(`Failed to end the stream session for ${channel.id}:`, err.message);
     }
-    toFinish.forEach(([client, outputId, broadcastId]) => {
-      setTimeout(() => client.finishBroadcast(channel.id, outputId, broadcastId), client.RECONNECT_GRACE_MS);
-    });
+    finishes.forEach((finish) => finish());
   }
   res.status(200).send('OK');
 });
 
 // Internal only (protected by WEBHOOK_SECRET) - used by the rtmp container's
-// relay-start.sh script (polled a few times just after publish starts) to
-// find every custom RTMP output currently enabled for this stream.
+// relay-start.sh script, polled every few seconds for the whole stream, to
+// find every output it should be sending to right now. Outputs switched on
+// mid-stream are picked up and ones switched off are stopped.
 //
 // Plain text, one "id<TAB>rtmp-url" pair per line (tab rather than a more
 // common character like "|" or "," since neither is guaranteed absent from
@@ -160,6 +129,9 @@ router.get('/relay-targets', (req, res) => {
   const db = readDb();
   const channel = findChannelByKey(db, streamKey);
   if (!channel) return res.type('text/plain').send('');
+  // The encoder has gone: tells relay-start.sh to stop its relays and exit,
+  // in case relay-stop.sh didn't get to it.
+  if (channel.publishing === false) return res.status(410).type('text/plain').send('');
 
   const lines = [];
 
