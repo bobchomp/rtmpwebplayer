@@ -575,6 +575,9 @@
 
   var detailWebsiteToggle = document.getElementById('detail-website-toggle');
   var detailWebsiteHint = document.getElementById('detail-website-hint');
+  var websiteHtmlBtn = document.getElementById('website-html-btn');
+  var websiteHtmlModalBackdrop = document.getElementById('website-html-modal-backdrop');
+  var websiteHtmlCloseBtn = document.getElementById('website-html-close-btn');
 
   var editMetadataBtn = document.getElementById('edit-metadata-btn');
   var metadataModalBackdrop = document.getElementById('metadata-modal-backdrop');
@@ -1059,7 +1062,7 @@
 
     detailWebsiteToggle.checked = channel.embedEnabled !== false;
     detailWebsiteHint.textContent = channel.embedEnabled !== false
-      ? 'Paste the code below into any page of your website.'
+      ? 'Click Website HTML for the code to paste into your website.'
       : 'Off. The player on your website shows as offline, even while you\'re streaming. You can still watch here.';
 
     detailRecordingToggle.checked = !!channel.recordingEnabled;
@@ -1294,6 +1297,17 @@
     detailListenersWired = true;
 
     wireCopyButtons(detailView);
+
+    websiteHtmlBtn.addEventListener('click', function () {
+      websiteHtmlModalBackdrop.classList.remove('hidden');
+    });
+    websiteHtmlCloseBtn.addEventListener('click', function () {
+      websiteHtmlModalBackdrop.classList.add('hidden');
+    });
+    websiteHtmlModalBackdrop.addEventListener('click', function (e) {
+      if (e.target === websiteHtmlModalBackdrop) websiteHtmlModalBackdrop.classList.add('hidden');
+    });
+    wireCopyButtons(websiteHtmlModalBackdrop);
 
     thumbPickerSkipBtn.addEventListener('click', function () {
       dismissThumbPopup(currentChannelId);
