@@ -1214,6 +1214,21 @@
       .catch(function () {});
   }
 
+  var viewerGraphUpdateBtn = document.getElementById('viewer-graph-update-btn');
+  viewerGraphUpdateBtn.addEventListener('click', function () {
+    var channelId = currentChannelId;
+    viewerGraphUpdateBtn.disabled = true;
+    api('/api/channels/' + channelId + '/stream-session/sample', { method: 'POST' })
+      .then(function (data) {
+        if (channelId !== currentChannelId) return;
+        lastSession = data.session;
+        renderLiveGraph();
+        pollViewerCount();
+      })
+      .catch(function (err) { alert(err.message); })
+      .then(function () { viewerGraphUpdateBtn.disabled = false; });
+  });
+
   function renderLiveGraph() {
     drawViewerGraph(viewerGraph, viewerGraphLegend, lastSession, true);
   }

@@ -420,6 +420,7 @@ body.is-dragging-output, body.is-dragging-output * { cursor: grabbing !important
 @media (max-width: 760px) { .detail-bottom { grid-template-columns: 1fr; } }
 .bottom-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .bottom-panel-header h3 { margin: 0; }
+.viewer-graph-actions { display: flex; align-items: center; gap: 12px; }
 a.secondary.last-stream-stats-link { font: 500 13.5px/1 var(--font-display); padding: 9px 15px; border-radius: var(--radius-sm); background: var(--surface-sunken); color: var(--ink); text-decoration: none; }
 a.secondary.last-stream-stats-link:hover { background: var(--border); }
 

@@ -97,6 +97,21 @@ function sampleAll() {
   if (changed) writeDb(db);
 }
 
+// The Viewers box's Update button: fresh YouTube/Facebook numbers, then a
+// sample straight away rather than at the next minute. Skipped if the last
+// sample is under 10 seconds old, so repeated clicks don't pile them up.
+async function sampleNow(channelId) {
+  await platformStats.sampleLiveViewers(channelId);
+  const db = readDb();
+  const channel = db.channels[channelId];
+  const session = (db.streamSessions || {})[channelId];
+  if (!channel || !channel.isLive || !session || session.endedAt) return;
+  const last = session.samples[session.samples.length - 1];
+  if (last && Date.now() - new Date(last.t).getTime() < 10 * 1000) return;
+  takeSample(session, channel);
+  writeDb(db);
+}
+
 // Everything the channel page shows: the samples for the graph, plus peaks
 // and view totals for the summary.
 function summary(channel) {
@@ -155,4 +170,4 @@ if (process.env.NODE_ENV !== 'test') {
   }, SAMPLE_INTERVAL_MS).unref();
 }
 
-module.exports = { currentCounts, start, end, sampleAll, summary };
+module.exports = { currentCounts, start, end, sampleAll, sampleNow, summary };

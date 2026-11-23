@@ -584,6 +584,19 @@ router.get('/:id/stream-session', requireAuth, (req, res) => {
   res.json({ session: streamSessions.summary(channel) });
 });
 
+// Admin-only: the Viewers box's Update button.
+router.post('/:id/stream-session/sample', requireAuth, async (req, res) => {
+  const db = readDb();
+  const channel = ownChannel(db, req);
+  if (!channel) return res.status(404).json({ error: 'Not found' });
+  try {
+    await streamSessions.sampleNow(channel.id);
+  } catch (err) {
+    console.error(`[stream-sessions] Updating viewers for ${channel.id}: ${err.message}`);
+  }
+  res.json({ session: streamSessions.summary(channel) });
+});
+
 // Admin-only: what the server is receiving from the encoder (Stream health).
 router.get('/:id/health', requireAuth, async (req, res) => {
   const db = readDb();

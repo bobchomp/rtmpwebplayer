@@ -187,8 +187,8 @@ function liveRecords() {
   return live;
 }
 
-async function sampleLiveViewers() {
-  for (const record of liveRecords()) {
+async function sampleLiveViewers(channelId) {
+  for (const record of liveRecords().filter((r) => !channelId || r.channelId === channelId)) {
     try {
       // eslint-disable-next-line no-await-in-loop
       const viewers = await clients[record.platform].liveViewers(record);
@@ -289,5 +289,6 @@ module.exports = {
   refreshNow,
   excludeRows,
   currentViewers,
+  sampleLiveViewers,
   tick,
 };
