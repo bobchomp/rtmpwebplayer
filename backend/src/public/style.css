@@ -465,7 +465,13 @@ a.secondary.last-stream-stats-link:hover { background: var(--border); }
 .app-select-btn { display: inline-flex; align-items: center; gap: 6px; }
 .app-select-btn .help-menu-caret { margin-left: 0; }
 .app-select-open .help-menu-caret { transform: rotate(180deg); }
-.app-select-panel { right: auto; left: 0; min-width: 100%; }
+.app-select-panel { right: auto; left: 0; min-width: 100%; max-height: 320px; overflow-y: auto; }
+.app-select-field { align-self: flex-start; }
+.app-select-field .app-select-btn {
+  justify-content: space-between; min-width: 200px; max-width: 100%; gap: 12px;
+  font: 400 14.5px/1.4 var(--font-body); padding: 9px 11px; border: 1px solid var(--border); color: var(--ink);
+}
+.app-select-field .app-select-btn span:first-child { overflow: hidden; text-overflow: ellipsis; }
 .app-select-option {
   display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
   font: 500 13.5px/1 var(--font-display); padding: 9px 11px; border-radius: var(--radius-sm);

@@ -192,6 +192,7 @@
   // ===================== Stats view =====================
 
   var statsChannelFilter = document.getElementById('stats-channel-filter');
+  enhanceSelect(statsChannelFilter, { field: true });
   var statsFromFilter = document.getElementById('stats-from-filter');
   var statsToFilter = document.getElementById('stats-to-filter');
   var statsTodayBtn = document.getElementById('stats-today-btn');
@@ -263,6 +264,7 @@
         statsChannelFilter.appendChild(opt);
       });
       statsChannelFilter.value = selected;
+      statsChannelFilter.syncAppSelect();
 
       statsTableBody.innerHTML = '';
       statsEmpty.classList.toggle('hidden', data.plays.length > 0);
@@ -1388,9 +1390,11 @@
   // Replaces a <select>'s browser dropdown with one styled like the rest of
   // the app. The <select> stays (hidden) as the source of truth: picking an
   // option sets its value and fires 'change' as usual.
-  function enhanceSelect(select) {
+  // options.field: styled like the app's text boxes, for a form field (the
+  // Stats and Recordings channel pickers) rather than a toolbar button.
+  function enhanceSelect(select, options) {
     var wrap = document.createElement('div');
-    wrap.className = 'app-select';
+    wrap.className = 'app-select' + (options && options.field ? ' app-select-field' : '');
     select.parentNode.insertBefore(wrap, select);
     wrap.appendChild(select);
     select.classList.add('app-select-native');
@@ -1469,6 +1473,8 @@
       if (!wrap.contains(e.target) && !panel.classList.contains('hidden')) close(false);
     });
     select.addEventListener('change', syncLabel);
+    // For code that refills the options or sets the value directly.
+    select.syncAppSelect = syncLabel;
     syncLabel();
     return wrap;
   }
@@ -1720,6 +1726,7 @@
   // ===================== Recordings page =====================
 
   var recordingsChannelSelect = document.getElementById('recordings-channel-select');
+  enhanceSelect(recordingsChannelSelect, { field: true });
   var recordingsPageList = document.getElementById('recordings-page-list');
   var recordingsPageEmpty = document.getElementById('recordings-page-empty');
   var recordingsListenersWired = false;
@@ -1821,6 +1828,7 @@
         recordingsChannelSelect.appendChild(opt);
       });
       recordingsChannelSelect.value = selected;
+      recordingsChannelSelect.syncAppSelect();
 
       wireRecordingsEventListeners();
       return loadRecordingsForChannel(recordingsChannelSelect.value);

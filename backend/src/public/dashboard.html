@@ -81,7 +81,7 @@
         <li class="step step-left">
           <div class="step-content">
             <h3>Send it to other places too</h3>
-            <p>Click "+ Add output" to send the same stream to YouTube, a Facebook Page or any custom RTMP address, or to make a Public Link people can open directly. Each output has its own on/off switch.</p>
+            <p>Click "+ Add output" to send the same stream to YouTube, a Facebook Page or any custom RTMP address, or to make a Public Link people can open directly. Each output has its own on/off switch, which works while you're live too, and <b>All sources</b> switches them all at once. Drag the grip on the left of an output to change the order they're listed in.</p>
           </div>
           <span class="step-num">4</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -96,8 +96,8 @@
         </li>
         <li class="step step-left">
           <div class="step-content">
-            <h3>Add cover and thumbnail images</h3>
-            <p>On a channel's page, upload an offline cover, shown while you're not live, and a live thumbnail, shown while you're live until someone presses play. You can upload several of each and click one to use it.</p>
+            <h3>Add offline and live thumbnails</h3>
+            <p>On a channel's page, upload an offline thumbnail, shown while you're not live, and a live thumbnail, shown while you're live until someone presses play. You can upload several of each and click one to use it. Drag live thumbnails to change their order, and click the pencil on any image to name it.</p>
           </div>
           <span class="step-num">6</span>
           <div class="step-spacer" aria-hidden="true"></div>
@@ -106,17 +106,25 @@
           <div class="step-spacer" aria-hidden="true"></div>
           <span class="step-num">7</span>
           <div class="step-content">
-            <h3>Check who's watching</h3>
-            <p>The Stats page lists who watched each channel on your website: one row per viewer, with their device type, IP address and rough location. It also shows views on YouTube and Facebook. Filter by channel or date, and export to CSV, Excel or PDF.</p>
+            <h3>Keep an eye on the stream</h3>
+            <p>While you're live, each output shows how many are watching, with the total next to All sources. Under the player, <b>Stream health</b> shows what the server is receiving from your encoder and warns you if the bitrate drops, and <b>Viewers</b> graphs how many are watching on each output. When you stop, a <b>Last stream</b> summary takes their place.</p>
           </div>
         </li>
         <li class="step step-left">
           <div class="step-content">
-            <h3>Rename or delete a channel</h3>
-            <p>Both buttons are at the top of the channel's page. Deleting a channel can't be undone: its stream key stops working and all its outputs go with it.</p>
+            <h3>Check who's watching</h3>
+            <p>The Stats page lists who watched each channel on your website: one row per viewer, with their device type, IP address and rough location. It also shows views on YouTube and Facebook. Filter by channel or date, and export to CSV, Excel or PDF.</p>
           </div>
           <span class="step-num">8</span>
           <div class="step-spacer" aria-hidden="true"></div>
+        </li>
+        <li class="step step-right">
+          <div class="step-spacer" aria-hidden="true"></div>
+          <span class="step-num">9</span>
+          <div class="step-content">
+            <h3>Rename or delete a channel</h3>
+            <p>Both buttons are at the top of the channel's page. Deleting a channel can't be undone: its stream key stops working and all its outputs go with it.</p>
+          </div>
         </li>
       </ol>
     </section>
@@ -188,7 +196,7 @@
           <span class="step-num">1</span>
           <div class="step-content">
             <h3>Your encoder pushes video in over RTMP</h3>
-            <p>OBS, vMix or whatever you use sends live video to this server using RTMP, a protocol made for streaming. The server checks your channel's stream key when you connect. Anyone with the key can stream to your channel, so treat it like a password.</p>
+            <p>OBS, vMix or whatever you use sends live video to this server using RTMP, a protocol made for streaming. The server checks your channel's stream key when you connect. Anyone with the key can stream to your channel, so treat it like a password. The Stream health box on the channel page reads what this server is receiving: the bitrate, resolution and frame rate.</p>
           </div>
         </li>
         <li class="step step-left">
@@ -220,7 +228,7 @@
           <span class="step-num">5</span>
           <div class="step-content">
             <h3>The server copies your stream to each output</h3>
-            <p>For each output that's switched on, the server starts a separate process that copies the incoming video, unchanged, to that destination (YouTube, Facebook or a custom RTMP address) for as long as you're live. For YouTube and Facebook it first creates the broadcast with your title. Copying without re-encoding uses very little of the server's CPU, and your encoder only ever sends one stream.</p>
+            <p>For each output that's switched on, the server starts a separate process that copies the incoming video, unchanged, to that destination (YouTube, Facebook or a custom RTMP address) for as long as you're live. For YouTube and Facebook it first creates the broadcast with your title. Copying without re-encoding uses very little of the server's CPU, and your encoder only ever sends one stream. The server checks which outputs are switched on every few seconds, so switching one on or off while you're live takes effect straight away.</p>
           </div>
         </li>
         <li class="step step-left">
@@ -236,7 +244,7 @@
           <span class="step-num">7</span>
           <div class="step-content">
             <h3>Stats come from the player checking in</h3>
-            <p>While someone watches on your website, their player checks in with the backend every so often. The backend records their IP address, a rough location worked out from it, and whether they're on a phone or computer. Viewers never sign in, so there are no names. YouTube and Facebook views come from those services themselves.</p>
+            <p>While someone watches on your website, their player checks in with the backend every so often. The backend records their IP address, a rough location worked out from it, and whether they're on a phone or computer. Viewers never sign in, so there are no names. YouTube and Facebook views come from those services themselves. While you're live, the number watching on each output is also saved once a minute for the channel page's Viewers graph.</p>
           </div>
         </li>
         <li class="step step-left">
