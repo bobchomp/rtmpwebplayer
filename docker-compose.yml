@@ -47,13 +47,6 @@ services:
       AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET}
       AUTH0_CALLBACK_URL: ${AUTH0_CALLBACK_URL}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
-      # Reuses the same RESTREAM_CLIENT_ID/SECRET as production - just needs
-      # this domain's own callback URL added to that Restream app's allowed
-      # redirect URIs.
-      RESTREAM_CLIENT_ID: ${RESTREAM_CLIENT_ID:-}
-      RESTREAM_CLIENT_SECRET: ${RESTREAM_CLIENT_SECRET:-}
-      RESTREAM_REDIRECT_URI: ${RESTREAM_REDIRECT_URI:-}
-      RESTREAM_IMPORT_SECRET: ${RESTREAM_IMPORT_SECRET:-}
       # Direct YouTube output - from the Google Cloud project's OAuth client
       # (see README's "Direct YouTube output"). Leave unset to hide it.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}

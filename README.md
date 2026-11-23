@@ -113,7 +113,7 @@ protect on its own.
 
 Each address in `ADMIN_EMAIL` is its own, fully separate account. An
 account only ever sees its own channels, and the stats, exports, recordings
-and Restream connection that belong to them - another account's channels
+and YouTube/Facebook connections that belong to them - another account's channels
 don't appear anywhere, and asking for one by its ID gets "not found". The
 dashboard footer shows which account you're signed in as. Embed players,
 share links and RTMP ingest are public per channel and work the same for
@@ -127,8 +127,7 @@ comes back if the address is re-added. An account is identified by its
 email, so changing someone's address means their data stays with the old
 one.
 
-Data from before accounts existed (channels, stats, recordings and the
-Restream connection) belongs to the **first** address in `ADMIN_EMAIL`,
+Data from before accounts existed (channels, stats and recordings) belongs to the **first** address in `ADMIN_EMAIL`,
 assigned automatically the first time the app starts. Keep your own address
 first.
 
@@ -505,16 +504,17 @@ Click **Stats** next to Log out to see who's watched each channel - one row
 per viewer's watch session (starting playback again after a 30+ minute gap
 counts as a new row; anything within that just updates "Latest Play"), with
 Latest Play, Channel, Title and Description (whatever the stream's title and
-description were set to at the time), Platform (see "Importing Restream
-stats" below), Views, Type (Mobile/Desktop), IP Address, Country, Region,
+description were set to at the time), Platform (Website, YouTube or
+Facebook), Views, Type (Mobile/Desktop), IP Address, Country, Region,
 City, and First Play. Filter by channel and/or date range (or click
 **Today** to set both to today in one click), and export the
 currently-filtered rows as a CSV, Excel, or PDF via the **Export** buttons.
 
-While a channel is live, its detail page also shows a "N watching" badge in
-the top-right corner of the preview, based on who's pinged in the last 90
-seconds - dashboard-only, never shown or reachable on the public embed,
-watch page, or any public route. Checking your own stream from the
+While a channel is live, its detail page also shows a "N watching" pill
+next to each output (website and Public Link from who's pinged in the last
+90 seconds, YouTube and Facebook from their own live counts) - dashboard-only,
+never shown or reachable on the public embed, watch page, or any public
+route. Checking your own stream from the
 dashboard doesn't count as a viewer or show up in the Stats history either.
 
 Country/Region/City need an IP-to-location lookup, which is optional:
@@ -528,79 +528,11 @@ The backend downloads MaxMind's free GeoLite2 City database on startup (and
 refreshes it weekly to keep boundaries current) - no key means those three
 columns just stay blank; everything else on the Stats page works either way.
 
-### Importing Restream stats
+### Older rows imported from Restream
 
-This app's own tracking only ever sees visits to your own site's embedded
-player - if Restream also relays your stream to YouTube or Facebook as
-native destinations (not this app's own RTMP ingest, which Restream treats
-as a Custom RTMP destination it has no analytics access to at all), those
-platforms' view counts are otherwise invisible here. The Stats page's
-**Import from Restream** button pulls them in as their own rows, tagged
-`YouTube`/`Facebook` in the new Platform column with a view count in Views
-- one row per platform per stream, not one per individual viewer, since
-that's the most granular data any platform hands to a third party for
-privacy reasons (not a Restream-specific limitation).
-
-Attribution to one of your channels is done by matching the stream's timing
-against whichever of your channels was actually live then (via a
-recording, if you have that enabled, or failing that, your own site's
-viewer records for that window) - reliable as long as only one stream is
-ever running on your Restream account at once. Anything it can't place
-automatically shows up in the import preview with a channel picker, so
-you can assign it by hand before confirming.
-
-1. Sign up/log in at [developers.restream.io](https://developers.restream.io)
-   and create an application (the exact steps mirror the Auth0 walkthrough
-   above - register an app, get a Client ID/Secret, set an allowed
-   callback URL).
-2. Set the callback URL to:
-   ```
-   https://<PUBLIC_HOST>/api/restream/callback
-   ```
-3. Add the resulting credentials to `.env` as `RESTREAM_CLIENT_ID` /
-   `RESTREAM_CLIENT_SECRET` / `RESTREAM_REDIRECT_URI` (the same callback URL
-   from step 2).
-4. From the Stats page, click **Connect Restream**, then **Import from
-   Restream** - pick a date range, **Preview** what would be imported
-   (assign a channel by hand to anything unmatched), then **Import**.
-   Re-importing a range you've already imported refreshes those streams'
-   numbers rather than duplicating them - useful since YouTube view counts
-   in particular keep climbing for a while after a stream ends.
-
-Leave `RESTREAM_CLIENT_ID`/`RESTREAM_CLIENT_SECRET`/`RESTREAM_REDIRECT_URI`
-unset to skip this entirely - the rest of the Stats page works the same
-either way.
-
-### Automatic weekly import
-
-The same import can run on a schedule from an external cron service such
-as [cron-job.org](https://cron-job.org), so Monday's stats are already in
-without anyone clicking through the preview. Each run imports the last 14
-days, which also refreshes the previous week's streams whose YouTube counts
-kept climbing. One run imports for every account that has Restream
-connected, each into its own channels only, so a single cron job covers
-everyone. Streams it can't match to one of that account's channels are
-skipped and counted in the response; assign those by hand from the normal
-import preview.
-
-1. Generate a secret on the server with `openssl rand -hex 32`, add it to
-   `.env` as `RESTREAM_IMPORT_SECRET`, and redeploy the backend.
-2. Each account that wants scheduled imports connects its own Restream from
-   its Stats page - the scheduled run reuses those connections.
-3. In cron-job.org, create a job:
-   - **URL:** `https://<PUBLIC_HOST>/api/stats/restream/auto-import`
-   - **Schedule:** Mondays, at whatever time suits
-   - **Advanced → Request method:** `POST`
-   - **Advanced → Headers:** `Authorization` = `Bearer <your secret>`
-   - **Notifications:** turn on "notify on failure", so an expired Restream
-     connection or a bad secret emails you instead of failing silently.
-
-Add `?days=N` to the URL (1-60) to import a different window. The endpoint
-returns `404` while `RESTREAM_IMPORT_SECRET` is unset, `401` for a wrong
-secret, and a per-account breakdown under `accounts`. If any account's
-import fails (for example, its Restream needing to be reconnected), the
-others still run, and the response is a `500` naming the account and the
-reason, so cron-job.org's failure notification fires.
+Before the direct YouTube/Facebook outputs, YouTube and Facebook view
+counts were imported from Restream. That import has been removed; rows it
+already brought in stay in the stats like any other.
 
 ## Recording streams
 
@@ -682,9 +614,8 @@ to mirror exactly what's live in production.
 4. Copy `.env.example` to `.env` and fill it in - same shape as
    production's, but every variable here is dev's own (no `DEV_` prefix
    needed, since this is already a dedicated file). `AUTH0_CLIENT_ID`/
-   `AUTH0_CLIENT_SECRET` and `RESTREAM_CLIENT_ID`/`RESTREAM_CLIENT_SECRET`
-   reuse the same values as production (same Auth0 tenant/Restream app) -
-   just add this domain's own callback URL to each of their allowed
+   `AUTH0_CLIENT_SECRET` reuse the same values as production (same Auth0
+   tenant) - just add this domain's own callback URL to its allowed
    redirect URIs, since the domain differs.
 5. In Cloudflare DNS, add an **A record** for `dev.stream.rossmackenzie.co.uk`
    pointing at the same droplet IP as `stream.rossmackenzie.co.uk`.

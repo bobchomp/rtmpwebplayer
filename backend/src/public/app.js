@@ -110,7 +110,6 @@
       document.title = 'Stats - RTMP Web Player';
       statsView.classList.remove('hidden');
       loadStats();
-      checkRestreamStatus();
     } else if (r.view === 'recordings') {
       document.title = 'Recordings - RTMP Web Player';
       recordingsView.classList.remove('hidden');
@@ -213,29 +212,8 @@
   var statsSelectedIds = {};
   var statsChannelsCache = [];
 
-  var statsRestreamStatusText = document.getElementById('stats-restream-status-text');
   var statsPlatformsStatusText = document.getElementById('stats-platforms-status-text');
   var statsPlatformsRefreshBtn = document.getElementById('stats-platforms-refresh-btn');
-  var statsRestreamConnectBtn = document.getElementById('stats-restream-connect-btn');
-  var statsRestreamImportBtn = document.getElementById('stats-restream-import-btn');
-  var statsRestreamDisconnectBtn = document.getElementById('stats-restream-disconnect-btn');
-
-  var restreamImportModalBackdrop = document.getElementById('restream-import-modal-backdrop');
-  var restreamImportFrom = document.getElementById('restream-import-from');
-  var restreamImportTo = document.getElementById('restream-import-to');
-  var restreamImportTodayBtn = document.getElementById('restream-import-today-btn');
-  var restreamImportPreviewBtn = document.getElementById('restream-import-preview-btn');
-  var restreamImportEmpty = document.getElementById('restream-import-empty');
-  var restreamImportPreviewWrap = document.getElementById('restream-import-preview-wrap');
-  var restreamImportPreviewBody = document.getElementById('restream-import-preview-body');
-  var restreamImportPreviewRowTemplate = document.getElementById('restream-import-preview-row-template');
-  var restreamImportSelectAllCheckbox = document.getElementById('restream-import-select-all');
-  var restreamImportCancelBtn = document.getElementById('restream-import-cancel-btn');
-  var restreamImportCommitBtn = document.getElementById('restream-import-commit-btn');
-  // The preview's own working copy - each item's channelId can be edited
-  // in place (via a row's channel <select>, for anything the automatic
-  // match missed) before commit sends this same array back.
-  var restreamPreviewItems = [];
   var statsCurrentPlayIds = [];
 
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
@@ -329,144 +307,6 @@
     statsSelectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < statsCurrentPlayIds.length;
   }
 
-  function checkRestreamStatus() {
-    return api('/api/restream/status').then(function (data) {
-      statsRestreamConnectBtn.classList.toggle('hidden', data.connected);
-      statsRestreamImportBtn.classList.toggle('hidden', !data.connected);
-      statsRestreamDisconnectBtn.classList.toggle('hidden', !data.connected);
-      statsRestreamStatusText.textContent = data.connected
-        ? 'Restream connected'
-        : 'Restream isn\'t connected. Connect it to import YouTube and Facebook view counts.';
-    }).catch(function () {
-      statsRestreamStatusText.textContent = 'Couldn\'t check whether Restream is connected.';
-    });
-  }
-
-  function openRestreamImportModal() {
-    restreamImportFrom.value = '';
-    restreamImportTo.value = '';
-    restreamImportEmpty.classList.add('hidden');
-    restreamImportPreviewWrap.classList.add('hidden');
-    restreamImportCommitBtn.classList.add('hidden');
-    restreamImportPreviewBody.innerHTML = '';
-    restreamPreviewItems = [];
-    restreamImportModalBackdrop.classList.remove('hidden');
-  }
-
-  function closeRestreamImportModal() {
-    restreamImportModalBackdrop.classList.add('hidden');
-  }
-
-  function formatPreviewDate(iso) {
-    return iso ? new Date(iso).toLocaleString() : '';
-  }
-
-  // Keeps the header checkbox in sync with the individual row checkboxes -
-  // checked when every row is included, indeterminate when some but not
-  // all are, unchecked when none are (or there are no rows at all).
-  function updateRestreamSelectAllUi() {
-    var includedCount = restreamPreviewItems.filter(function (item) { return item.included !== false; }).length;
-    restreamImportSelectAllCheckbox.checked = restreamPreviewItems.length > 0 && includedCount === restreamPreviewItems.length;
-    restreamImportSelectAllCheckbox.indeterminate = includedCount > 0 && includedCount < restreamPreviewItems.length;
-  }
-
-  function renderRestreamPreview() {
-    restreamImportPreviewBody.innerHTML = '';
-    restreamImportEmpty.classList.toggle('hidden', restreamPreviewItems.length > 0);
-    restreamImportPreviewWrap.classList.toggle('hidden', restreamPreviewItems.length === 0);
-    restreamImportCommitBtn.classList.toggle('hidden', restreamPreviewItems.length === 0);
-    updateRestreamSelectAllUi();
-
-    restreamPreviewItems.forEach(function (item, index) {
-      var row = restreamImportPreviewRowTemplate.content.firstElementChild.cloneNode(true);
-      var includeCheckbox = row.querySelector('.restream-preview-include');
-      includeCheckbox.checked = item.included !== false;
-      includeCheckbox.addEventListener('change', function () {
-        restreamPreviewItems[index].included = includeCheckbox.checked;
-        updateRestreamSelectAllUi();
-      });
-      row.querySelector('.restream-preview-date').textContent = formatPreviewDate(item.startedAt);
-      row.querySelector('.restream-preview-title').textContent = item.restreamTitle || '';
-      row.querySelector('.restream-preview-youtube').textContent = item.youtubeViews || 0;
-      row.querySelector('.restream-preview-facebook').textContent = item.facebookViews || 0;
-
-      var label = row.querySelector('.restream-preview-channel-label');
-      var select = row.querySelector('.restream-preview-channel-select');
-      if (item.channelId) {
-        label.textContent = item.channelName || '';
-      } else {
-        label.classList.add('hidden');
-        select.classList.remove('hidden');
-        select.classList.add('needs-pick');
-        var placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = 'Pick a channel…';
-        select.appendChild(placeholder);
-        statsChannelsCache.forEach(function (c) {
-          var opt = document.createElement('option');
-          opt.value = c.id;
-          opt.textContent = c.name;
-          select.appendChild(opt);
-        });
-        select.addEventListener('change', function () {
-          restreamPreviewItems[index].channelId = select.value || null;
-          select.classList.toggle('needs-pick', !select.value);
-        });
-      }
-
-      restreamImportPreviewBody.appendChild(row);
-    });
-  }
-
-  function previewRestreamImport() {
-    if (!restreamImportFrom.value || !restreamImportTo.value) {
-      alert('Choose a From date and a To date first.');
-      return;
-    }
-    restreamImportPreviewBtn.disabled = true;
-    api('/api/stats/restream/preview', {
-      method: 'POST',
-      body: JSON.stringify({
-        from: restreamImportFrom.value,
-        to: restreamImportTo.value + 'T23:59:59.999',
-      }),
-    }).then(function (data) {
-      restreamPreviewItems = data.items;
-      renderRestreamPreview();
-    }).catch(function (err) {
-      alert(err.message);
-    }).then(function () {
-      restreamImportPreviewBtn.disabled = false;
-    });
-  }
-
-  function commitRestreamImport() {
-    var itemsToImport = restreamPreviewItems.filter(function (item) { return item.included !== false; });
-    if (!itemsToImport.length) {
-      alert('Tick at least one stream to import.');
-      return;
-    }
-    restreamImportCommitBtn.disabled = true;
-    api('/api/stats/restream/import', {
-      method: 'POST',
-      body: JSON.stringify({ items: itemsToImport }),
-    }).then(function (result) {
-      closeRestreamImportModal();
-      return loadStats().then(function () {
-        var msg = 'Imported ' + result.importedCount + ' row' + (result.importedCount === 1 ? '' : 's') + ' from ' + result.itemCount + ' stream' + (result.itemCount === 1 ? '' : 's') + '.';
-        var skipped = result.skippedNoChannel + result.skippedNoViews;
-        if (skipped) {
-          msg += ' Skipped ' + skipped + ': ' + result.skippedNoChannel + ' didn\'t match a channel and ' + result.skippedNoViews + ' had no views.';
-        }
-        alert(msg);
-      });
-    }).catch(function (err) {
-      alert(err.message);
-    }).then(function () {
-      restreamImportCommitBtn.disabled = false;
-    });
-  }
-
   function wireStatsEventListeners() {
     if (statsListenersWired) return;
     statsListenersWired = true;
@@ -521,32 +361,6 @@
           statsPlatformsStatusText.textContent = 'Couldn\'t update the views: ' + err.message;
         })
         .then(function () { statsPlatformsRefreshBtn.disabled = false; });
-    });
-
-    statsRestreamDisconnectBtn.addEventListener('click', function () {
-      if (!confirm('Disconnect Restream? You can connect it again at any time, and rows you\'ve already imported stay.')) return;
-      api('/api/restream/disconnect', { method: 'POST' })
-        .then(checkRestreamStatus)
-        .catch(function (err) { alert(err.message); });
-    });
-    statsRestreamImportBtn.addEventListener('click', openRestreamImportModal);
-    restreamImportCancelBtn.addEventListener('click', closeRestreamImportModal);
-    restreamImportModalBackdrop.addEventListener('click', function (e) {
-      if (e.target === restreamImportModalBackdrop) closeRestreamImportModal();
-    });
-    restreamImportTodayBtn.addEventListener('click', function () {
-      var d = new Date();
-      var today = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
-      restreamImportFrom.value = today;
-      restreamImportTo.value = today;
-    });
-    restreamImportPreviewBtn.addEventListener('click', previewRestreamImport);
-    restreamImportCommitBtn.addEventListener('click', commitRestreamImport);
-    restreamImportSelectAllCheckbox.addEventListener('change', function () {
-      var checked = restreamImportSelectAllCheckbox.checked;
-      restreamPreviewItems.forEach(function (item) { item.included = checked; });
-      var rowCheckboxes = restreamImportPreviewBody.querySelectorAll('.restream-preview-include');
-      for (var i = 0; i < rowCheckboxes.length; i++) rowCheckboxes[i].checked = checked;
     });
   }
   wireStatsEventListeners();

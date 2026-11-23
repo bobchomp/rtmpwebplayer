@@ -4,9 +4,7 @@ const PDFDocument = require('pdfkit-table');
 const { readDb } = require('../db');
 const { requireAuth } = require('../authMiddleware');
 const plays = require('../plays');
-const restreamImport = require('../restreamImport');
-const { secretMatches } = require('../safeCompare');
-const { adminEmails, currentAccount, ownsChannel } = require('../accounts');
+const { currentAccount, ownsChannel } = require('../accounts');
 const statsTemplateExport = require('../statsTemplateExport');
 const platformStats = require('../platformStats');
 
@@ -36,8 +34,8 @@ const PLATFORM_LABELS = { website: 'Website', youtube: 'YouTube', facebook: 'Fac
 
 // Website rows are one-row-per-visitor, so each one counts as 1 view and
 // carries its own device type/IP; YouTube/Facebook rows are an aggregate
-// across every viewer (see platformStats.js, and restreamImport.js for older
-// rows) with their own view count but no single device type or IP, so those
+// across every viewer (see platformStats.js; older ones were imported from
+// Restream before the direct outputs existed) with their own view count but no single device type or IP, so those
 // show as "Various" instead. A direct broadcast's views stay blank until
 // they're first fetched, rather than showing as 1.
 function withDisplayFields(rows) {
@@ -151,90 +149,6 @@ router.post('/platforms/refresh', requireAuth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-// Read-only - hits Restream's API for the given range and returns what
-// would be imported, without writing anything locally yet. See the Import
-// modal in app.js, which shows this as an editable preview (a row missing
-// a channel match can be assigned one manually) before commit.
-router.post('/restream/preview', requireAuth, async (req, res) => {
-  const { from, to } = req.body || {};
-  if (!from || !to) return res.status(400).json({ error: 'from and to are required' });
-
-  try {
-    const items = await restreamImport.previewImport({ account: currentAccount(req), from, to });
-    res.json({ items });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// items: the preview list back from the client, possibly with a
-// manually-picked channelId filled in for rows the automatic match missed.
-router.post('/restream/import', requireAuth, (req, res) => {
-  const items = Array.isArray(req.body && req.body.items) ? req.body.items : [];
-  if (!items.length) return res.status(400).json({ error: 'items is required' });
-
-  try {
-    const result = restreamImport.commitImport(items, currentAccount(req));
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-const AUTO_IMPORT_DEFAULT_DAYS = 14;
-const AUTO_IMPORT_MAX_DAYS = 60;
-
-// For an external scheduler (see README's "Automatic weekly import"), so it
-// authenticates with RESTREAM_IMPORT_SECRET instead of an admin session, and
-// is switched off (404) when that's unset. Runs the import for every
-// account with Restream connected, each against its own channels only.
-// Imports every matched stream in the window without a preview - unmatched
-// ones are skipped and counted, to be assigned by hand from the Stats page.
-// One account failing doesn't stop the others; any failure makes the whole
-// response a 500 so the scheduler reports it.
-router.post('/restream/auto-import', async (req, res) => {
-  const expected = process.env.RESTREAM_IMPORT_SECRET;
-  if (!expected) return res.status(404).json({ error: 'Not found' });
-
-  const match = /^Bearer (.+)$/.exec(req.get('authorization') || '');
-  if (!match || !secretMatches(match[1], expected)) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const requestedDays = Number.parseInt(req.query.days, 10);
-  const days = Number.isFinite(requestedDays)
-    ? Math.min(Math.max(requestedDays, 1), AUTO_IMPORT_MAX_DAYS)
-    : AUTO_IMPORT_DEFAULT_DAYS;
-  const to = new Date();
-  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
-
-  const db = readDb();
-  const connected = adminEmails().filter((account) => {
-    const connection = db.restreamAccounts && db.restreamAccounts[account];
-    return !!(connection && connection.refreshToken);
-  });
-  if (!connected.length) {
-    return res.status(500).json({ error: 'No account has Restream connected. Connect it on the Stats page.' });
-  }
-
-  const accounts = [];
-  for (const account of connected) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const items = await restreamImport.previewImport({ account, from: from.toISOString(), to: to.toISOString() });
-      const result = restreamImport.commitImport(items, account);
-      console.log(`[restream-auto-import] ${account}, ${days}-day window: imported ${result.importedCount} row(s).`);
-      accounts.push(Object.assign({ account }, result));
-    } catch (err) {
-      console.error(`[restream-auto-import] ${account} failed: ${err.message}`);
-      accounts.push({ account, error: err.message });
-    }
-  }
-
-  const failed = accounts.some((a) => a.error);
-  res.status(failed ? 500 : 200).json({ from: from.toISOString(), to: to.toISOString(), days, accounts });
 });
 
 router.get('/export.csv', requireAuth, (req, res) => {

@@ -1,6 +1,6 @@
-// Thin wrapper around Auth0's standard OIDC endpoints - same hand-rolled
-// fetch-based approach as restream.js's OAuth calls, rather than
-// pulling in an OIDC client library. Auth0 only ever verifies WHO someone
+// Thin wrapper around Auth0's standard OIDC endpoints - hand-rolled with
+// fetch, like the YouTube and Facebook clients, rather than pulling in an
+// OIDC client library. Auth0 only ever verifies WHO someone
 // is; routes/auth0.js is what decides whether that person is allowed in
 // (comparing their verified email against ADMIN_EMAIL).
 

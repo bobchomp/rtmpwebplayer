@@ -59,7 +59,6 @@
 <h2>Information we collect from administrators</h2>
 <ul>
   <li>Administrators sign in through our login provider, Auth0, which confirms who they are and tells us their email address. We use that address only to check they're authorised, and to keep each administrator's channels and data separate from everyone else's. We never see or store their password.</li>
-  <li>If an administrator chooses to connect their Restream account, we store an access credential that lets us read the view counts of their past streams. We use it for nothing else, and they can disconnect it at any time.</li>
   <li>If an administrator chooses to connect a YouTube channel, we store an access credential issued by Google and the name of that YouTube channel. See "How we use Google user data" below.</li>
   <li>If an administrator chooses to connect a Facebook Page, we store an access credential issued by Facebook for that Page, and the Page's name and ID. We use it only to create a live video on that Page each time they go live, set and update its title and description, end it when they stop, and read how many people watched it, for the administrator's own stats page. We don't read or change anything else on the Page or their Facebook account. See <a href="/data-deletion.html">Deleting your data</a> for how to remove it.</li>
 </ul>
@@ -86,7 +85,6 @@
 <ul>
   <li>Cloudflare, which delivers the Site to visitors and, if recording is on, stores recorded video.</li>
   <li>Auth0, which handles administrator sign-in. Viewers never deal with it.</li>
-  <li>Restream, only for administrators who connect their Restream account, and only to read their own streams' view counts. Nothing about viewers is sent to Restream.</li>
   <li>Google (YouTube), only for administrators who connect a YouTube channel, to publish their streams there. Nothing about viewers is sent to Google.</li>
   <li>Meta (Facebook), only for administrators who connect a Facebook Page, to publish their streams there. Nothing about viewers is sent to Meta.</li>
 </ul>
@@ -96,7 +94,7 @@
 <ul>
   <li>Viewer details (IP address, approximate location, device type and watch times) are kept for the organisation's own reporting until an administrator deletes them.</li>
   <li>Recordings are kept for the period an administrator sets, then deleted automatically. They can be deleted sooner on request.</li>
-  <li>An administrator's sign-in lasts up to 7 days. A connected Restream, YouTube or Facebook credential is kept until the administrator disconnects it (see <a href="/data-deletion.html">Deleting your data</a>).</li>
+  <li>An administrator's sign-in lasts up to 7 days. A connected YouTube or Facebook credential is kept until the administrator disconnects it (see <a href="/data-deletion.html">Deleting your data</a>).</li>
 </ul>
 
 <h2>Security</h2>

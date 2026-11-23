@@ -1,5 +1,5 @@
 // Each address in ADMIN_EMAIL is its own fully separate account: it only
-// ever sees channels it owns, plus the stats, recordings and Restream
+// ever sees channels it owns, plus the stats, recordings and YouTube/Facebook
 // connection that belong to them. An account is identified by its
 // lowercased email; that string is stored as `owner` on channels, plays and
 // recordings.
@@ -67,24 +67,16 @@ function migrateOwnership() {
     }
   });
 
-  // The single pre-accounts Restream connection becomes the primary account's.
-  let restreamMoved = false;
-  db.restreamAccounts = db.restreamAccounts || {};
-  if (db.restream) {
-    if (!db.restreamAccounts[primary]) db.restreamAccounts[primary] = db.restream;
-    delete db.restream;
-    restreamMoved = true;
-  }
-  if (channelCount || restreamMoved) writeDb(db);
+  if (channelCount) writeDb(db);
 
   const ownerFor = (row) => (db.channels[row.channelId] && db.channels[row.channelId].owner) || primary;
   const playCount = stampOwnerInFile(path.join(DATA_DIR, 'plays.json'), 'plays', ownerFor);
   const recordingCount = stampOwnerInFile(path.join(DATA_DIR, 'recordings.json'), 'recordings', ownerFor);
 
-  if (channelCount || restreamMoved || playCount || recordingCount) {
+  if (channelCount || playCount || recordingCount) {
     console.log(
       `[accounts] Assigned to ${primary}: ${channelCount} channel(s), ${playCount} stats row(s), ` +
-      `${recordingCount} recording(s)${restreamMoved ? ', the Restream connection' : ''}.`
+      `${recordingCount} recording(s).`
     );
   }
 }

@@ -33,9 +33,9 @@ const FONT_FAMILY = 'DejaVu Sans';
 
 // One row per (date, half) bucket actually present in the data, sorted
 // chronologically. website = count of website plays whose firstPlayAt
-// falls in that bucket; facebook/youtube = summed from Restream-imported
-// aggregate rows (see restreamImport.js) whose firstPlayAt (the source
-// event's start time) falls in that bucket. Missing platforms stay
+// falls in that bucket; facebook/youtube = summed from aggregate rows
+// (direct broadcasts, or older ones imported from Restream) whose
+// firstPlayAt (the stream's start time) falls in that bucket. Missing platforms stay
 // undefined (rendered as a blank cell), not 0 - matching the source sheet,
 // where a blank means "no data for that platform that service" rather than
 // "confirmed zero viewers".

@@ -150,41 +150,6 @@ function recordPlay({ channelId, ip, userAgent, source = 'website' }) {
   dirty = true;
 }
 
-// One row per platform per Restream-reported stream event (a whole
-// audience, not one visitor - see restreamImport.js) - id is deterministic
-// (platform + the Restream event it came from) rather than a random UUID,
-// so re-importing an overlapping date range naturally overwrites the same
-// rows in place with refreshed view counts instead of duplicating them.
-function importedRowId(platform, restreamEventId) {
-  return `restream-${platform}-${restreamEventId}`;
-}
-
-// Upserts a batch of Restream-derived rows (see restreamImport.js for how
-// they're built) - each identified by importedRowId(), so this is the one
-// place that actually implements "re-importing refreshes the numbers"
-// rather than piling up duplicates. Flushed immediately, same reasoning as
-// deletePlays() - this is a deliberate, infrequent admin action expected to
-// durably stick right away, not whenever the periodic flush next happens to run.
-function upsertImportedPlays(rows) {
-  ensureLoaded();
-  const byId = new Map(plays.map((p, i) => [p.id, i]));
-
-  rows.forEach((row) => {
-    const id = importedRowId(row.platform, row.restreamEventId);
-    const record = Object.assign({}, row, { id });
-    if (byId.has(id)) {
-      plays[byId.get(id)] = record;
-    } else {
-      plays.push(record);
-      byId.set(id, plays.length - 1);
-    }
-  });
-
-  dirty = true;
-  flush();
-  return rows.length;
-}
-
 // Rows for the direct YouTube/Facebook outputs (see platformStats.js), which
 // carry their own deterministic ids: replaces every existing row whose id
 // starts with `prefix` (one broadcast's total and country rows) with `rows`,
@@ -274,4 +239,4 @@ setInterval(flush, FLUSH_INTERVAL_MS).unref();
   });
 });
 
-module.exports = { recordPlay, listPlays, countActiveViewers, deletePlays, upsertImportedPlays, replaceDirectRows };
+module.exports = { recordPlay, listPlays, countActiveViewers, deletePlays, replaceDirectRows };

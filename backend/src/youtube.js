@@ -1,5 +1,5 @@
 // Direct YouTube output, via the YouTube Data API v3 - same hand-rolled
-// fetch-based approach as restream.js/auth0.js, rather than a client library.
+// fetch-based approach as auth0.js, rather than a client library.
 //
 // Each YouTube output (an entry in channel.outputs with type 'youtube') keeps
 // one reusable YouTube stream (fixed ingest URL + key), created the first
@@ -21,7 +21,7 @@ const { updateOutput, setStatus, RECONNECT_GRACE_MS } = require('./platformOutpu
 const platformStats = require('./platformStats');
 
 // Overridable only so the whole client can be pointed at a local mock for
-// testing, like RESTREAM_API_BASE.
+// testing.
 const GOOGLE_API_BASE = process.env.GOOGLE_API_BASE || 'https://www.googleapis.com';
 const GOOGLE_TOKEN_URL = process.env.GOOGLE_TOKEN_URL || 'https://oauth2.googleapis.com/token';
 const YOUTUBE_API = `${GOOGLE_API_BASE}/youtube/v3`;

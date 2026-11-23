@@ -43,6 +43,10 @@ function readDb() {
   ensureDb();
   const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   Object.values(db.channels || {}).forEach(migrateChannel);
+  // The Restream connection was removed; its stored sign-in goes too.
+  // Rows already imported from it stay in the stats.
+  delete db.restream;
+  delete db.restreamAccounts;
   return db;
 }
 
