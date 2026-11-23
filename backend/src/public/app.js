@@ -2152,12 +2152,21 @@
         .catch(function (err) { alert(err.message); });
     });
 
-    function closeAddOutputModal() {
-      addOutputModalBackdrop.classList.add('hidden');
+    var addOutputBackBtn = document.getElementById('add-output-back-btn');
+
+    // Back to the list of output types (from the Custom RTMP form).
+    function showAddOutputTypes() {
       addOutputRtmpForm.reset();
       addOutputRtmpForm.classList.add('hidden');
+      addOutputBackBtn.classList.add('hidden');
       addOutputTypeRow.classList.remove('hidden');
     }
+
+    function closeAddOutputModal() {
+      addOutputModalBackdrop.classList.add('hidden');
+      showAddOutputTypes();
+    }
+    addOutputBackBtn.addEventListener('click', showAddOutputTypes);
 
     addOutputBtn.addEventListener('click', function () {
       addOutputModalBackdrop.classList.remove('hidden');
@@ -2169,6 +2178,8 @@
     addOutputTypeRtmpBtn.addEventListener('click', function () {
       addOutputTypeRow.classList.add('hidden');
       addOutputRtmpForm.classList.remove('hidden');
+      addOutputBackBtn.classList.remove('hidden');
+      document.getElementById('new-output-name').focus();
     });
     addOutputTypeFacebookBtn.addEventListener('click', function () {
       // Off to Facebook's sign-in; it comes back to this channel page.
