@@ -1265,7 +1265,7 @@
     var end = s.endedAt ? new Date(s.endedAt) : new Date();
     lastStreamWhen.textContent = start.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
       + ', ' + formatClock(start) + ' to ' + formatClock(end)
-      + (s.title ? ' · “' + s.title + '”' : '');
+      + (s.title ? ' · ' + s.title : '');
 
     // Most watching at once, across every source together.
     var peakTotal = 0;
@@ -1282,8 +1282,10 @@
     s.platforms.forEach(function (p) {
       figures.push({
         label: p.name + ' views',
-        value: p.views != null ? formatNumber(p.views) : 'Counting…',
-        note: p.views != null ? 'Keeps updating for 5 weeks' : 'Arrives about 10 minutes after the stream ends',
+        value: p.views != null ? formatNumber(p.views) : p.problem ? 'Not available' : 'Counting…',
+        note: p.views != null ? 'Keeps updating for 5 weeks'
+          : p.problem ? p.name + ' said: ' + p.problem
+          : 'Arrives about 10 minutes after the stream ends',
       });
     });
     fillFigures(lastStreamFigures, figures);

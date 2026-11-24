@@ -208,6 +208,29 @@ async function sampleLiveViewers(channelId) {
   }
 }
 
+// A broadcast that isn't live any more but was never marked as ended (for
+// example one YouTube had already closed when its output was switched back
+// on mid-stream, so a new broadcast replaced it) would otherwise never have
+// its views fetched. Anything not live on an output, not waiting out the
+// short reconnect grace period, and over two minutes old is marked ended.
+function closeOrphans() {
+  const db = readDb();
+  const live = new Set(liveRecords().map((r) => keyFor(r.platform, r.broadcastId)));
+  const graceful = new Set();
+  Object.values(db.channels || {}).forEach((channel) => {
+    (channel.outputs || []).forEach((o) => {
+      if (o.previousBroadcastId) graceful.add(keyFor(o.type, o.previousBroadcastId));
+    });
+  });
+  const cutoff = Date.now() - 2 * MINUTE;
+  Object.values(db.platformBroadcasts || {}).forEach((r) => {
+    const key = keyFor(r.platform, r.broadcastId);
+    if (r.endedAt || live.has(key) || graceful.has(key) || new Date(r.startedAt).getTime() > cutoff) return;
+    console.log(`[platform-stats] ${r.platform} ${r.broadcastId} wasn't marked as ended; marking it now.`);
+    markEnded(r.platform, r.broadcastId);
+  });
+}
+
 async function refreshDue() {
   const db = readDb();
   const now = Date.now();
@@ -273,6 +296,7 @@ async function tick() {
   running = true;
   try {
     await sampleLiveViewers();
+    closeOrphans();
     await refreshDue();
   } finally {
     running = false;

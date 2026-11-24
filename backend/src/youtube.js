@@ -275,7 +275,10 @@ async function startBroadcast(channelId, outputId, session) {
     for (const b of existing) {
       if (resumable && b.id === resumable.id) continue;
       // eslint-disable-next-line no-await-in-loop
-      await endBroadcast(accessToken, b).catch((err) => console.error(`[youtube] Couldn't clear broadcast ${b.id}: ${err.message}`));
+      const done = await endBroadcast(accessToken, b).catch((err) => console.error(`[youtube] Couldn't clear broadcast ${b.id}: ${err.message}`));
+      // So its views are still fetched (e.g. switched off and back on
+      // after YouTube had already closed it).
+      if (done) platformStats.markEnded('youtube', b.id, { neverWentLive: done === 'deleted' });
     }
 
     let broadcast = resumable;

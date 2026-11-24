@@ -144,6 +144,7 @@ function summary(channel) {
       platform: r.platform,
       name: PLATFORM_NAMES[r.platform] || r.platform,
       views: r.views,
+      problem: r.views == null ? r.lastError || null : null,
       url: r.url || null,
     }));
 
